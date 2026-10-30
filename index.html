@@ -1,251 +1,244 @@
-import React, { useState, useEffect } from 'react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バトルバンク君 - Race Analyzer</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel (ブラウザ上でReactコードを変換して動かすため) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans">
+  <div id="root"></div>
 
-// 型定義
-type ManshaData = {
-  id: string;
-  raceNo: number;
-  sanPop: number | null;
-  // その他必要なプロパティ
-};
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-type BynData = {
-  id: string;
-  raceNo: number;
-  order: string;
-  battle: string;
-  sites: {
-    B: { bet: boolean };
-    Y: { bet: boolean };
-    N: { bet: boolean };
-  };
-};
-
-type MergedRace = {
-  raceNo: number;
-  mansha: ManshaData;
-  byn: BynData;
-  picks: string[];
-  impression: string;
-};
-
-type RaceResult = {
-  id: string;
-  raceNo: number;
-  first: string;
-  second: string;
-  third: string;
-  payout: string;
-};
-
-export default function KeirinAnalyzer() {
-  const [mergedRaces, setMergedRaces] = useState<MergedRace[]>([]);
-  const [savedResults, setSavedResults] = useState<RaceResult[]>([]);
-  const [inputResult, setInputResult] = useState({ raceNo: '', first: '', second: '', third: '', payout: '' });
-  
-  // ファイル読み込み用ステート
-  const [manshaRaw, setManshaRaw] = useState<any>(null);
-  const [bynRaw, setBynRaw] = useState<any>(null);
-
-  // 初回マウント時に保存された結果を読み込む
-  useEffect(() => {
-    loadResults();
-  }, []);
-
-  // ① 2ファイルを結合して買い目と感想を生成
-  useEffect(() => {
-    if (manshaRaw && bynRaw) {
-      const races: MergedRace[] = [];
-      const manshaList = manshaRaw.races || manshaRaw;
+    function KeirinAnalyzer() {
+      const [mergedRaces, setMergedRaces] = useState([]);
+      const [savedResults, setSavedResults] = useState([]);
+      const [inputResult, setInputResult] = useState({ raceNo: '', first: '', second: '', third: '', payout: '' });
       
-      bynRaw.forEach((bynItem: BynData) => {
-        const manshaItem = manshaList.find((m: ManshaData) => m.raceNo === bynItem.raceNo);
-        if (manshaItem) {
-          // 買い目の抽出 (betがtrueのサイトを参考にするなどのロジック)
-          const picks = [];
-          if (bynItem.sites.B.bet || bynItem.sites.Y.bet || bynItem.sites.N.bet) {
-            picks.push(bynItem.order);
-          }
+      const [manshaRaw, setManshaRaw] = useState(null);
+      const [bynRaw, setBynRaw] = useState(null);
 
-          // ④ 2ファイルの情報を元にした感想の自動生成
-          let impression = '';
-          if (bynItem.battle === '3分戦') {
-            impression += '3分戦のため主導権争いが激化しやすく、中穴以上の荒れ配当を狙える気配があります。';
-          } else if (bynItem.battle === '単騎戦' || bynItem.battle === '') {
-            impression += '単騎が絡む構成です。単騎はラインの縛りを受けずに動くため、思わぬ強襲や波乱の展開に要注意です。';
-          } else if (bynItem.battle === '2分戦') {
-            impression += '2分戦のためラインの意図が明確で、比較的力通りの決着が予想されます。';
-          }
+      // 初回ロード時のデータ復元
+      useEffect(() => {
+        loadResults();
+      }, []);
 
-          if (manshaItem.sanPop && manshaItem.sanPop > 30) {
-            impression += ' 過去データから見ても人気が割れがちで、ヒモ荒れが期待できるレースです。';
-          }
+      // 2つのJSONが揃ったら買い目と感想を生成
+      useEffect(() => {
+        if (manshaRaw && bynRaw) {
+          const races = [];
+          const manshaList = manshaRaw.races || manshaRaw;
+          
+          bynRaw.forEach((bynItem) => {
+            const manshaItem = manshaList.find(m => m.raceNo === bynItem.raceNo);
+            if (manshaItem) {
+              const picks = [];
+              if (bynItem.sites?.B?.bet || bynItem.sites?.Y?.bet || bynItem.sites?.N?.bet) {
+                picks.push(bynItem.order);
+              }
 
-          races.push({
-            raceNo: bynItem.raceNo,
-            mansha: manshaItem,
-            byn: bynItem,
-            picks,
-            impression
+              let impression = '';
+              if (bynItem.battle === '3分戦') {
+                impression += '3分戦のため主導権争いが激化しやすく、中穴以上の荒れ配当を狙える気配があります。';
+              } else if (bynItem.battle === '単騎戦' || bynItem.battle === '') {
+                impression += '単騎が絡む構成です。単騎の選手はラインの縛りを受けずに動くため、展開次第で思わぬ強襲や波乱の決着に要注意です。';
+              } else if (bynItem.battle === '2分戦') {
+                impression += '2分戦のためラインの意図が明確で、比較的力通りの決着が予想されます。';
+              }
+
+              if (manshaItem.sanPop && manshaItem.sanPop > 30) {
+                impression += ' 過去データから見ても人気が割れがちで、ヒモ荒れが期待できるレースです。';
+              }
+
+              races.push({
+                raceNo: bynItem.raceNo,
+                mansha: manshaItem,
+                byn: bynItem,
+                picks,
+                impression
+              });
+            }
           });
+          setMergedRaces(races.sort((a, b) => a.raceNo - b.raceNo));
         }
-      });
-      // レース番号順にソート
-      setMergedRaces(races.sort((a, b) => a.raceNo - b.raceNo));
-    }
-  }, [manshaRaw, bynRaw]);
+      }, [manshaRaw, bynRaw]);
 
-  // ファイル読み込みハンドラー
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setRawData: React.Dispatch<any>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const json = JSON.parse(event.target?.result as string);
-          setRawData(json);
-        } catch (error) {
-          alert('JSONファイルのパースに失敗しました');
+      // ファイル読み込み処理
+      const handleFileUpload = (e, setRawData) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const json = JSON.parse(event.target.result);
+              setRawData(json);
+            } catch (error) {
+              alert('JSONファイルのパースに失敗しました。ファイル形式を確認してください。');
+            }
+          };
+          reader.readAsText(file);
         }
       };
-      reader.readAsText(file);
-    }
-  };
 
-  // ② 結果の入力
-  const handleAddResult = () => {
-    if (!inputResult.raceNo || !inputResult.first) return;
-    const newResult = { ...inputResult, id: crypto.randomUUID(), raceNo: Number(inputResult.raceNo) };
-    setSavedResults([...savedResults, newResult]);
-    setInputResult({ raceNo: '', first: '', second: '', third: '', payout: '' });
-  };
+      // 結果の入力処理
+      const handleAddResult = () => {
+        if (!inputResult.raceNo || !inputResult.first) return;
+        // ブラウザ用のランダムID生成
+        const randomId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const newResult = { 
+          ...inputResult, 
+          id: randomId, 
+          raceNo: Number(inputResult.raceNo) 
+        };
+        setSavedResults([...savedResults, newResult]);
+        setInputResult({ raceNo: '', first: '', second: '', third: '', payout: '' });
+      };
 
-  // ② 結果の削除（個別）
-  const handleDeleteResult = (id: string) => {
-    setSavedResults(savedResults.filter(r => r.id !== id));
-  };
+      const handleDeleteResult = (id) => {
+        setSavedResults(savedResults.filter(r => r.id !== id));
+      };
 
-  // ③ 結果の保存・読込・全削除
-  const saveResults = () => {
-    localStorage.setItem('analyzer_results', JSON.stringify(savedResults));
-    alert('結果を保存しました');
-  };
+      // ローカルストレージ（ブラウザ保存）処理
+      const saveResults = () => {
+        localStorage.setItem('analyzer_results', JSON.stringify(savedResults));
+        alert('入力した結果をブラウザに保存しました。');
+      };
 
-  const loadResults = () => {
-    const data = localStorage.getItem('analyzer_results');
-    if (data) setSavedResults(JSON.parse(data));
-  };
+      const loadResults = () => {
+        const data = localStorage.getItem('analyzer_results');
+        if (data) {
+          setSavedResults(JSON.parse(data));
+        }
+      };
 
-  const clearResults = () => {
-    if (window.confirm('保存されている結果をすべて削除しますか？')) {
-      localStorage.removeItem('analyzer_results');
-      setSavedResults([]);
-    }
-  };
+      const clearResults = () => {
+        if (window.confirm('保存されている結果をすべて削除しますか？')) {
+          localStorage.removeItem('analyzer_results');
+          setSavedResults([]);
+        }
+      };
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-6 font-sans">
-      <h1 className="text-2xl font-bold mb-6 text-emerald-400">Race Analyzer</h1>
+      return (
+        <div className="min-h-screen p-4 md:p-6 font-sans">
+          <h1 className="text-2xl font-bold mb-6 text-emerald-400">バトルバンク君 - Race Analyzer</h1>
 
-      {/* ① ファイル読み込みエリア */}
-      <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-lg border border-gray-700">
-        <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">1. データ読み込み</h2>
-        <div className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">mansha-note (.json)</label>
-            <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, setManshaRaw)} className="text-sm" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">byn3_backup (.json)</label>
-            <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, setBynRaw)} className="text-sm" />
-          </div>
-        </div>
-      </div>
-
-      {/* ③ 結果データの保存・読込・削除コントロール */}
-      <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-lg border border-gray-700">
-        <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">結果データの管理</h2>
-        <div className="flex flex-wrap gap-3">
-          <button onClick={saveResults} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-medium transition">
-            保存する
-          </button>
-          <button onClick={loadResults} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded font-medium transition">
-            読み込む
-          </button>
-          <button onClick={clearResults} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-medium transition">
-            全削除
-          </button>
-        </div>
-      </div>
-
-      {/* メインエリア：買い目・感想・結果入力 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* レースごとの買い目と感想表示 */}
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold mb-2 text-emerald-400">買い目 ＆ 感想</h2>
-          {mergedRaces.length === 0 && <p className="text-gray-400 text-sm">JSONファイルを読み込むとここに分析が表示されます。</p>}
-          
-          {mergedRaces.map((race) => (
-            <div key={race.raceNo} className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-lg font-bold text-white">第{race.raceNo}R</span>
-                <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{race.byn.battle}</span>
+          {/* 1. データ読み込み */}
+          <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-lg border border-gray-700">
+            <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">1. データ読み込み</h2>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">mansha-note (.json)</label>
+                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, setManshaRaw)} className="text-sm text-gray-300" />
               </div>
-              
-              <div className="mb-3">
-                <span className="text-sm text-gray-400 block mb-1">推奨買い目:</span>
-                <div className="flex gap-2">
-                  {race.picks.length > 0 ? (
-                    race.picks.map((pick, i) => (
-                      <span key={i} className="bg-emerald-900 text-emerald-300 px-3 py-1 rounded-full font-mono font-bold tracking-widest">{pick}</span>
-                    ))
-                  ) : (
-                    <span className="text-gray-500 text-sm">推奨買い目なし</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-gray-900 p-3 rounded text-sm text-gray-300 leading-relaxed border-l-4 border-emerald-500">
-                {race.impression}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">byn3_backup (.json)</label>
+                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, setBynRaw)} className="text-sm text-gray-300" />
               </div>
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* ② 結果入力・履歴エリア */}
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold mb-2 text-blue-400">レース結果入力</h2>
-          
-          <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <input type="number" placeholder="R" value={inputResult.raceNo} onChange={e => setInputResult({...inputResult, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-              <input type="number" placeholder="1着" value={inputResult.first} onChange={e => setInputResult({...inputResult, first: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-              <input type="number" placeholder="2着" value={inputResult.second} onChange={e => setInputResult({...inputResult, second: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-              <input type="number" placeholder="3着" value={inputResult.third} onChange={e => setInputResult({...inputResult, third: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-            </div>
-            <div className="flex gap-3">
-              <input type="text" placeholder="配当 (例: 1540)" value={inputResult.payout} onChange={e => setInputResult({...inputResult, payout: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 flex-1" />
-              <button onClick={handleAddResult} className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded font-medium transition whitespace-nowrap">
-                追加
+          {/* 2. 結果データの管理 */}
+          <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-lg border border-gray-700">
+            <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">結果データの管理</h2>
+            <div className="flex flex-wrap gap-3">
+              <button onClick={saveResults} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-medium transition text-white">
+                保存する
+              </button>
+              <button onClick={loadResults} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded font-medium transition text-white">
+                読み込む
+              </button>
+              <button onClick={clearResults} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-medium transition text-white">
+                全削除
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            {savedResults.map((result) => (
-              <div key={result.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg border border-gray-700">
-                <div className="flex items-center gap-4">
-                  <span className="font-bold text-gray-300 w-10">{result.raceNo}R</span>
-                  <span className="font-mono text-emerald-400 font-bold">{result.first}-{result.second}-{result.third}</span>
-                  <span className="text-sm text-gray-400">¥{result.payout}</span>
+          {/* 3. メインエリア */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* 買い目と感想表示 */}
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-semibold mb-2 text-emerald-400">買い目 ＆ 感想</h2>
+              {mergedRaces.length === 0 && (
+                <p className="text-gray-400 text-sm">2つのJSONファイルを読み込むと、ここに分析が表示されます。</p>
+              )}
+              
+              {mergedRaces.map((race) => (
+                <div key={race.raceNo} className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-lg font-bold text-white">第{race.raceNo}R</span>
+                    <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{race.byn.battle}</span>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <span className="text-sm text-gray-400 block mb-1">推奨買い目:</span>
+                    <div className="flex gap-2 flex-wrap">
+                      {race.picks.length > 0 ? (
+                        race.picks.map((pick, i) => (
+                          <span key={i} className="bg-emerald-900 text-emerald-300 px-3 py-1 rounded-full font-mono font-bold tracking-widest">
+                            {pick}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-sm">推奨買い目なし</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-900 p-3 rounded text-sm text-gray-300 leading-relaxed border-l-4 border-emerald-500">
+                    {race.impression}
+                  </div>
                 </div>
-                <button onClick={() => handleDeleteResult(result.id)} className="text-red-400 hover:text-red-300 p-2 text-sm transition">
-                  削除
-                </button>
+              ))}
+            </div>
+
+            {/* 結果入力・履歴エリア */}
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-semibold mb-2 text-blue-400">レース結果入力</h2>
+              
+              <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <input type="number" placeholder="R" value={inputResult.raceNo} onChange={e => setInputResult({...inputResult, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+                  <input type="number" placeholder="1着" value={inputResult.first} onChange={e => setInputResult({...inputResult, first: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+                  <input type="number" placeholder="2着" value={inputResult.second} onChange={e => setInputResult({...inputResult, second: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+                  <input type="number" placeholder="3着" value={inputResult.third} onChange={e => setInputResult({...inputResult, third: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+                </div>
+                <div className="flex gap-3">
+                  <input type="text" placeholder="配当 (例: 1540)" value={inputResult.payout} onChange={e => setInputResult({...inputResult, payout: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 flex-1" />
+                  <button onClick={handleAddResult} className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded font-medium transition whitespace-nowrap text-white">追加</button>
+                </div>
               </div>
-            ))}
+
+              <div className="flex flex-col gap-3">
+                {savedResults.map((result) => (
+                  <div key={result.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg border border-gray-700">
+                    <div className="flex items-center gap-4">
+                      <span className="font-bold text-gray-300 w-10">{result.raceNo}R</span>
+                      <span className="font-mono text-emerald-400 font-bold">{result.first}-{result.second}-{result.third}</span>
+                      <span className="text-sm text-gray-400">¥{result.payout}</span>
+                    </div>
+                    <button onClick={() => handleDeleteResult(result.id)} className="text-red-400 hover:text-red-300 p-2 text-sm transition">削除</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }
+
+    // React 18の新しいマウント方式
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<KeirinAnalyzer />);
+  </script>
+</body>
+</html>
