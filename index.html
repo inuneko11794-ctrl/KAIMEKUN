@@ -3,242 +3,283 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>バトルバンク君 - Race Analyzer</title>
-  <!-- Tailwind CSS -->
+  <title>バトルバンク君 - 予想＆結果ストックツール</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <!-- Babel (ブラウザ上でReactコードを変換して動かすため) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans">
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    function KeirinAnalyzer() {
-      const [mergedRaces, setMergedRaces] = useState([]);
-      const [savedResults, setSavedResults] = useState([]);
-      const [inputResult, setInputResult] = useState({ raceNo: '', first: '', second: '', third: '', payout: '' });
+    function App() {
+      // JSONデータの保持
+      const [siteData, setSiteData] = useState({ mansha: null, byn: null });
       
-      const [manshaRaw, setManshaRaw] = useState(null);
-      const [bynRaw, setBynRaw] = useState(null);
+      // ストックされた予想リスト
+      const [predictions, setPredictions] = useState([]);
 
-      // 初回ロード時のデータ復元
+      // 予想作成用のフォーム状態
+      const [form, setForm] = useState({
+        raceNo: '1',
+        line: '7-5-2/4-3/1-6',
+        marks: '◎◯△/☓✖/☆★'
+      });
+
+      // 初回ロード時にローカルストレージから復元
       useEffect(() => {
-        loadResults();
+        const savedData = localStorage.getItem('battlebank_data');
+        if (savedData) setSiteData(JSON.parse(savedData));
+
+        const savedPreds = localStorage.getItem('battlebank_predictions');
+        if (savedPreds) setPredictions(JSON.parse(savedPreds));
       }, []);
 
-      // 2つのJSONが揃ったら買い目と感想を生成
-      useEffect(() => {
-        if (manshaRaw && bynRaw) {
-          const races = [];
-          const manshaList = manshaRaw.races || manshaRaw;
-          
-          bynRaw.forEach((bynItem) => {
-            const manshaItem = manshaList.find(m => m.raceNo === bynItem.raceNo);
-            if (manshaItem) {
-              const picks = [];
-              if (bynItem.sites?.B?.bet || bynItem.sites?.Y?.bet || bynItem.sites?.N?.bet) {
-                picks.push(bynItem.order);
-              }
-
-              let impression = '';
-              if (bynItem.battle === '3分戦') {
-                impression += '3分戦のため主導権争いが激化しやすく、中穴以上の荒れ配当を狙える気配があります。';
-              } else if (bynItem.battle === '単騎戦' || bynItem.battle === '') {
-                impression += '単騎が絡む構成です。単騎の選手はラインの縛りを受けずに動くため、展開次第で思わぬ強襲や波乱の決着に要注意です。';
-              } else if (bynItem.battle === '2分戦') {
-                impression += '2分戦のためラインの意図が明確で、比較的力通りの決着が予想されます。';
-              }
-
-              if (manshaItem.sanPop && manshaItem.sanPop > 30) {
-                impression += ' 過去データから見ても人気が割れがちで、ヒモ荒れが期待できるレースです。';
-              }
-
-              races.push({
-                raceNo: bynItem.raceNo,
-                mansha: manshaItem,
-                byn: bynItem,
-                picks,
-                impression
-              });
-            }
-          });
-          setMergedRaces(races.sort((a, b) => a.raceNo - b.raceNo));
-        }
-      }, [manshaRaw, bynRaw]);
-
-      // ファイル読み込み処理
-      const handleFileUpload = (e, setRawData) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            try {
-              const json = JSON.parse(event.target.result);
-              setRawData(json);
-            } catch (error) {
-              alert('JSONファイルのパースに失敗しました。ファイル形式を確認してください。');
-            }
-          };
-          reader.readAsText(file);
-        }
-      };
-
-      // 結果の入力処理
-      const handleAddResult = () => {
-        if (!inputResult.raceNo || !inputResult.first) return;
-        // ブラウザ用のランダムID生成
-        const randomId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-        const newResult = { 
-          ...inputResult, 
-          id: randomId, 
-          raceNo: Number(inputResult.raceNo) 
+      // データの保存
+      const handleFileUpload = (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const json = JSON.parse(event.target.result);
+            const newData = { ...siteData, [type]: json };
+            setSiteData(newData);
+            localStorage.setItem('battlebank_data', JSON.stringify(newData));
+            alert(`${type}のデータをサイトに保存しました！`);
+          } catch (err) {
+            alert('ファイルの読み込みに失敗しました。');
+          }
         };
-        setSavedResults([...savedResults, newResult]);
-        setInputResult({ raceNo: '', first: '', second: '', third: '', payout: '' });
+        reader.readAsText(file);
       };
 
-      const handleDeleteResult = (id) => {
-        setSavedResults(savedResults.filter(r => r.id !== id));
+      // 展開と印から買い目を自動生成するロジック
+      const generatePicks = (lineStr, markStr) => {
+        // 数字のみ抽出 (例: ['7','5','2','4','3','1','6'])
+        const nums = lineStr.match(/\d/g) || [];
+        // / やスペースを除いた印を抽出 (例: ['◎','◯','△','☓','✖','☆','★'])
+        const markChars = markStr.replace(/[\/\s]/g, '').split('');
+
+        // 印と車番を紐付け
+        const markMap = {};
+        markChars.forEach((m, i) => {
+          if (nums[i]) markMap[m] = nums[i];
+        });
+
+        const getNum = (m) => markMap[m] || 'X';
+
+        // 買い目のパターン（好みに合わせて変更可能）
+        const tansho = [getNum('◎'), getNum('◯')];
+        
+        const nirentan = [
+          `${getNum('◎')}-${getNum('◯')}`,
+          `${getNum('◎')}-${getNum('△')}`,
+          `${getNum('◯')}-${getNum('◎')}`,
+          `${getNum('◯')}-${getNum('△')}`,
+          `${getNum('◎')}-${getNum('☓')}`
+        ];
+
+        const sanrentan = [
+          `${getNum('◎')}-${getNum('◯')}-${getNum('△')}`,
+          `${getNum('◎')}-${getNum('◯')}-${getNum('☓')}`,
+          `${getNum('◎')}-${getNum('△')}-${getNum('◯')}`,
+          `${getNum('◯')}-${getNum('◎')}-${getNum('△')}`,
+          `${getNum('◯')}-${getNum('◎')}-${getNum('☓')}`
+        ];
+
+        return { tansho, nirentan, sanrentan };
       };
 
-      // ローカルストレージ（ブラウザ保存）処理
-      const saveResults = () => {
-        localStorage.setItem('analyzer_results', JSON.stringify(savedResults));
-        alert('入力した結果をブラウザに保存しました。');
+      // 予想をストックする
+      const handleAddPrediction = () => {
+        const picks = generatePicks(form.line, form.marks);
+        const newPred = {
+          id: Date.now().toString(),
+          raceNo: form.raceNo,
+          line: form.line,
+          marks: form.marks,
+          picks: picks,
+          result: { first: '', second: '', third: '', payout: '' },
+          isFinished: false
+        };
+
+        const updated = [newPred, ...predictions];
+        setPredictions(updated);
+        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
       };
 
-      const loadResults = () => {
-        const data = localStorage.getItem('analyzer_results');
-        if (data) {
-          setSavedResults(JSON.parse(data));
-        }
+      // 結果を追記して保存する
+      const handleUpdateResult = (id, field, value) => {
+        const updated = predictions.map(p => {
+          if (p.id === id) {
+            return { ...p, result: { ...p.result, [field]: value } };
+          }
+          return p;
+        });
+        setPredictions(updated);
       };
 
-      const clearResults = () => {
-        if (window.confirm('保存されている結果をすべて削除しますか？')) {
-          localStorage.removeItem('analyzer_results');
-          setSavedResults([]);
+      const handleFinishRace = (id) => {
+        const updated = predictions.map(p => {
+          if (p.id === id) return { ...p, isFinished: true };
+          return p;
+        });
+        setPredictions(updated);
+        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
+      };
+
+      const handleDelete = (id) => {
+        const updated = predictions.filter(p => p.id !== id);
+        setPredictions(updated);
+        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
+      };
+
+      // データのクリア
+      const clearAllData = () => {
+        if (confirm('すべてのデータとストックした予想を削除しますか？')) {
+          localStorage.clear();
+          setSiteData({ mansha: null, byn: null });
+          setPredictions([]);
         }
       };
 
       return (
-        <div className="min-h-screen p-4 md:p-6 font-sans">
-          <h1 className="text-2xl font-bold mb-6 text-emerald-400">バトルバンク君 - Race Analyzer</h1>
+        <div className="max-w-5xl mx-auto p-4 md:p-6">
+          <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+            <h1 className="text-2xl font-bold text-emerald-400">バトルバンク君 - 予想ストック</h1>
+            <button onClick={clearAllData} className="text-xs bg-red-900 hover:bg-red-800 text-red-200 px-3 py-1 rounded">
+              全データリセット
+            </button>
+          </div>
 
-          {/* 1. データ読み込み */}
-          <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-lg border border-gray-700">
-            <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">1. データ読み込み</h2>
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">mansha-note (.json)</label>
-                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, setManshaRaw)} className="text-sm text-gray-300" />
+          {/* ステップ1: ファイル読み込み */}
+          <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-md border border-gray-700">
+            <h2 className="text-sm text-gray-400 mb-3">1. ベースデータの読み込み（サイト内に保持されます）</h2>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="text-xs mb-1 block text-gray-500">mansha-note (.json)</label>
+                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'mansha')} className="text-sm w-full" />
+                {siteData.mansha && <span className="text-xs text-emerald-400">✓ 保持済み</span>}
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">byn3_backup (.json)</label>
-                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, setBynRaw)} className="text-sm text-gray-300" />
+              <div className="flex-1">
+                <label className="text-xs mb-1 block text-gray-500">byn3_backup (.json)</label>
+                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'byn')} className="text-sm w-full" />
+                {siteData.byn && <span className="text-xs text-emerald-400">✓ 保持済み</span>}
               </div>
             </div>
           </div>
 
-          {/* 2. 結果データの管理 */}
-          <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-lg border border-gray-700">
-            <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">結果データの管理</h2>
-            <div className="flex flex-wrap gap-3">
-              <button onClick={saveResults} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-medium transition text-white">
-                保存する
-              </button>
-              <button onClick={loadResults} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded font-medium transition text-white">
-                読み込む
-              </button>
-              <button onClick={clearResults} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-medium transition text-white">
-                全削除
-              </button>
+          {/* ステップ2: 展開と印を入力して予想を作成 */}
+          <div className="bg-gray-800 p-5 rounded-lg mb-8 shadow-md border border-emerald-900">
+            <h2 className="text-lg font-bold text-emerald-400 mb-4">2. 展開・印を入力して買い目を生成</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">レース番号</label>
+                <input type="number" value={form.raceNo} onChange={e => setForm({...form, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">展開（例: 7-5-2/4-3/1-6/）</label>
+                <input type="text" value={form.line} onChange={e => setForm({...form, line: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-emerald-300" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">印（例: ◎◯△/☓✖/☆★）</label>
+                <input type="text" value={form.marks} onChange={e => setForm({...form, marks: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-yellow-300" />
+              </div>
             </div>
+            <button onClick={handleAddPrediction} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded shadow w-full md:w-auto">
+              予想をストックする
+            </button>
           </div>
 
-          {/* 3. メインエリア */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ステップ3: 予想のストック一覧と結果入力 */}
+          <h2 className="text-xl font-bold text-blue-400 mb-4">3. ストックされたレース（結果入力待ち）</h2>
+          
+          <div className="space-y-6">
+            {predictions.map(pred => (
+              <div key={pred.id} className={`p-4 rounded-lg border ${pred.isFinished ? 'bg-gray-900 border-gray-700 opacity-80' : 'bg-gray-800 border-blue-800 shadow-lg'}`}>
+                
+                {/* ヘッダー部分 */}
+                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded">第{pred.raceNo}R</span>
+                    <span className="font-mono text-gray-300 text-sm">{pred.line}</span>
+                    <span className="font-mono text-yellow-400 text-sm">{pred.marks}</span>
+                  </div>
+                  <button onClick={() => handleDelete(pred.id)} className="text-gray-500 hover:text-red-400 text-sm">削除</button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* 自動生成された買い目表示エリア */}
+                  <div>
+                    <h3 className="text-xs text-gray-400 mb-2">生成された買い目</h3>
+                    <div className="bg-gray-900 p-3 rounded space-y-2 font-mono text-sm">
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-12">単勝:</span>
+                        <span className="text-emerald-400">{pred.picks.tansho.join(', ')}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-12">2連単:</span>
+                        <span className="text-blue-300">{pred.picks.nirentan.join(', ')}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-12">3連単:</span>
+                        <span className="text-pink-300">{pred.picks.sanrentan.join(', ')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 後から追記する結果入力エリア */}
+                  <div>
+                    <h3 className="text-xs text-gray-400 mb-2">レース結果（後書き用）</h3>
+                    {!pred.isFinished ? (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <input type="number" placeholder="1着" value={pred.result.first} onChange={e => handleUpdateResult(pred.id, 'first', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-center text-white" />
+                          <span className="text-gray-500 self-center">-</span>
+                          <input type="number" placeholder="2着" value={pred.result.second} onChange={e => handleUpdateResult(pred.id, 'second', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-center text-white" />
+                          <span className="text-gray-500 self-center">-</span>
+                          <input type="number" placeholder="3着" value={pred.result.third} onChange={e => handleUpdateResult(pred.id, 'third', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-center text-white" />
+                        </div>
+                        <div className="flex gap-3">
+                          <input type="text" placeholder="配当 (例: 1540)" value={pred.result.payout} onChange={e => handleUpdateResult(pred.id, 'payout', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-3 py-1 flex-1 text-white" />
+                          <button onClick={() => handleFinishRace(pred.id)} className="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded text-white text-sm">
+                            結果を確定
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-800 p-3 border border-gray-600 rounded flex items-center justify-between">
+                        <div className="font-mono text-lg font-bold text-white">
+                          {pred.result.first}-{pred.result.second}-{pred.result.third}
+                        </div>
+                        <div className="text-yellow-400 font-bold">
+                          ¥{pred.result.payout}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            ))}
             
-            {/* 買い目と感想表示 */}
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold mb-2 text-emerald-400">買い目 ＆ 感想</h2>
-              {mergedRaces.length === 0 && (
-                <p className="text-gray-400 text-sm">2つのJSONファイルを読み込むと、ここに分析が表示されます。</p>
-              )}
-              
-              {mergedRaces.map((race) => (
-                <div key={race.raceNo} className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-lg font-bold text-white">第{race.raceNo}R</span>
-                    <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{race.byn.battle}</span>
-                  </div>
-                  
-                  <div className="mb-3">
-                    <span className="text-sm text-gray-400 block mb-1">推奨買い目:</span>
-                    <div className="flex gap-2 flex-wrap">
-                      {race.picks.length > 0 ? (
-                        race.picks.map((pick, i) => (
-                          <span key={i} className="bg-emerald-900 text-emerald-300 px-3 py-1 rounded-full font-mono font-bold tracking-widest">
-                            {pick}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-gray-500 text-sm">推奨買い目なし</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-900 p-3 rounded text-sm text-gray-300 leading-relaxed border-l-4 border-emerald-500">
-                    {race.impression}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* 結果入力・履歴エリア */}
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold mb-2 text-blue-400">レース結果入力</h2>
-              
-              <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                  <input type="number" placeholder="R" value={inputResult.raceNo} onChange={e => setInputResult({...inputResult, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-                  <input type="number" placeholder="1着" value={inputResult.first} onChange={e => setInputResult({...inputResult, first: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-                  <input type="number" placeholder="2着" value={inputResult.second} onChange={e => setInputResult({...inputResult, second: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-                  <input type="number" placeholder="3着" value={inputResult.third} onChange={e => setInputResult({...inputResult, third: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
-                </div>
-                <div className="flex gap-3">
-                  <input type="text" placeholder="配当 (例: 1540)" value={inputResult.payout} onChange={e => setInputResult({...inputResult, payout: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 flex-1" />
-                  <button onClick={handleAddResult} className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded font-medium transition whitespace-nowrap text-white">追加</button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                {savedResults.map((result) => (
-                  <div key={result.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg border border-gray-700">
-                    <div className="flex items-center gap-4">
-                      <span className="font-bold text-gray-300 w-10">{result.raceNo}R</span>
-                      <span className="font-mono text-emerald-400 font-bold">{result.first}-{result.second}-{result.third}</span>
-                      <span className="text-sm text-gray-400">¥{result.payout}</span>
-                    </div>
-                    <button onClick={() => handleDeleteResult(result.id)} className="text-red-400 hover:text-red-300 p-2 text-sm transition">削除</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+            {predictions.length === 0 && (
+              <p className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-lg">
+                まだストックされたレースがありません。「予想をストックする」ボタンから追加してください。
+              </p>
+            )}
           </div>
+
         </div>
       );
     }
 
-    // React 18の新しいマウント方式
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<KeirinAnalyzer />);
+    root.render(<App />);
   </script>
 </body>
 </html>
