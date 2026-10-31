@@ -24,6 +24,8 @@
 
       // 予想作成用のフォーム状態
       const [form, setForm] = useState({
+        venue: '',
+        battleType: '三分戦',
         raceNo: '1',
         line: '7-5-2/4-3/1-6',
         marks: '◎◯△/☓✖/☆★'
@@ -59,12 +61,9 @@
 
       // 展開と印から買い目を自動生成するロジック
       const generatePicks = (lineStr, markStr) => {
-        // 数字のみ抽出 (例: ['7','5','2','4','3','1','6'])
         const nums = lineStr.match(/\d/g) || [];
-        // / やスペースを除いた印を抽出 (例: ['◎','◯','△','☓','✖','☆','★'])
         const markChars = markStr.replace(/[\/\s]/g, '').split('');
 
-        // 印と車番を紐付け
         const markMap = {};
         markChars.forEach((m, i) => {
           if (nums[i]) markMap[m] = nums[i];
@@ -72,7 +71,6 @@
 
         const getNum = (m) => markMap[m] || 'X';
 
-        // 買い目のパターン（好みに合わせて変更可能）
         const tansho = [getNum('◎'), getNum('◯')];
         
         const nirentan = [
@@ -99,6 +97,8 @@
         const picks = generatePicks(form.line, form.marks);
         const newPred = {
           id: Date.now().toString(),
+          venue: form.venue,
+          battleType: form.battleType,
           raceNo: form.raceNo,
           line: form.line,
           marks: form.marks,
@@ -176,16 +176,29 @@
           {/* ステップ2: 展開と印を入力して予想を作成 */}
           <div className="bg-gray-800 p-5 rounded-lg mb-8 shadow-md border border-emerald-900">
             <h2 className="text-lg font-bold text-emerald-400 mb-4">2. 展開・印を入力して買い目を生成</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+              <div className="col-span-1 md:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">会場</label>
+                <input type="text" placeholder="例: 平塚" value={form.venue} onChange={e => setForm({...form, venue: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
+              </div>
+              <div className="col-span-1 md:col-span-2">
                 <label className="text-xs text-gray-400 block mb-1">レース番号</label>
                 <input type="number" value={form.raceNo} onChange={e => setForm({...form, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
               </div>
-              <div className="md:col-span-2">
+              <div className="col-span-2 md:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">戦法</label>
+                <select value={form.battleType} onChange={e => setForm({...form, battleType: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white">
+                  <option value="三分戦">三分戦</option>
+                  <option value="2分戦">2分戦</option>
+                  <option value="4分戦">4分戦</option>
+                  <option value="単騎戦">単騎戦</option>
+                </select>
+              </div>
+              <div className="col-span-2 md:col-span-3">
                 <label className="text-xs text-gray-400 block mb-1">展開（例: 7-5-2/4-3/1-6/）</label>
                 <input type="text" value={form.line} onChange={e => setForm({...form, line: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-emerald-300" />
               </div>
-              <div>
+              <div className="col-span-2 md:col-span-3">
                 <label className="text-xs text-gray-400 block mb-1">印（例: ◎◯△/☓✖/☆★）</label>
                 <input type="text" value={form.marks} onChange={e => setForm({...form, marks: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-yellow-300" />
               </div>
@@ -203,10 +216,18 @@
               <div key={pred.id} className={`p-4 rounded-lg border ${pred.isFinished ? 'bg-gray-900 border-gray-700 opacity-80' : 'bg-gray-800 border-blue-800 shadow-lg'}`}>
                 
                 {/* ヘッダー部分 */}
-                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded">第{pred.raceNo}R</span>
-                    <span className="font-mono text-gray-300 text-sm">{pred.line}</span>
+                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 flex-wrap gap-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded">
+                      {pred.venue && <span className="text-sm mr-2 text-emerald-300">{pred.venue}</span>}
+                      第{pred.raceNo}R
+                    </span>
+                    {pred.battleType && (
+                      <span className="text-xs bg-gray-600 px-2 py-1 rounded text-gray-300 border border-gray-500">
+                        {pred.battleType}
+                      </span>
+                    )}
+                    <span className="font-mono text-gray-300 text-sm ml-2">{pred.line}</span>
                     <span className="font-mono text-yellow-400 text-sm">{pred.marks}</span>
                   </div>
                   <button onClick={() => handleDelete(pred.id)} className="text-gray-500 hover:text-red-400 text-sm">削除</button>
@@ -246,7 +267,7 @@
                         </div>
                         <div className="flex gap-3">
                           <input type="text" placeholder="配当 (例: 1540)" value={pred.result.payout} onChange={e => handleUpdateResult(pred.id, 'payout', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-3 py-1 flex-1 text-white" />
-                          <button onClick={() => handleFinishRace(pred.id)} className="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded text-white text-sm">
+                          <button onClick={() => handleFinishRace(pred.id)} className="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded text-white text-sm whitespace-nowrap">
                             結果を確定
                           </button>
                         </div>
