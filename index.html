@@ -16,23 +16,23 @@
     const { useState, useEffect } = React;
 
     function App() {
-      // JSONデータの保持
       const [siteData, setSiteData] = useState({ mansha: null, byn: null });
-      
-      // ストックされた予想リスト
       const [predictions, setPredictions] = useState([]);
 
-      // 予想作成用のフォーム状態
+      // 絞り込み（フィルター）用のステートを追加
+      const [filterVenue, setFilterVenue] = useState('すべて');
+      const [filterCarCount, setFilterCarCount] = useState('すべて');
+      const [filterBattleType, setFilterBattleType] = useState('すべて');
+
       const [form, setForm] = useState({
         venue: '',
         raceNo: '1',
-        carCount: '7車', // 初期値を7車に設定
+        carCount: '7車',
         battleType: '三分戦',
         line: '7-5-2/4-3/1-6',
         marks: '◎◯△/☓✖/☆★'
       });
 
-      // 初回ロード時にローカルストレージから復元
       useEffect(() => {
         const savedData = localStorage.getItem('battlebank_data');
         if (savedData) setSiteData(JSON.parse(savedData));
@@ -41,7 +41,6 @@
         if (savedPreds) setPredictions(JSON.parse(savedPreds));
       }, []);
 
-      // データの保存
       const handleFileUpload = (e, type) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -60,7 +59,6 @@
         reader.readAsText(file);
       };
 
-      // 展開と印から買い目を自動生成するロジック
       const generatePicks = (lineStr, markStr) => {
         const nums = lineStr.match(/\d/g) || [];
         const markChars = markStr.replace(/[\/\s]/g, '').split('');
@@ -71,7 +69,6 @@
         });
 
         const getNum = (m) => markMap[m] || 'X';
-
         const tansho = [getNum('◎'), getNum('◯')];
         
         const nirentan = [
@@ -93,12 +90,11 @@
         return { tansho, nirentan, sanrentan };
       };
 
-      // 予想をストックする
       const handleAddPrediction = () => {
         const picks = generatePicks(form.line, form.marks);
         const newPred = {
           id: Date.now().toString(),
-          venue: form.venue,
+          venue: form.venue || '未指定',
           raceNo: form.raceNo,
           carCount: form.carCount,
           battleType: form.battleType,
@@ -114,7 +110,6 @@
         localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
       };
 
-      // 結果を追記して保存する
       const handleUpdateResult = (id, field, value) => {
         const updated = predictions.map(p => {
           if (p.id === id) {
@@ -140,7 +135,6 @@
         localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
       };
 
-      // データのクリア
       const clearAllData = () => {
         if (confirm('すべてのデータとストックした予想を削除しますか？')) {
           localStorage.clear();
@@ -148,6 +142,24 @@
           setPredictions([]);
         }
       };
+
+      // 動的にユニークな会場リストを生成（フィルター用）
+      const uniqueVenues = ['すべて', ...new Set(predictions.map(p => p.venue).filter(Boolean))];
+
+      // フィルターとソートを適用したリストを生成
+      const filteredAndSortedPredictions = predictions
+        .filter(p => {
+          const matchVenue = filterVenue === 'すべて' || p.venue === filterVenue;
+          const matchCarCount = filterCarCount === 'すべて' || p.carCount === filterCarCount;
+          const matchBattleType = filterBattleType === 'すべて' || p.battleType === filterBattleType;
+          return matchVenue && matchCarCount && matchBattleType;
+        })
+        .sort((a, b) => {
+          // 会場名でソート -> レース番号順でソート
+          if (a.venue < b.venue) return -1;
+          if (a.venue > b.venue) return 1;
+          return Number(a.raceNo) - Number(b.raceNo);
+        });
 
       return (
         <div className="max-w-5xl mx-auto p-4 md:p-6">
@@ -158,7 +170,6 @@
             </button>
           </div>
 
-          {/* ステップ1: ファイル読み込み */}
           <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-md border border-gray-700">
             <h2 className="text-sm text-gray-400 mb-3">1. ベースデータの読み込み（サイト内に保持されます）</h2>
             <div className="flex gap-4">
@@ -175,11 +186,8 @@
             </div>
           </div>
 
-          {/* ステップ2: 展開と印を入力して予想を作成 */}
           <div className="bg-gray-800 p-5 rounded-lg mb-8 shadow-md border border-emerald-900">
             <h2 className="text-lg font-bold text-emerald-400 mb-4">2. 展開・印を入力して買い目を生成</h2>
-            
-            {/* グリッドを8等分に変更して綺麗に並べる */}
             <div className="grid grid-cols-2 md:grid-cols-8 gap-4 mb-4">
               <div className="col-span-1 md:col-span-2">
                 <label className="text-xs text-gray-400 block mb-1">会場</label>
@@ -219,20 +227,43 @@
                 <input type="text" value={form.marks} onChange={e => setForm({...form, marks: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-yellow-300" />
               </div>
             </div>
-            
             <button onClick={handleAddPrediction} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded shadow w-full md:w-auto">
               予想をストックする
             </button>
           </div>
 
-          {/* ステップ3: 予想のストック一覧と結果入力 */}
-          <h2 className="text-xl font-bold text-blue-400 mb-4">3. ストックされたレース（結果入力待ち）</h2>
+          {/* 絞り込みコントロールエリア */}
+          <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-blue-400 mb-2 md:mb-0">3. ストックされたレース</h2>
+            
+            <div className="flex flex-wrap gap-3 bg-gray-800 p-2 rounded border border-gray-700">
+              <span className="text-sm text-gray-400 self-center pl-2">絞り込み:</span>
+              <select value={filterVenue} onChange={e => setFilterVenue(e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white">
+                {uniqueVenues.map(v => <option key={v} value={v}>{v === 'すべて' ? '全会場' : v}</option>)}
+              </select>
+              <select value={filterCarCount} onChange={e => setFilterCarCount(e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white">
+                <option value="すべて">全車立</option>
+                <option value="5車">5車</option>
+                <option value="6車">6車</option>
+                <option value="7車">7車</option>
+                <option value="8車">8車</option>
+                <option value="9車">9車</option>
+              </select>
+              <select value={filterBattleType} onChange={e => setFilterBattleType(e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white">
+                <option value="すべて">全戦法</option>
+                <option value="三分戦">三分戦</option>
+                <option value="2分戦">2分戦</option>
+                <option value="4分戦">4分戦</option>
+                <option value="単騎戦">単騎戦</option>
+                <option value="その他">その他</option>
+              </select>
+            </div>
+          </div>
           
           <div className="space-y-6">
-            {predictions.map(pred => (
+            {filteredAndSortedPredictions.map(pred => (
               <div key={pred.id} className={`p-4 rounded-lg border ${pred.isFinished ? 'bg-gray-900 border-gray-700 opacity-80' : 'bg-gray-800 border-blue-800 shadow-lg'}`}>
                 
-                {/* ヘッダー部分 */}
                 <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 flex-wrap gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded flex items-center">
@@ -240,7 +271,6 @@
                       第{pred.raceNo}R
                     </span>
                     
-                    {/* 車立タグを追加 */}
                     {pred.carCount && (
                       <span className="text-xs bg-gray-600 px-2 py-1 rounded text-purple-300 border border-gray-500 font-bold">
                         {pred.carCount}
@@ -259,7 +289,6 @@
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* 自動生成された買い目表示エリア */}
                   <div>
                     <h3 className="text-xs text-gray-400 mb-2">生成された買い目</h3>
                     <div className="bg-gray-900 p-3 rounded space-y-2 font-mono text-sm">
@@ -278,7 +307,6 @@
                     </div>
                   </div>
 
-                  {/* 後から追記する結果入力エリア */}
                   <div>
                     <h3 className="text-xs text-gray-400 mb-2">レース結果（後書き用）</h3>
                     {!pred.isFinished ? (
@@ -313,9 +341,9 @@
               </div>
             ))}
             
-            {predictions.length === 0 && (
+            {filteredAndSortedPredictions.length === 0 && (
               <p className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-lg">
-                まだストックされたレースがありません。「予想をストックする」ボタンから追加してください。
+                表示できるレースがありません。
               </p>
             )}
           </div>
