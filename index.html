@@ -19,7 +19,6 @@
       const [siteData, setSiteData] = useState({ mansha: null, byn: null });
       const [predictions, setPredictions] = useState([]);
 
-      // 絞り込み（フィルター）用のステートを追加
       const [filterVenue, setFilterVenue] = useState('すべて');
       const [filterCarCount, setFilterCarCount] = useState('すべて');
       const [filterBattleType, setFilterBattleType] = useState('すべて');
@@ -110,6 +109,7 @@
         localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
       };
 
+      // 入力時に即座に保存するように修正
       const handleUpdateResult = (id, field, value) => {
         const updated = predictions.map(p => {
           if (p.id === id) {
@@ -118,6 +118,7 @@
           return p;
         });
         setPredictions(updated);
+        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
       };
 
       const handleFinishRace = (id) => {
@@ -129,10 +130,22 @@
         localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
       };
 
-      const handleDelete = (id) => {
-        const updated = predictions.filter(p => p.id !== id);
+      // 結果を再編集するための機能を追加
+      const handleEditResult = (id) => {
+        const updated = predictions.map(p => {
+          if (p.id === id) return { ...p, isFinished: false };
+          return p;
+        });
         setPredictions(updated);
         localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
+      };
+
+      const handleDelete = (id) => {
+        if (confirm('この予想データを削除しますか？')) {
+          const updated = predictions.filter(p => p.id !== id);
+          setPredictions(updated);
+          localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
+        }
       };
 
       const clearAllData = () => {
@@ -143,10 +156,8 @@
         }
       };
 
-      // 動的にユニークな会場リストを生成（フィルター用）
       const uniqueVenues = ['すべて', ...new Set(predictions.map(p => p.venue).filter(Boolean))];
 
-      // フィルターとソートを適用したリストを生成
       const filteredAndSortedPredictions = predictions
         .filter(p => {
           const matchVenue = filterVenue === 'すべて' || p.venue === filterVenue;
@@ -155,7 +166,6 @@
           return matchVenue && matchCarCount && matchBattleType;
         })
         .sort((a, b) => {
-          // 会場名でソート -> レース番号順でソート
           if (a.venue < b.venue) return -1;
           if (a.venue > b.venue) return 1;
           return Number(a.raceNo) - Number(b.raceNo);
@@ -176,12 +186,12 @@
               <div className="flex-1">
                 <label className="text-xs mb-1 block text-gray-500">mansha-note (.json)</label>
                 <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'mansha')} className="text-sm w-full" />
-                {siteData.mansha && <span className="text-xs text-emerald-400">✓ 保持済み</span>}
+                {siteData.mansha && <span className="text-xs text-emerald-400 mt-1 block">✓ 保持済み</span>}
               </div>
               <div className="flex-1">
                 <label className="text-xs mb-1 block text-gray-500">byn3_backup (.json)</label>
                 <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'byn')} className="text-sm w-full" />
-                {siteData.byn && <span className="text-xs text-emerald-400">✓ 保持済み</span>}
+                {siteData.byn && <span className="text-xs text-emerald-400 mt-1 block">✓ 保持済み</span>}
               </div>
             </div>
           </div>
@@ -232,7 +242,6 @@
             </button>
           </div>
 
-          {/* 絞り込みコントロールエリア */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-blue-400 mb-2 md:mb-0">3. ストックされたレース</h2>
             
@@ -310,18 +319,19 @@
                   <div>
                     <h3 className="text-xs text-gray-400 mb-2">レース結果（後書き用）</h3>
                     {!pred.isFinished ? (
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <input type="number" placeholder="1着" value={pred.result.first} onChange={e => handleUpdateResult(pred.id, 'first', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-center text-white" />
+                      <div className="space-y-3 flex flex-col">
+                        <div className="flex gap-2 w-full">
+                          <input type="number" inputMode="numeric" placeholder="1着" value={pred.result.first} onChange={e => handleUpdateResult(pred.id, 'first', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-2 flex-1 text-center text-white min-w-0" />
                           <span className="text-gray-500 self-center">-</span>
-                          <input type="number" placeholder="2着" value={pred.result.second} onChange={e => handleUpdateResult(pred.id, 'second', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-center text-white" />
+                          <input type="number" inputMode="numeric" placeholder="2着" value={pred.result.second} onChange={e => handleUpdateResult(pred.id, 'second', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-2 flex-1 text-center text-white min-w-0" />
                           <span className="text-gray-500 self-center">-</span>
-                          <input type="number" placeholder="3着" value={pred.result.third} onChange={e => handleUpdateResult(pred.id, 'third', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-center text-white" />
+                          <input type="number" inputMode="numeric" placeholder="3着" value={pred.result.third} onChange={e => handleUpdateResult(pred.id, 'third', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-2 flex-1 text-center text-white min-w-0" />
                         </div>
-                        <div className="flex gap-3">
-                          <input type="text" placeholder="配当 (例: 1540)" value={pred.result.payout} onChange={e => handleUpdateResult(pred.id, 'payout', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-3 py-1 flex-1 text-white" />
-                          <button onClick={() => handleFinishRace(pred.id)} className="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded text-white text-sm whitespace-nowrap">
-                            結果を確定
+                        <div className="flex gap-2 w-full mt-1">
+                          {/* 配当入力も type="number" (inputMode="numeric") に変更し、幅が潰れないように min-w-0 を追加 */}
+                          <input type="number" inputMode="numeric" placeholder="配当 (例: 1540)" value={pred.result.payout} onChange={e => handleUpdateResult(pred.id, 'payout', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 flex-1 text-white min-w-0" />
+                          <button onClick={() => handleFinishRace(pred.id)} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-white text-sm font-bold whitespace-nowrap">
+                            確定
                           </button>
                         </div>
                       </div>
@@ -330,8 +340,13 @@
                         <div className="font-mono text-lg font-bold text-white">
                           {pred.result.first}-{pred.result.second}-{pred.result.third}
                         </div>
-                        <div className="text-yellow-400 font-bold">
-                          ¥{pred.result.payout}
+                        <div className="flex items-center gap-4">
+                          <div className="text-yellow-400 font-bold">
+                            ¥{pred.result.payout}
+                          </div>
+                          <button onClick={() => handleEditResult(pred.id)} className="text-xs text-gray-400 hover:text-white underline">
+                            修正
+                          </button>
                         </div>
                       </div>
                     )}
