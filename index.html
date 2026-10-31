@@ -25,8 +25,9 @@
       // 予想作成用のフォーム状態
       const [form, setForm] = useState({
         venue: '',
-        battleType: '三分戦',
         raceNo: '1',
+        carCount: '7車', // 初期値を7車に設定
+        battleType: '三分戦',
         line: '7-5-2/4-3/1-6',
         marks: '◎◯△/☓✖/☆★'
       });
@@ -98,8 +99,9 @@
         const newPred = {
           id: Date.now().toString(),
           venue: form.venue,
-          battleType: form.battleType,
           raceNo: form.raceNo,
+          carCount: form.carCount,
+          battleType: form.battleType,
           line: form.line,
           marks: form.marks,
           picks: picks,
@@ -176,7 +178,9 @@
           {/* ステップ2: 展開と印を入力して予想を作成 */}
           <div className="bg-gray-800 p-5 rounded-lg mb-8 shadow-md border border-emerald-900">
             <h2 className="text-lg font-bold text-emerald-400 mb-4">2. 展開・印を入力して買い目を生成</h2>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+            
+            {/* グリッドを8等分に変更して綺麗に並べる */}
+            <div className="grid grid-cols-2 md:grid-cols-8 gap-4 mb-4">
               <div className="col-span-1 md:col-span-2">
                 <label className="text-xs text-gray-400 block mb-1">会場</label>
                 <input type="text" placeholder="例: 平塚" value={form.venue} onChange={e => setForm({...form, venue: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
@@ -185,7 +189,18 @@
                 <label className="text-xs text-gray-400 block mb-1">レース番号</label>
                 <input type="number" value={form.raceNo} onChange={e => setForm({...form, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
               </div>
-              <div className="col-span-2 md:col-span-2">
+              <div className="col-span-1 md:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">車立</label>
+                <select value={form.carCount} onChange={e => setForm({...form, carCount: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white">
+                  <option value="5車">5車</option>
+                  <option value="6車">6車</option>
+                  <option value="7車">7車</option>
+                  <option value="8車">8車</option>
+                  <option value="9車">9車</option>
+                  <option value="すべて">すべて</option>
+                </select>
+              </div>
+              <div className="col-span-1 md:col-span-2">
                 <label className="text-xs text-gray-400 block mb-1">戦法</label>
                 <select value={form.battleType} onChange={e => setForm({...form, battleType: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white">
                   <option value="三分戦">三分戦</option>
@@ -195,15 +210,16 @@
                   <option value="その他">その他</option>
                 </select>
               </div>
-              <div className="col-span-2 md:col-span-3">
+              <div className="col-span-2 md:col-span-4">
                 <label className="text-xs text-gray-400 block mb-1">展開（例: 7-5-2/4-3/1-6/）</label>
                 <input type="text" value={form.line} onChange={e => setForm({...form, line: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-emerald-300" />
               </div>
-              <div className="col-span-2 md:col-span-3">
+              <div className="col-span-2 md:col-span-4">
                 <label className="text-xs text-gray-400 block mb-1">印（例: ◎◯△/☓✖/☆★）</label>
                 <input type="text" value={form.marks} onChange={e => setForm({...form, marks: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-yellow-300" />
               </div>
             </div>
+            
             <button onClick={handleAddPrediction} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded shadow w-full md:w-auto">
               予想をストックする
             </button>
@@ -218,11 +234,19 @@
                 
                 {/* ヘッダー部分 */}
                 <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 flex-wrap gap-2">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded flex items-center">
                       {pred.venue && <span className="text-sm mr-2 text-emerald-300">{pred.venue}</span>}
                       第{pred.raceNo}R
                     </span>
+                    
+                    {/* 車立タグを追加 */}
+                    {pred.carCount && (
+                      <span className="text-xs bg-gray-600 px-2 py-1 rounded text-purple-300 border border-gray-500 font-bold">
+                        {pred.carCount}
+                      </span>
+                    )}
+                    
                     {pred.battleType && (
                       <span className="text-xs bg-gray-600 px-2 py-1 rounded text-gray-300 border border-gray-500">
                         {pred.battleType}
