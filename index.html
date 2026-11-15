@@ -1728,7 +1728,7 @@
       const btn = document.getElementById('exportWavBtn'), original = btn.textContent;
       try {
         const race = currentSonificationRace(), result = analyzeRace(race);
-        const duration = scheduleRaceTrack({createOscillator: () => ({})}, null, 0, race, result);
+        const duration = race.entries.length * 0.18 + 0.25;
         const sampleRate = 44100, offline = new OfflineAudioContext(1, Math.ceil((duration + 0.2) * sampleRate), sampleRate);
         scheduleRaceTrack(offline, offline.destination, 0.05, race, result);
         btn.disabled = true; btn.textContent = 'WAV生成中…';
