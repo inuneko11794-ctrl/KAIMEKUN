@@ -78,6 +78,7 @@
           <span>📂 CSV / MD一括読込</span>
           <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
         </label>
+        <span id="dataFileReadStatus" class="text-[11px] text-slate-400 w-full sm:w-auto">ファイル未選択</span>
       </div>
     </header>
 
@@ -117,6 +118,12 @@
                 🗑️ 削除
               </button>
             </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="checkInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-[11px] text-cyan-200">読込確認</button>
+            <button id="selectInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] text-slate-200">全選択</button>
+            <button id="copyInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] text-slate-200">コピー</button>
+            <span id="instantReadStatus" class="text-[11px] text-slate-400 self-center">テキスト未確認</span>
           </div>
           <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
         </div>
@@ -679,7 +686,20 @@
       return races;
     }
 
-    let allRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
+    const RACE_STORAGE_KEY = 'kaimekun_races_v1';
+    const defaultRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
+    function loadSavedRaces() {
+      try {
+        const saved = localStorage.getItem(RACE_STORAGE_KEY);
+        const parsed = saved ? JSON.parse(saved) : null;
+        return Array.isArray(parsed) && parsed.length ? parsed : null;
+      } catch (err) { console.warn('保存データ読込失敗', err); return null; }
+    }
+    function persistRaces() {
+      try { localStorage.setItem(RACE_STORAGE_KEY, JSON.stringify(allRaces)); return true; }
+      catch (err) { console.error('レース保存失敗', err); showToast('⚠️ 保存容量またはブラウザ設定を確認してください'); return false; }
+    }
+    let allRaces = loadSavedRaces() || defaultRaces;
     let currentRaceIdx = 0, gravityParticles = [], gravityAnimId = null;
 
     function analyzeRace(race) {
@@ -1027,10 +1047,12 @@
       reader.onload = (e) => {
         const text = e.target.result;
         instantPasteInput.value = text;
+        document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${text.split(/\r?\n/).length}行`;
         runInstantDiagnosisFromTextarea();
         const multiMd = parseMarkdownRaces(text);
         if (multiMd.length >= 2) {
           allRaces.push(...multiMd);
+          persistRaces();
           currentRaceIdx = allRaces.length - multiMd.length;
           populateRaceSelector();
           updateBatchStats();
@@ -1049,19 +1071,47 @@
 
     document.getElementById('clearInstantPasteBtn').addEventListener('click', () => {
       instantPasteInput.value = '';
+      document.getElementById('instantMdFileInput').value = '';
+      document.getElementById('instantReadStatus').textContent = '入力欄を削除しました';
       runInstantDiagnosisFromTextarea();
       showToast('🗑️ 貼り付けテキストを削除しました');
+    });
+    document.getElementById('checkInstantTextBtn').addEventListener('click', () => {
+      const value = instantPasteInput.value || '';
+      const mdCount = parseMarkdownRaces(value).length;
+      const parsed = parseFlexibleRaceText(value);
+      document.getElementById('instantReadStatus').textContent = `${value.length.toLocaleString()}文字 / ${value ? value.split(/\r?\n/).length : 0}行 / MD形式 ${mdCount}レース / 即席解析 ${parsed ? '認識OK' : '未認識'}`;
+      runInstantDiagnosisFromTextarea();
+    });
+    document.getElementById('selectInstantTextBtn').addEventListener('click', () => {
+      instantPasteInput.focus(); instantPasteInput.select();
+      document.getElementById('instantReadStatus').textContent = '全選択しました';
+    });
+    document.getElementById('copyInstantTextBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(instantPasteInput.value);
+        document.getElementById('instantReadStatus').textContent = 'クリップボードへコピーしました';
+        showToast('📋 テキストをコピーしました');
+      } catch (err) {
+        instantPasteInput.focus(); instantPasteInput.select();
+        document.getElementById('instantReadStatus').textContent = '全選択しました。コピー操作をしてください';
+      }
     });
 
     document.getElementById('importInstantPasteBtn').addEventListener('click', () => {
       if (!latestInstantParsedRace) return;
       allRaces.push(JSON.parse(JSON.stringify(latestInstantParsedRace)));
+      persistRaces();
       currentRaceIdx = allRaces.length - 1;
       populateRaceSelector();
       updateBatchStats();
       renderCurrentRace();
       refreshVerticalStockList();
       showToast(`✅ 「${latestInstantParsedRace.id}」をリストに追加し、5大解析を表示しました！`);
+      instantPasteInput.value = '';
+      document.getElementById('instantMdFileInput').value = '';
+      runInstantDiagnosisFromTextarea();
+      document.getElementById('instantReadStatus').textContent = '登録完了・入力欄を消去しました';
     });
 
     function renderBuilderRows() {
@@ -1102,6 +1152,7 @@
       }
       const deletedName = allRaces[idx].id;
       allRaces.splice(idx, 1);
+      persistRaces();
       if (currentRaceIdx >= allRaces.length) currentRaceIdx = allRaces.length - 1;
       populateRaceSelector();
       updateBatchStats();
@@ -1417,12 +1468,17 @@
       }
     });
 
-    document.getElementById('deleteSelectedRaceBtn').addEventListener('click', () => deleteRaceByIndex(currentRaceIdx));
+    document.getElementById('deleteSelectedRaceBtn').addEventListener('click', () => {
+      const race = allRaces[currentRaceIdx];
+      if (race && confirm(`「${race.id}」を削除します。よろしいですか？`)) deleteRaceByIndex(currentRaceIdx);
+    });
     document.getElementById('clearNonSampleRacesBtn').addEventListener('click', () => {
+      if (!confirm('登録したレースと結果をすべて削除し、初期サンプルに戻します。よろしいですか？')) return;
       allRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
       currentRaceIdx = 0;
+      persistRaces();
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
-      showToast('🗑️ 登録リストを初期サンプル状態にリセットしました');
+      showToast('🗑️ 初期サンプルにリセットしました');
     });
 
     document.getElementById('builderCarCount').addEventListener('change', renderBuilderRows);
@@ -1443,7 +1499,7 @@
       for (let i = 0; i < count; i++) entries.push({ car: i + 1, name: names[i]?.value.trim() || `選手${i + 1}`, rawMark: marks[i]?.value || '無' });
       const parsedLines = parseFormationString(rawLineInput, entries);
       const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
-      allRaces.push(newRace); currentRaceIdx = allRaces.length - 1;
+      allRaces.push(newRace); persistRaces(); currentRaceIdx = allRaces.length - 1;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
       renderBuilderRows();
@@ -1455,7 +1511,10 @@
       race.resultOrder = document.getElementById('lateResultOrderInput').value.trim();
       const p = document.getElementById('lateResultPayoutInput').value.trim();
       race.payout = p ? Number(p) : null;
+      persistRaces();
       refreshVerticalStockList(); updateBatchStats(); renderCurrentRace();
+      document.getElementById('lateResultOrderInput').value = '';
+      document.getElementById('lateResultPayoutInput').value = '';
       showToast(`💾 「${race.id}」の結果を保存しました！`);
     });
 
@@ -1473,7 +1532,7 @@
         const text = e.target.result;
         if (file.name.endsWith('.md') || text.includes('並び予想')) {
           const parsedMd = parseMarkdownRaces(text);
-          if (parsedMd.length > 0) { allRaces = parsedMd; currentRaceIdx = 0; populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); showToast(`✅ ${parsedMd.length}レース読込完了！`); return; }
+          if (parsedMd.length > 0) { allRaces = parsedMd; currentRaceIdx = 0; persistRaces(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${parsedMd.length}レース`; showToast(`✅ ${parsedMd.length}レース読込完了！`); return; }
         }
         Papa.parse(text, {
           header: true, skipEmptyLines: true,
@@ -1500,7 +1559,8 @@
               cur.entries.push({ car, name: nameCol && row[nameCol] ? row[nameCol] : `選手${car}`, rawMark: row[markCol] || '無' });
             });
             if (cur && cur.entries.length >= 5) grouped.push(cur);
-            if (grouped.length > 0) { allRaces = grouped; currentRaceIdx = 0; populateRaceSelector(); updateBatchStats(); calibrateToMansha70(true); renderCurrentRace(); refreshVerticalStockList(); showToast(`✅ ${grouped.length.toLocaleString()}レース読込＆万車券70%基準設定完了！`); }
+            if (grouped.length > 0) { allRaces = grouped; currentRaceIdx = 0; persistRaces(); populateRaceSelector(); updateBatchStats(); calibrateToMansha70(true); renderCurrentRace(); refreshVerticalStockList(); document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${grouped.length}レース`; showToast(`✅ ${grouped.length.toLocaleString()}レース読込＆万車券70%基準設定完了！`); }
+            else { document.getElementById('dataFileReadStatus').textContent = `${file.name} / 認識できるレースなし`; showToast('⚠️ CSVの車番・レース区切りを確認してください'); }
           }
         });
       };
