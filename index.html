@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KEIRIN ABYSS LAB // 5大奇抜解析プロトコル</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -60,11 +59,11 @@
   <div id="toastBox" class="fixed top-4 right-4 z-50 hidden max-w-sm rounded-xl glass-panel border-cyan-400 px-4 py-3 text-sm text-cyan-100 shadow-2xl transition-all"></div>
 
   <div class="max-w-7xl mx-auto space-y-6">
-    <!-- ヘッダー -->
+    <!-- ヘッダー（不要ボタン削除済・スッキリ構成） -->
     <header class="glass-panel prism-border rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
-          <span>ATLANTIS VELODROME ARCHIVE // V7.0</span>
+          <span>ATLANTIS VELODROME ARCHIVE // V7.2</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
         </div>
         <h1 class="font-ancient text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-purple-300 mt-1">
@@ -73,29 +72,23 @@
       </div>
       <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
         <button id="toggleManualBuilderBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-sm font-bold transition w-full sm:w-auto">
-          <span>✍️ 縦型1レース入力 / 結果追記</span>
+          <span>✍️ 縦型1レース入力 / MD・テキスト診断</span>
         </button>
         <label class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-sm font-semibold transition w-full sm:w-auto">
-          <span>📂 CSV / MD読込 (2.5万件対応)</span>
+          <span>📂 CSV / MD一括読込</span>
           <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
         </label>
-        <button id="copyFullHtmlBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-500 text-slate-100 text-sm font-bold transition w-full sm:w-auto">
-          <span>📋 HTML全コード一発コピー</span>
-        </button>
-        <button id="downloadZipBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-500/80 to-purple-600/80 hover:from-amber-500 hover:to-purple-600 text-white text-sm font-bold shadow-lg shadow-purple-900/30 transition w-full sm:w-auto">
-          <span>📦 基準値込みZIPを取得</span>
-        </button>
       </div>
     </header>
 
-    <!-- ✍️ 縦型1レースずつ連続入力＆コピペ即席診断 -->
+    <!-- ✍️ 縦型1レースずつ連続入力＆MD/テキスト即席診断 -->
     <section id="manualBuilderSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-5">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div>
-          <span class="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono-code font-bold">INSTANT RADAR & VERTICAL BUILDER</span>
-          <h2 class="text-base sm:text-lg font-bold text-white mt-1">⚡ テキスト貼り付け即席診断 ＆ 縦型1レース連続入力</h2>
+          <span class="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono-code font-bold">INSTANT MD & TEXT RADAR</span>
+          <h2 class="text-base sm:text-lg font-bold text-white mt-1">⚡ マークダウン読込 ＆ テキスト貼り付け即席診断</h2>
           <p class="text-xs text-slate-400 mt-0.5">
-            テキストを貼り付けた瞬間、または下のフォームに印・並びを入力した瞬間に「ここは荒れそう？（波乱度％）」をリアルタイム判定します。
+            Markdownファイル(.md)の読み込み、またはテキスト貼り付けの瞬間に「ここは荒れそう？（波乱度％）」を即時判定します。
           </p>
         </div>
         <div class="flex items-center gap-2">
@@ -108,16 +101,24 @@
         </div>
       </div>
 
-      <!-- コピペ即席診断ボックス -->
+      <!-- MD読込＆コピペ即席診断ボックス -->
       <div class="bg-slate-950/80 rounded-xl p-4 border border-cyan-500/30 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         <div class="lg:col-span-7 flex flex-col justify-between space-y-2">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <label for="instantPasteInput" class="text-xs font-mono-code text-cyan-300 font-bold">
-              📋 出走表テキスト貼り付け即席診断（コピペした瞬間に右側に結果表示）
+              📋 MDファイル読込 ＆ 出走表テキスト貼り付け
             </label>
-            <button id="clearInstantPasteBtn" type="button" class="text-[11px] font-mono-code text-slate-400 hover:text-white">クリア</button>
+            <div class="flex items-center gap-2">
+              <label class="cursor-pointer px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-[11px] font-mono-code text-purple-200 font-bold transition">
+                📄 MDファイル読込 (.md/.txt)
+                <input type="file" id="instantMdFileInput" accept=".md,.txt,.markdown" class="hidden" />
+              </label>
+              <button id="clearInstantPasteBtn" type="button" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-[11px] font-mono-code text-rose-200 font-bold transition">
+                🗑️ 削除
+              </button>
+            </div>
           </div>
-          <textarea id="instantPasteInput" rows="4" placeholder="ここに出走表テキスト（Markdown表や、並び予想: [1 4] [2 5] [3] / 1 ◎ / 2 ◯ ... など）を貼り付けると、ボタンを押さなくても瞬時に『ここは荒れそう？』を判定します！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
+          <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
         </div>
         <div class="lg:col-span-5 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
           <div>
@@ -127,10 +128,10 @@
             </div>
             <div class="mt-2 flex items-baseline gap-3">
               <div id="instantRadarPercent" class="text-3xl font-extrabold font-mono-code text-slate-500">-- %</div>
-              <div id="instantRadarHeadline" class="text-sm font-bold text-slate-400">テキスト入力で即判定</div>
+              <div id="instantRadarHeadline" class="text-sm font-bold text-slate-400">MD読込 / テキスト入力で即判定</div>
             </div>
             <p id="instantRadarDetail" class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
-              並び予想と印（◎◯▲△✕や本命/対抗など）を含むテキストを貼ると、5大奇抜指標を即時計算します。
+              並び予想と印（◎◯▲△✕や本命/対抗など）を含むMDファイル・テキストを貼ると、5大奇抜指標を即時計算します。
             </p>
           </div>
           <button id="importInstantPasteBtn" type="button" disabled class="mt-3 w-full py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 disabled:opacity-40 border border-cyan-400/50 text-cyan-200 font-bold text-xs transition">
@@ -138,6 +139,7 @@
           </button>
         </div>
       </div>
+
 
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <div class="xl:col-span-7 bg-slate-950/70 rounded-xl p-4 border border-slate-800 space-y-3">
@@ -162,11 +164,17 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label class="block text-[11px] font-mono-code text-slate-400 mb-1">レース名 / 開催R</label>
-              <input id="builderRaceTitle" type="text" placeholder="例: 武雄8R A級特選" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none" />
+              <div class="flex items-center gap-1">
+                <input id="builderRaceTitle" type="text" placeholder="例: 武雄8R A級特選" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none" />
+                <button type="button" data-clear-target="builderRaceTitle" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
+              </div>
             </div>
             <div>
               <label class="block text-[11px] font-mono-code text-slate-400 mb-1">並び予想 (例: [1 4] [2 5] [3] [6 7])</label>
-              <input id="builderLineInput" type="text" placeholder="例: [1 4] [2 5] [3 6 7]" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 font-mono-code focus:border-cyan-400 focus:outline-none" />
+              <div class="flex items-center gap-1">
+                <input id="builderLineInput" type="text" placeholder="例: [1 4] [2 5] [3 6 7]" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 font-mono-code focus:border-cyan-400 focus:outline-none" />
+                <button type="button" data-clear-target="builderLineInput" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
+              </div>
             </div>
           </div>
 
@@ -174,10 +182,10 @@
             <table class="w-full text-left border-collapse text-xs font-mono-code">
               <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th class="py-2 px-2.5 w-14">車番</th>
-                  <th class="py-2 px-2.5">選手名 (任意)</th>
-                  <th class="py-2 px-2.5 w-32">AI印 / 予想印</th>
-                  <th class="py-2 px-2.5 w-24">競走得点/メモ</th>
+                  <th class="py-2 px-2 w-12">車番</th>
+                  <th class="py-2 px-2">選手名 (削除付)</th>
+                  <th class="py-2 px-2 w-32">AI印 / 予想印</th>
+                  <th class="py-2 px-2 w-28">得点/メモ (削除付)</th>
                 </tr>
               </thead>
               <tbody id="builderRowsBody" class="divide-y divide-slate-800/80 bg-slate-950/50"></tbody>
@@ -187,17 +195,23 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             <div>
               <label class="block text-[11px] font-mono-code text-slate-400 mb-1">確定着順 (未確定なら空欄OK)</label>
-              <input id="builderResultOrder" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-code focus:border-cyan-400 focus:outline-none" />
+              <div class="flex items-center gap-1">
+                <input id="builderResultOrder" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-code focus:border-cyan-400 focus:outline-none" />
+                <button type="button" data-clear-target="builderResultOrder" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
+              </div>
             </div>
             <div>
               <label class="block text-[11px] font-mono-code text-slate-400 mb-1">3連単配当 (円 / 未確定なら空欄OK)</label>
-              <input id="builderPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono-code focus:border-cyan-400 focus:outline-none" />
+              <div class="flex items-center gap-1">
+                <input id="builderPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono-code focus:border-cyan-400 focus:outline-none" />
+                <button type="button" data-clear-target="builderPayoutInput" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
+              </div>
             </div>
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <button id="clearBuilderFormBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">
-              フォームをクリア
+            <button id="clearBuilderFormBtn" type="button" class="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-xs text-rose-200 font-bold">
+              🗑️ 全項目一括クリア
             </button>
             <button id="addRaceToQueueBtn" type="button" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition">
               ＋ このレースを登録して次のレース入力へ
@@ -215,17 +229,26 @@
             </div>
 
             <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-2.5">
-              <div class="text-xs text-slate-300">
-                対象レース: <strong id="editingTargetRaceName" class="text-cyan-300 font-mono-code">--</strong>
+              <div class="flex items-center justify-between gap-2 text-xs text-slate-300">
+                <div class="truncate">対象: <strong id="editingTargetRaceName" class="text-cyan-300 font-mono-code">--</strong></div>
+                <button id="deleteSelectedRaceBtn" type="button" class="shrink-0 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/40 border border-rose-400/40 text-[11px] font-mono-code text-rose-200 font-bold">
+                  🗑️ このレース削除
+                </button>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="block text-[11px] font-mono-code text-slate-400 mb-1">確定着順 (例: 1-4-5)</label>
-                  <input id="lateResultOrderInput" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white font-mono-code focus:border-amber-400 focus:outline-none" />
+                  <div class="flex items-center gap-1">
+                    <input id="lateResultOrderInput" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono-code focus:border-amber-400 focus:outline-none" />
+                    <button type="button" data-clear-target="lateResultOrderInput" class="clear-field-btn px-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
+                  </div>
                 </div>
                 <div>
                   <label class="block text-[11px] font-mono-code text-slate-400 mb-1">3連単払戻金 (円)</label>
-                  <input id="lateResultPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-amber-300 font-mono-code focus:border-amber-400 focus:outline-none" />
+                  <div class="flex items-center gap-1">
+                    <input id="lateResultPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code focus:border-amber-400 focus:outline-none" />
+                    <button type="button" data-clear-target="lateResultPayoutInput" class="clear-field-btn px-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
+                  </div>
                 </div>
               </div>
               <button id="saveLateResultBtn" type="button" class="w-full py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 font-bold text-xs transition">
@@ -235,9 +258,11 @@
           </div>
 
           <div class="space-y-1.5">
-            <div class="text-[11px] font-mono-code text-slate-400 flex justify-between">
-              <span>登録レース一覧（クリックで解析＆結果追記）</span>
-              <span>状態</span>
+            <div class="text-[11px] font-mono-code text-slate-400 flex justify-between items-center">
+              <span>登録レース一覧（各行から削除可能）</span>
+              <button id="clearNonSampleRacesBtn" type="button" class="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 border border-rose-400/40">
+                🗑️ 全リスト初期化
+              </button>
             </div>
             <div id="verticalRaceStockList" class="max-h-56 overflow-y-auto space-y-1.5 pr-1"></div>
           </div>
@@ -264,9 +289,12 @@
       <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between">
         <div class="flex items-center justify-between">
           <span class="text-xs font-mono-code text-amber-300">🔗 既存サイト埋め込み用コード</span>
-          <button id="copyEmbedBtn" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40">コピー</button>
+          <div class="flex items-center gap-1.5">
+            <button id="copyEmbedBtn" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40">コピー</button>
+            <button type="button" data-clear-target="embedCodeInput" class="clear-field-btn text-xs px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/40" title="削除">✕</button>
+          </div>
         </div>
-        <input id="embedCodeInput" readonly value='<iframe src="https://あなたのID.github.io/keirin-abyss-lab/" width="100%" height="950" frameborder="0"></iframe>' class="mt-2 w-full bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono-code text-slate-300 focus:outline-none" />
+        <input id="embedCodeInput" value='<iframe src="https://あなたのID.github.io/keirin-abyss-lab/" width="100%" height="950" frameborder="0"></iframe>' class="mt-2 w-full bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono-code text-slate-300 focus:outline-none" />
       </div>
     </section>
 
@@ -288,21 +316,17 @@
       </div>
     </section>
 
+
         <!-- 全データ一括検証サマリー & 基準値キャリブレーション -->
     <section class="glass-panel rounded-2xl p-4 sm:p-5">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
           <h2 class="text-sm font-mono-code text-cyan-300 tracking-wider uppercase">
-            📊 CORPUS BATCH & BASELINE // 全読み込み統計 (<span id="totalRacesCount">7</span> RACES)
+            📊 CORPUS BATCH & BASELINE // 全読み込み統計 (<span id="totalRacesCount">2</span> RACES)
           </h2>
           <p id="baselineStatusLabel" class="text-xs text-emerald-300 font-mono-code mt-0.5">
             📌 現在の基準値ソース: 初期プリセット基準値（2024-08全レース分布モデル）
           </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button id="calibrateBaselineBtn" class="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 text-xs font-bold transition">
-            📌 このデータの分布＆学習結果を「初期基準値」としてロック
-          </button>
         </div>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
@@ -731,7 +755,6 @@
         dramaDetails, gx, gy, gravityBias: +gravityBias.toFixed(3)
       };
     }
-
           // ==========================================
     // 4. AI自己学習＆基準値キャリブレーションエンジン
     // ==========================================
@@ -870,7 +893,7 @@
     }
 
     // ==========================================
-    // 5. リアルタイム即席診断 ＆ 縦型1レース連続入力
+    // 5. リアルタイム即席診断 ＆ MD読込 ＆ 縦型入力
     // ==========================================
     function getUpsetJudgeMeta(prob) {
       if (prob >= 65) {
@@ -958,10 +981,10 @@
       if (parsedLines.length === 0) parsedLines = entries.map(e => [String(e.car)]);
       return { id: title, rawFormation: rawFormation || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder: '', payout: null, entries };
     }
-
-          let latestInstantParsedRace = null;
+    let latestInstantParsedRace = null;
     const instantPasteInput = document.getElementById('instantPasteInput');
-    instantPasteInput.addEventListener('input', () => {
+
+    function runInstantDiagnosisFromTextarea() {
       const parsed = parseFlexibleRaceText(instantPasteInput.value);
       latestInstantParsedRace = parsed;
       const pctEl = document.getElementById('instantRadarPercent');
@@ -973,9 +996,9 @@
       if (!parsed) {
         pctEl.textContent = '-- %';
         pctEl.className = 'text-3xl font-extrabold font-mono-code text-slate-500';
-        headEl.textContent = instantPasteInput.value.trim() ? '5車以上の車番・印を認識中...' : 'テキスト入力で即判定';
+        headEl.textContent = instantPasteInput.value.trim() ? '5車以上の車番・印を認識中...' : 'MD読込 / テキスト入力で即判定';
         headEl.className = 'text-sm font-bold text-slate-400';
-        detailEl.textContent = '例: 「1 選手A ◎」「2 選手B ◯」のように車番と印が5車分以上入ると即計算します。';
+        detailEl.textContent = '例: 「1 選手A ◎」「2 選手B ◯」またはMDファイルを読み込むと即計算します。';
         metaEl.textContent = '待機中';
         importBtn.disabled = true;
         return;
@@ -992,11 +1015,42 @@
       metaEl.textContent = `${parsed.entries.length}車立 / 認識OK`;
       detailEl.textContent = `不協和度:${res.dissonance} ｜ カオス指数:${res.chaosIndex} ｜ 下剋上:${res.coupScore} ｜ 重心偏り:${res.gravityBias}`;
       importBtn.disabled = false;
+    }
+
+    instantPasteInput.addEventListener('input', runInstantDiagnosisFromTextarea);
+
+    // 即席エリアからのMDファイル直接読み込み
+    document.getElementById('instantMdFileInput').addEventListener('change', (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        instantPasteInput.value = text;
+        runInstantDiagnosisFromTextarea();
+        const multiMd = parseMarkdownRaces(text);
+        if (multiMd.length >= 2) {
+          allRaces.push(...multiMd);
+          currentRaceIdx = allRaces.length - multiMd.length;
+          populateRaceSelector();
+          updateBatchStats();
+          renderCurrentRace();
+          refreshVerticalStockList();
+          showToast(`📄 MDファイルから ${multiMd.length}レースを一括読み込みしました！`);
+        } else if (multiMd.length === 1) {
+          showToast(`📄 MDファイル「${multiMd[0].id}」を読み込み即席診断しました！`);
+        } else {
+          showToast('📄 テキストを読み込みました！');
+        }
+        ev.target.value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
     });
 
     document.getElementById('clearInstantPasteBtn').addEventListener('click', () => {
       instantPasteInput.value = '';
-      instantPasteInput.dispatchEvent(new Event('input'));
+      runInstantDiagnosisFromTextarea();
+      showToast('🗑️ 貼り付けテキストを削除しました');
     });
 
     document.getElementById('importInstantPasteBtn').addEventListener('click', () => {
@@ -1020,15 +1074,40 @@
         const txtCol = [1, 5].includes(c) ? '#0f172a' : '#ffffff';
         html += `
           <tr>
-            <td class="py-1.5 px-2.5"><span class="inline-flex items-center justify-center w-6 h-6 rounded font-bold" style="background:${bgCol}; color:${txtCol}">${c}</span></td>
-            <td class="py-1.5 px-2"><input type="text" data-car="${c}" class="b-name w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-white focus:border-cyan-400 focus:outline-none" placeholder="選手${c}" /></td>
-            <td class="py-1.5 px-2"><select data-car="${c}" class="b-mark w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-amber-200 focus:border-cyan-400 focus:outline-none">${markOptions.map(m => `<option value="${m.split('(')[0]}">${m}</option>`).join('')}</select></td>
-            <td class="py-1.5 px-2"><input type="text" data-car="${c}" class="b-memo w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none" placeholder="70.00" /></td>
+            <td class="py-1.5 px-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded font-bold" style="background:${bgCol}; color:${txtCol}">${c}</span></td>
+            <td class="py-1.5 px-1.5">
+              <div class="flex items-center gap-1">
+                <input id="bName_${c}" type="text" data-car="${c}" class="b-name w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-white focus:border-cyan-400 focus:outline-none" placeholder="選手${c}" />
+                <button type="button" data-clear-target="bName_${c}" class="clear-field-btn px-1.5 py-1 rounded bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-[10px]" title="選手名削除">✕</button>
+              </div>
+            </td>
+            <td class="py-1.5 px-1.5"><select data-car="${c}" class="b-mark w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-amber-200 focus:border-cyan-400 focus:outline-none">${markOptions.map(m => `<option value="${m.split('(')[0]}">${m}</option>`).join('')}</select></td>
+            <td class="py-1.5 px-1.5">
+              <div class="flex items-center gap-1">
+                <input id="bMemo_${c}" type="text" data-car="${c}" class="b-memo w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none" placeholder="70.00" />
+                <button type="button" data-clear-target="bMemo_${c}" class="clear-field-btn px-1.5 py-1 rounded bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-[10px]" title="メモ削除">✕</button>
+              </div>
+            </td>
           </tr>`;
       }
       tbody.innerHTML = html;
       tbody.querySelectorAll('.b-mark').forEach(sel => sel.addEventListener('change', updateBuilderLiveRadar));
       updateBuilderLiveRadar();
+    }
+
+    function deleteRaceByIndex(idx) {
+      if (allRaces.length <= 1) {
+        showToast('⚠️ 最低1レースは残す必要があります');
+        return;
+      }
+      const deletedName = allRaces[idx].id;
+      allRaces.splice(idx, 1);
+      if (currentRaceIdx >= allRaces.length) currentRaceIdx = allRaces.length - 1;
+      populateRaceSelector();
+      updateBatchStats();
+      renderCurrentRace();
+      refreshVerticalStockList();
+      showToast(`🗑️ 「${deletedName}」を削除しました`);
     }
 
     function refreshVerticalStockList() {
@@ -1046,9 +1125,9 @@
       for (let i = start; i < end; i++) {
         const r = allRaces[i], isSelected = i === currentRaceIdx, hasResult = Boolean(r.payout || r.resultOrder);
         const statusBadge = hasResult
-          ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono-code">済 ${r.resultOrder || ''} ${r.payout ? Number(r.payout).toLocaleString() + '円' : ''}</span>`
-          : `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono-code">結果待ち</span>`;
-        html += `<div data-idx="${i}" class="stock-race-item cursor-pointer flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-500 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div>`;
+          ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono-code">済 ${r.resultOrder || ''} ${r.payout ? Number(r.payout).toLocaleString() + '円' : ''}</span>`
+          : `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono-code">未確定</span>`;
+        html += `<div class="flex items-center gap-1.5"><div data-idx="${i}" class="stock-race-item flex-1 min-w-0 cursor-pointer flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-500 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div><button type="button" data-del-idx="${i}" class="del-stock-race-btn shrink-0 px-2 py-2 rounded-lg bg-slate-900 hover:bg-rose-500/30 border border-slate-800 hover:border-rose-400/50 text-slate-400 hover:text-rose-200 text-xs" title="このレースを削除">🗑️</button></div>`;
       }
       listEl.innerHTML = html;
       document.querySelectorAll('.stock-race-item').forEach(el => {
@@ -1057,6 +1136,12 @@
           if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
           renderCurrentRace();
           refreshVerticalStockList();
+        });
+      });
+      document.querySelectorAll('.del-stock-race-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteRaceByIndex(parseInt(btn.dataset.delIdx, 10));
         });
       });
     }
@@ -1228,7 +1313,7 @@
       drawPolygonCanvas(res);
     }
 
-    let audioCtx = null, bgmTimerId = null, isBgmLooping = false;
+    let audioCtx = null;
     function scheduleRaceTrack(ctx, destNode, startTime, race, res) {
       const entries = res.entries;
       const freqs = res.dissonance > activeBaseline.dissonanceMean
@@ -1251,17 +1336,6 @@
     function ensureAudioCtx() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
-    function audioBufferToWav(buffer) {
-      const length = buffer.length * 2 + 44, out = new ArrayBuffer(length), view = new DataView(out), ch = buffer.getChannelData(0);
-      let o = 0; const ws = s => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); o += s.length; };
-      ws('RIFF'); view.setUint32(o, length - 8, true); o += 4; ws('WAVE'); ws('fmt '); view.setUint32(o, 16, true); o += 4;
-      view.setUint16(o, 1, true); o += 2; view.setUint16(o, 1, true); o += 2; view.setUint32(o, buffer.sampleRate, true); o += 4;
-      view.setUint32(o, buffer.sampleRate * 2, true); o += 4; view.setUint16(o, 2, true); o += 2; view.setUint16(o, 16, true); o += 2;
-      ws('data'); view.setUint32(o, buffer.length * 2, true); o += 4;
-      for (let i = 0; i < buffer.length; i++) { const s = Math.max(-1, Math.min(1, ch[i])); view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
-      return new Blob([out], { type: 'audio/wav' });
     }
 
     function initGravitySimulation(res) {
@@ -1330,6 +1404,27 @@
       sel.value = currentRaceIdx;
     }
 
+    // 全テキスト項目共通の個別クリアボタン（イベント委譲）
+    document.addEventListener('click', (e) => {
+      const clearBtn = e.target.closest('.clear-field-btn');
+      if (!clearBtn) return;
+      const targetId = clearBtn.dataset.clearTarget;
+      const inputEl = document.getElementById(targetId);
+      if (inputEl) {
+        inputEl.value = '';
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        inputEl.focus();
+      }
+    });
+
+    document.getElementById('deleteSelectedRaceBtn').addEventListener('click', () => deleteRaceByIndex(currentRaceIdx));
+    document.getElementById('clearNonSampleRacesBtn').addEventListener('click', () => {
+      allRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
+      currentRaceIdx = 0;
+      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
+      showToast('🗑️ 登録リストを初期サンプル状態にリセットしました');
+    });
+
     document.getElementById('builderCarCount').addEventListener('change', renderBuilderRows);
     document.getElementById('builderLineInput').addEventListener('input', updateBuilderLiveRadar);
     document.getElementById('toggleManualBuilderBtn').addEventListener('click', () => document.getElementById('manualBuilderSection').classList.toggle('hidden'));
@@ -1337,6 +1432,7 @@
     document.getElementById('clearBuilderFormBtn').addEventListener('click', () => {
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
       renderBuilderRows();
+      showToast('🗑️ 入力フォームをすべてクリアしました');
     });
 
     document.getElementById('addRaceToQueueBtn').addEventListener('click', () => {
@@ -1349,7 +1445,8 @@
       const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
       allRaces.push(newRace); currentRaceIdx = allRaces.length - 1;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
-      document.getElementById('clearBuilderFormBtn').click();
+      ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
+      renderBuilderRows();
       showToast(`✅ 「${newRace.id}」を追加しました！`);
     });
 
@@ -1359,7 +1456,7 @@
       const p = document.getElementById('lateResultPayoutInput').value.trim();
       race.payout = p ? Number(p) : null;
       refreshVerticalStockList(); updateBatchStats(); renderCurrentRace();
-      showToast(`💾 「${race.id}」の結果を追記保存しました！`);
+      showToast(`💾 「${race.id}」の結果を保存しました！`);
     });
 
     document.getElementById('exportCustomCsvBtn').addEventListener('click', () => {
@@ -1410,6 +1507,10 @@
       reader.readAsText(file, 'UTF-8');
     });
 
+    document.getElementById('copyEmbedBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(document.getElementById('embedCodeInput').value);
+      showToast('🔗 埋め込みコードをコピーしました');
+    });
     document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); });
     document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); });
     document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); });
@@ -1419,20 +1520,11 @@
     document.getElementById('trainAiBtn').addEventListener('click', () => trainAiModel());
     document.getElementById('resetAiBtn').addEventListener('click', () => { aiModel = { weights: [...activeBaseline.weights], bias: activeBaseline.bias, epochs: 0, trainedSamples: 0, accuracy: null }; renderCurrentRace(); });
     document.getElementById('playSonificationBtn').addEventListener('click', () => { ensureAudioCtx(); const r = allRaces[currentRaceIdx]; scheduleRaceTrack(audioCtx, audioCtx.destination, audioCtx.currentTime, r, analyzeRace(r)); });
-    document.getElementById('copyFullHtmlBtn').addEventListener('click', async () => {
-      const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-      await navigator.clipboard.writeText(fullHtml);
-      showToast('📋 全HTMLコードをコピーしました！');
-    });
-    document.getElementById('downloadZipBtn').addEventListener('click', async () => {
-      const zip = new JSZip();
-      zip.file('index.html', '<!DOCTYPE html>\n' + document.documentElement.outerHTML);
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'keirin-abyss-lab.zip'; a.click();
-    });
 
     window.addEventListener('load', () => { renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
 </html>
+
+      
