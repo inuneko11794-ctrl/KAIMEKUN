@@ -65,6 +65,7 @@
         <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
           <span>ATLANTIS VELODROME ARCHIVE // V7.2</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
+          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.1 · 2026/11/15</button>
         </div>
         <h1 class="font-ancient text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-purple-300 mt-1">
           KEIRIN 5大奇抜解析ラボ
@@ -1581,7 +1582,29 @@
     document.getElementById('resetAiBtn').addEventListener('click', () => { aiModel = { weights: [...activeBaseline.weights], bias: activeBaseline.bias, epochs: 0, trainedSamples: 0, accuracy: null }; renderCurrentRace(); });
     document.getElementById('playSonificationBtn').addEventListener('click', () => { ensureAudioCtx(); const r = allRaces[currentRaceIdx]; scheduleRaceTrack(audioCtx, audioCtx.destination, audioCtx.currentTime, r, analyzeRace(r)); });
 
-    window.addEventListener('load', () => { renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); });
+    const APP_RELEASE_VERSION = '1.1-20261115';
+    const APP_RELEASE_LABEL = '更新版 v1.1 · 2026/11/15';
+    function initUpdateBadge() {
+      const badge = document.getElementById('appUpdateBadge');
+      if (!badge) return;
+      const seen = localStorage.getItem('kaimekun_seen_release');
+      if (seen !== APP_RELEASE_VERSION) {
+        badge.textContent = '🆕 新しい更新あり';
+        badge.classList.add('bg-amber-500/25', 'text-amber-100', 'animate-pulse');
+        badge.title = APP_RELEASE_LABEL + '。押すと確認済みにします';
+      } else {
+        badge.textContent = APP_RELEASE_LABEL + ' · 確認済';
+        badge.classList.remove('animate-pulse');
+      }
+      badge.addEventListener('click', () => {
+        localStorage.setItem('kaimekun_seen_release', APP_RELEASE_VERSION);
+        badge.textContent = APP_RELEASE_LABEL + ' · 確認済';
+        badge.classList.remove('animate-pulse');
+        badge.classList.remove('bg-amber-500/25');
+        badge.title = '現在の更新を確認済みです';
+      });
+    }
+    window.addEventListener('load', () => { initUpdateBadge(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
