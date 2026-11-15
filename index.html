@@ -589,8 +589,10 @@
         if (carsInGrp.length === 1) {
           const c = carsInGrp[0];
           const rawM = normalizeRawMark(carToEntry[c].rawMark ?? carToEntry[c].mark);
-          carMetaMap[c] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: 'T', posInLine: 0 };
-          lineSummaryList.push({ label: '単騎', isTanki: true, members: [{ car: c, name: carToEntry[c].name, rawMark: rawM, convertedMark: 'T' }] });
+          // 単騎は無印だけT。印付きは変換せず元の印を維持する。
+          const convertedM = rawM === '無' ? 'T' : rawM;
+          carMetaMap[c] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: convertedM, posInLine: 0 };
+          lineSummaryList.push({ label: '単騎', isTanki: true, members: [{ car: c, name: carToEntry[c].name, rawMark: rawM, convertedMark: convertedM }] });
           return;
         }
         const label = `ライン${CIRCLED_NUMS[lineCounter] || (lineCounter + 1)}`;
@@ -635,7 +637,8 @@
       race.entries.forEach(e => {
         if (!carMetaMap[e.car]) {
           const rawM = normalizeRawMark(e.rawMark ?? e.mark);
-          carMetaMap[e.car] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: 'T', posInLine: 0 };
+          const convertedM = rawM === '無' ? 'T' : rawM;
+          carMetaMap[e.car] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: convertedM, posInLine: 0 };
         }
       });
       return { carMetaMap, lineSummaryList };
