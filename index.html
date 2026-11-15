@@ -672,7 +672,8 @@
             const anchorIdx = left !== '無' ? idx - 1 : idx + 1;
             const otherIdx = anchorIdx === idx - 1 ? anchorIdx - 1 : anchorIdx + 1;
             const alreadyUsed = otherIdx >= 0 && otherIdx < rawMarks.length &&
-              (rawMarks[otherIdx] === convertedFor[refMark] ||
+              (convMarks[otherIdx] === convertedFor[refMark] ||
+               rawMarks[otherIdx] === convertedFor[refMark] ||
                baseForConverted[rawMarks[otherIdx]] === refMark);
             convMarks[idx] = alreadyUsed ? '☆' : convertedFor[refMark];
           } else if (baseForConverted[refMark]) {
