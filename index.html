@@ -1540,6 +1540,49 @@
           complete: (results) => {
             const rows = results.data; if (!rows || !rows.length) return;
             const cols = Object.keys(rows[0]);
+
+            // 1行=1レース形式（brain races CSVなど）を先に判定
+            const wideMarkCols = Array.from({ length: 9 }, (_, i) => `mark_${i + 1}`);
+            const isWideRaceCsv = cols.includes('race_id') && cols.includes('lines') &&
+              wideMarkCols.some(c => cols.includes(c));
+            if (isWideRaceCsv) {
+              const wideRaces = rows.map((row, idx) => {
+                const count = Math.max(1, Math.min(9, parseInt(row.car_count, 10) || 7));
+                const entries = [];
+                for (let car = 1; car <= count; car++) {
+                  const raw = row[`mark_${car}`];
+                  entries.push({
+                    car,
+                    name: `車番${car}`,
+                    rawMark: raw == null || String(raw).trim() === '' ? '無' : String(raw).trim()
+                  });
+                }
+                const formation = row.lines == null ? '' : String(row.lines).trim();
+                const parsedLines = parseFormationString(formation, entries);
+                const payoutValue = row.tri_yen == null || String(row.tri_yen).trim() === ''
+                  ? null : Number(String(row.tri_yen).replace(/[^0-9.]/g, ''));
+                return {
+                  id: row.race_id == null ? `CSV-RACE #${idx + 1}` : String(row.race_id),
+                  rawFormation: formation,
+                  lines: parsedLines,
+                  resultOrder: row.result == null ? '' : String(row.result),
+                  payout: Number.isFinite(payoutValue) ? payoutValue : null,
+                  entries
+                };
+              }).filter(race => race.entries.length >= 5 && race.lines.length > 0);
+              if (wideRaces.length > 0) {
+                allRaces = wideRaces;
+                currentRaceIdx = 0;
+                persistRaces();
+                populateRaceSelector(); updateBatchStats(); calibrateToMansha70(true);
+                renderCurrentRace(); refreshVerticalStockList();
+                document.getElementById('dataFileReadStatus').textContent =
+                  `${file.name} / ${text.length.toLocaleString()}文字 / ${wideRaces.length.toLocaleString()}レース / 1行1レース形式`;
+                showToast(`✅ 専用CSV形式を認識：${wideRaces.length.toLocaleString()}レース読込完了！`);
+                return;
+              }
+            }
+
             const idCol = cols.find(c => /レースID|race_id|ID|レース番号|開催|レース名/i.test(c));
             const carCol = cols.find(c => /車番|car|枠/i.test(c)) || cols[0];
             const markCol = cols.find(c => /変換後|AI印|印|mark|予想|変換/i.test(c)) || cols[1];
