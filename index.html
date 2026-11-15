@@ -65,7 +65,7 @@
         <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
           <span>ATLANTIS VELODROME ARCHIVE // V7.2</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
-          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.1 · 2026/11/15</button>
+          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.2 · 2026/11/16</button>
         </div>
         <h1 class="font-ancient text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-purple-300 mt-1">
           KEIRIN 5大奇抜解析ラボ
@@ -1625,8 +1625,8 @@
     document.getElementById('resetAiBtn').addEventListener('click', () => { aiModel = { weights: [...activeBaseline.weights], bias: activeBaseline.bias, epochs: 0, trainedSamples: 0, accuracy: null }; renderCurrentRace(); });
     document.getElementById('playSonificationBtn').addEventListener('click', () => { ensureAudioCtx(); const r = allRaces[currentRaceIdx]; scheduleRaceTrack(audioCtx, audioCtx.destination, audioCtx.currentTime, r, analyzeRace(r)); });
 
-    const APP_RELEASE_VERSION = '1.1-20261115';
-    const APP_RELEASE_LABEL = '更新版 v1.1 · 2026/11/15';
+    const APP_RELEASE_VERSION = '1.2-20261116';
+    const APP_RELEASE_LABEL = '更新版 v1.2 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
