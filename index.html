@@ -795,7 +795,7 @@
 
       const numberedLines = lineSummaryList.filter(l => !l.isTanki);
       const lineShape = numberedLines.map(l => l.members.length).join('') + (tanKiCount > 0 ? `T${tanKiCount}` : '');
-      const raceDna = `${numCars}C-L${lineShape}-[${entries.map(e => e.mark).join('')}]`;
+      const raceDna = `${numCars}C-L${lineShape}-[${entries.map(e => e.mark).join('')}]-${isGirlsRace ? 'GIRLS' : 'NORMAL'}`;
 
       let coupScore = 0, abandonScore = 0;
       const dramaDetails = [];
