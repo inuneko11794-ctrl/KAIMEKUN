@@ -596,9 +596,10 @@
       if (!raw) return '無';
       const s = String(raw).trim();
       if (['本命', '◎', '20', '⑳'].includes(s)) return '◎';
-      if (['対抗', '◯', '○', '●'].includes(s)) return '◯';
-      if (['単穴', '▲'].includes(s)) return '▲';
-      if (['連下', '△'].includes(s)) return '△';
+      if (['対抗', '◯', '○'].includes(s)) return '◯';
+      if (s === '●') return '●';
+      if (s === '▲') return '▲';
+      if (s === '単穴' || s === '△') return '△';
       if (['注', '✕', '×', '✖'].includes(s)) return '✕';
       if (['-', '－', '無', ''].includes(s)) return '無';
       return s;
@@ -1755,8 +1756,8 @@
     });
 
 
-    const APP_RELEASE_VERSION = '1.5-20261116';
-    const APP_RELEASE_LABEL = '更新版 v1.5 · 2026/11/16';
+    const APP_RELEASE_VERSION = '1.6-20261116';
+    const APP_RELEASE_LABEL = '更新版 v1.6 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
