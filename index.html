@@ -1,374 +1,1438 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>バトルバンク君 - 予想＆結果ストックツール</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KEIRIN ABYSS LAB // 5大奇抜解析プロトコル</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --abyss-bg: #050b14;
+      --abyss-card: rgba(11, 25, 44, 0.78);
+      --prism-cyan: #38bdf8;
+      --prism-gold: #fbbf24;
+      --prism-purple: #c084fc;
+      --prism-emerald: #34d399;
+      --prism-rose: #fb7185;
+    }
+    body {
+      background-color: var(--abyss-bg);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(192, 132, 252, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, #030712 0%, #091526 50%, #040914 100%);
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+    .font-ancient { font-family: 'Cinzel', serif; }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+    .glass-panel {
+      background: var(--abyss-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    .prism-border { position: relative; }
+    .prism-border::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, #38bdf8, #c084fc, #fbbf24);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #050b14; }
+    ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+  </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
-  <div id="root"></div>
+<body class="p-3 sm:p-6">
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  <div id="toastBox" class="fixed top-4 right-4 z-50 hidden max-w-sm rounded-xl glass-panel border-cyan-400 px-4 py-3 text-sm text-cyan-100 shadow-2xl transition-all"></div>
 
-    function App() {
-      const [siteData, setSiteData] = useState({ mansha: null, byn: null });
-      const [predictions, setPredictions] = useState([]);
-
-      const [filterVenue, setFilterVenue] = useState('すべて');
-      const [filterCarCount, setFilterCarCount] = useState('すべて');
-      const [filterBattleType, setFilterBattleType] = useState('すべて');
-
-      const [form, setForm] = useState({
-        venue: '',
-        raceNo: '1',
-        carCount: '7車',
-        battleType: '三分戦',
-        line: '7-5-2/4-3/1-6',
-        marks: '◎◯△/☓✖/☆★'
-      });
-
-      useEffect(() => {
-        const savedData = localStorage.getItem('battlebank_data');
-        if (savedData) setSiteData(JSON.parse(savedData));
-
-        const savedPreds = localStorage.getItem('battlebank_predictions');
-        if (savedPreds) setPredictions(JSON.parse(savedPreds));
-      }, []);
-
-      const handleFileUpload = (e, type) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            const json = JSON.parse(event.target.result);
-            const newData = { ...siteData, [type]: json };
-            setSiteData(newData);
-            localStorage.setItem('battlebank_data', JSON.stringify(newData));
-            alert(`${type}のデータをサイトに保存しました！`);
-          } catch (err) {
-            alert('ファイルの読み込みに失敗しました。');
-          }
-        };
-        reader.readAsText(file);
-      };
-
-      const generatePicks = (lineStr, markStr) => {
-        const nums = lineStr.match(/\d/g) || [];
-        const markChars = markStr.replace(/[\/\s]/g, '').split('');
-
-        const markMap = {};
-        markChars.forEach((m, i) => {
-          if (nums[i]) markMap[m] = nums[i];
-        });
-
-        const getNum = (m) => markMap[m] || 'X';
-        const tansho = [getNum('◎'), getNum('◯')];
-        
-        const nirentan = [
-          `${getNum('◎')}-${getNum('◯')}`,
-          `${getNum('◎')}-${getNum('△')}`,
-          `${getNum('◯')}-${getNum('◎')}`,
-          `${getNum('◯')}-${getNum('△')}`,
-          `${getNum('◎')}-${getNum('☓')}`
-        ];
-
-        const sanrentan = [
-          `${getNum('◎')}-${getNum('◯')}-${getNum('△')}`,
-          `${getNum('◎')}-${getNum('◯')}-${getNum('☓')}`,
-          `${getNum('◎')}-${getNum('△')}-${getNum('◯')}`,
-          `${getNum('◯')}-${getNum('◎')}-${getNum('△')}`,
-          `${getNum('◯')}-${getNum('◎')}-${getNum('☓')}`
-        ];
-
-        return { tansho, nirentan, sanrentan };
-      };
-
-      const handleAddPrediction = () => {
-        const picks = generatePicks(form.line, form.marks);
-        const newPred = {
-          id: Date.now().toString(),
-          venue: form.venue || '未指定',
-          raceNo: form.raceNo,
-          carCount: form.carCount,
-          battleType: form.battleType,
-          line: form.line,
-          marks: form.marks,
-          picks: picks,
-          result: { first: '', second: '', third: '', payout: '' },
-          isFinished: false
-        };
-
-        const updated = [newPred, ...predictions];
-        setPredictions(updated);
-        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
-      };
-
-      // 入力時に即座に保存するように修正
-      const handleUpdateResult = (id, field, value) => {
-        const updated = predictions.map(p => {
-          if (p.id === id) {
-            return { ...p, result: { ...p.result, [field]: value } };
-          }
-          return p;
-        });
-        setPredictions(updated);
-        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
-      };
-
-      const handleFinishRace = (id) => {
-        const updated = predictions.map(p => {
-          if (p.id === id) return { ...p, isFinished: true };
-          return p;
-        });
-        setPredictions(updated);
-        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
-      };
-
-      // 結果を再編集するための機能を追加
-      const handleEditResult = (id) => {
-        const updated = predictions.map(p => {
-          if (p.id === id) return { ...p, isFinished: false };
-          return p;
-        });
-        setPredictions(updated);
-        localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
-      };
-
-      const handleDelete = (id) => {
-        if (confirm('この予想データを削除しますか？')) {
-          const updated = predictions.filter(p => p.id !== id);
-          setPredictions(updated);
-          localStorage.setItem('battlebank_predictions', JSON.stringify(updated));
-        }
-      };
-
-      const clearAllData = () => {
-        if (confirm('すべてのデータとストックした予想を削除しますか？')) {
-          localStorage.clear();
-          setSiteData({ mansha: null, byn: null });
-          setPredictions([]);
-        }
-      };
-
-      const uniqueVenues = ['すべて', ...new Set(predictions.map(p => p.venue).filter(Boolean))];
-
-      const filteredAndSortedPredictions = predictions
-        .filter(p => {
-          const matchVenue = filterVenue === 'すべて' || p.venue === filterVenue;
-          const matchCarCount = filterCarCount === 'すべて' || p.carCount === filterCarCount;
-          const matchBattleType = filterBattleType === 'すべて' || p.battleType === filterBattleType;
-          return matchVenue && matchCarCount && matchBattleType;
-        })
-        .sort((a, b) => {
-          if (a.venue < b.venue) return -1;
-          if (a.venue > b.venue) return 1;
-          return Number(a.raceNo) - Number(b.raceNo);
-        });
-
-      return (
-        <div className="max-w-5xl mx-auto p-4 md:p-6">
-          <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-            <h1 className="text-2xl font-bold text-emerald-400">バトルバンク君 - 予想ストック</h1>
-            <button onClick={clearAllData} className="text-xs bg-red-900 hover:bg-red-800 text-red-200 px-3 py-1 rounded">
-              全データリセット
-            </button>
-          </div>
-
-          <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow-md border border-gray-700">
-            <h2 className="text-sm text-gray-400 mb-3">1. ベースデータの読み込み（サイト内に保持されます）</h2>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="text-xs mb-1 block text-gray-500">mansha-note (.json)</label>
-                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'mansha')} className="text-sm w-full" />
-                {siteData.mansha && <span className="text-xs text-emerald-400 mt-1 block">✓ 保持済み</span>}
-              </div>
-              <div className="flex-1">
-                <label className="text-xs mb-1 block text-gray-500">byn3_backup (.json)</label>
-                <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'byn')} className="text-sm w-full" />
-                {siteData.byn && <span className="text-xs text-emerald-400 mt-1 block">✓ 保持済み</span>}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-800 p-5 rounded-lg mb-8 shadow-md border border-emerald-900">
-            <h2 className="text-lg font-bold text-emerald-400 mb-4">2. 展開・印を入力して買い目を生成</h2>
-            <div className="grid grid-cols-2 md:grid-cols-8 gap-4 mb-4">
-              <div className="col-span-1 md:col-span-2">
-                <label className="text-xs text-gray-400 block mb-1">会場</label>
-                <input type="text" placeholder="例: 平塚" value={form.venue} onChange={e => setForm({...form, venue: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
-              </div>
-              <div className="col-span-1 md:col-span-2">
-                <label className="text-xs text-gray-400 block mb-1">レース番号</label>
-                <input type="number" value={form.raceNo} onChange={e => setForm({...form, raceNo: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white" />
-              </div>
-              <div className="col-span-1 md:col-span-2">
-                <label className="text-xs text-gray-400 block mb-1">車立</label>
-                <select value={form.carCount} onChange={e => setForm({...form, carCount: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white">
-                  <option value="5車">5車</option>
-                  <option value="6車">6車</option>
-                  <option value="7車">7車</option>
-                  <option value="8車">8車</option>
-                  <option value="9車">9車</option>
-                  <option value="すべて">すべて</option>
-                </select>
-              </div>
-              <div className="col-span-1 md:col-span-2">
-                <label className="text-xs text-gray-400 block mb-1">戦法</label>
-                <select value={form.battleType} onChange={e => setForm({...form, battleType: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-white">
-                  <option value="三分戦">三分戦</option>
-                  <option value="2分戦">2分戦</option>
-                  <option value="4分戦">4分戦</option>
-                  <option value="単騎戦">単騎戦</option>
-                  <option value="その他">その他</option>
-                </select>
-              </div>
-              <div className="col-span-2 md:col-span-4">
-                <label className="text-xs text-gray-400 block mb-1">展開（例: 7-5-2/4-3/1-6/）</label>
-                <input type="text" value={form.line} onChange={e => setForm({...form, line: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-emerald-300" />
-              </div>
-              <div className="col-span-2 md:col-span-4">
-                <label className="text-xs text-gray-400 block mb-1">印（例: ◎◯△/☓✖/☆★）</label>
-                <input type="text" value={form.marks} onChange={e => setForm({...form, marks: e.target.value})} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-yellow-300" />
-              </div>
-            </div>
-            <button onClick={handleAddPrediction} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded shadow w-full md:w-auto">
-              予想をストックする
-            </button>
-          </div>
-
-          <div className="flex flex-col md:flex-row justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-blue-400 mb-2 md:mb-0">3. ストックされたレース</h2>
-            
-            <div className="flex flex-wrap gap-3 bg-gray-800 p-2 rounded border border-gray-700">
-              <span className="text-sm text-gray-400 self-center pl-2">絞り込み:</span>
-              <select value={filterVenue} onChange={e => setFilterVenue(e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white">
-                {uniqueVenues.map(v => <option key={v} value={v}>{v === 'すべて' ? '全会場' : v}</option>)}
-              </select>
-              <select value={filterCarCount} onChange={e => setFilterCarCount(e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white">
-                <option value="すべて">全車立</option>
-                <option value="5車">5車</option>
-                <option value="6車">6車</option>
-                <option value="7車">7車</option>
-                <option value="8車">8車</option>
-                <option value="9車">9車</option>
-              </select>
-              <select value={filterBattleType} onChange={e => setFilterBattleType(e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white">
-                <option value="すべて">全戦法</option>
-                <option value="三分戦">三分戦</option>
-                <option value="2分戦">2分戦</option>
-                <option value="4分戦">4分戦</option>
-                <option value="単騎戦">単騎戦</option>
-                <option value="その他">その他</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="space-y-6">
-            {filteredAndSortedPredictions.map(pred => (
-              <div key={pred.id} className={`p-4 rounded-lg border ${pred.isFinished ? 'bg-gray-900 border-gray-700 opacity-80' : 'bg-gray-800 border-blue-800 shadow-lg'}`}>
-                
-                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 flex-wrap gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xl font-bold text-white bg-gray-700 px-3 py-1 rounded flex items-center">
-                      {pred.venue && <span className="text-sm mr-2 text-emerald-300">{pred.venue}</span>}
-                      第{pred.raceNo}R
-                    </span>
-                    
-                    {pred.carCount && (
-                      <span className="text-xs bg-gray-600 px-2 py-1 rounded text-purple-300 border border-gray-500 font-bold">
-                        {pred.carCount}
-                      </span>
-                    )}
-                    
-                    {pred.battleType && (
-                      <span className="text-xs bg-gray-600 px-2 py-1 rounded text-gray-300 border border-gray-500">
-                        {pred.battleType}
-                      </span>
-                    )}
-                    <span className="font-mono text-gray-300 text-sm ml-2">{pred.line}</span>
-                    <span className="font-mono text-yellow-400 text-sm">{pred.marks}</span>
-                  </div>
-                  <button onClick={() => handleDelete(pred.id)} className="text-gray-500 hover:text-red-400 text-sm">削除</button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-xs text-gray-400 mb-2">生成された買い目</h3>
-                    <div className="bg-gray-900 p-3 rounded space-y-2 font-mono text-sm">
-                      <div className="flex gap-2">
-                        <span className="text-gray-500 w-12">単勝:</span>
-                        <span className="text-emerald-400">{pred.picks.tansho.join(', ')}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="text-gray-500 w-12">2連単:</span>
-                        <span className="text-blue-300">{pred.picks.nirentan.join(', ')}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="text-gray-500 w-12">3連単:</span>
-                        <span className="text-pink-300">{pred.picks.sanrentan.join(', ')}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs text-gray-400 mb-2">レース結果（後書き用）</h3>
-                    {!pred.isFinished ? (
-                      <div className="space-y-3 flex flex-col">
-                        <div className="flex gap-2 w-full">
-                          <input type="number" inputMode="numeric" placeholder="1着" value={pred.result.first} onChange={e => handleUpdateResult(pred.id, 'first', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-2 flex-1 text-center text-white min-w-0" />
-                          <span className="text-gray-500 self-center">-</span>
-                          <input type="number" inputMode="numeric" placeholder="2着" value={pred.result.second} onChange={e => handleUpdateResult(pred.id, 'second', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-2 flex-1 text-center text-white min-w-0" />
-                          <span className="text-gray-500 self-center">-</span>
-                          <input type="number" inputMode="numeric" placeholder="3着" value={pred.result.third} onChange={e => handleUpdateResult(pred.id, 'third', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-2 py-2 flex-1 text-center text-white min-w-0" />
-                        </div>
-                        <div className="flex gap-2 w-full mt-1">
-                          {/* 配当入力も type="number" (inputMode="numeric") に変更し、幅が潰れないように min-w-0 を追加 */}
-                          <input type="number" inputMode="numeric" placeholder="配当 (例: 1540)" value={pred.result.payout} onChange={e => handleUpdateResult(pred.id, 'payout', e.target.value)} className="bg-gray-900 border border-gray-600 rounded px-3 py-2 flex-1 text-white min-w-0" />
-                          <button onClick={() => handleFinishRace(pred.id)} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-white text-sm font-bold whitespace-nowrap">
-                            確定
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-800 p-3 border border-gray-600 rounded flex items-center justify-between">
-                        <div className="font-mono text-lg font-bold text-white">
-                          {pred.result.first}-{pred.result.second}-{pred.result.third}
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-yellow-400 font-bold">
-                            ¥{pred.result.payout}
-                          </div>
-                          <button onClick={() => handleEditResult(pred.id)} className="text-xs text-gray-400 hover:text-white underline">
-                            修正
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            ))}
-            
-            {filteredAndSortedPredictions.length === 0 && (
-              <p className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-lg">
-                表示できるレースがありません。
-              </p>
-            )}
-          </div>
-
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- ヘッダー -->
+    <header class="glass-panel prism-border rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
+          <span>ATLANTIS VELODROME ARCHIVE // V7.0</span>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
         </div>
-      );
+        <h1 class="font-ancient text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-purple-300 mt-1">
+          KEIRIN 5大奇抜解析ラボ
+        </h1>
+      </div>
+      <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+        <button id="toggleManualBuilderBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-sm font-bold transition w-full sm:w-auto">
+          <span>✍️ 縦型1レース入力 / 結果追記</span>
+        </button>
+        <label class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-sm font-semibold transition w-full sm:w-auto">
+          <span>📂 CSV / MD読込 (2.5万件対応)</span>
+          <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
+        </label>
+        <button id="copyFullHtmlBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-500 text-slate-100 text-sm font-bold transition w-full sm:w-auto">
+          <span>📋 HTML全コード一発コピー</span>
+        </button>
+        <button id="downloadZipBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-500/80 to-purple-600/80 hover:from-amber-500 hover:to-purple-600 text-white text-sm font-bold shadow-lg shadow-purple-900/30 transition w-full sm:w-auto">
+          <span>📦 基準値込みZIPを取得</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ✍️ 縦型1レースずつ連続入力＆コピペ即席診断 -->
+    <section id="manualBuilderSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-5">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <span class="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono-code font-bold">INSTANT RADAR & VERTICAL BUILDER</span>
+          <h2 class="text-base sm:text-lg font-bold text-white mt-1">⚡ テキスト貼り付け即席診断 ＆ 縦型1レース連続入力</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            テキストを貼り付けた瞬間、または下のフォームに印・並びを入力した瞬間に「ここは荒れそう？（波乱度％）」をリアルタイム判定します。
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="exportCustomCsvBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs text-cyan-300 font-mono-code">
+            📥 入力済データをCSV保存
+          </button>
+          <button id="closeManualBuilderBtn" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-400">
+            閉じる ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- コピペ即席診断ボックス -->
+      <div class="bg-slate-950/80 rounded-xl p-4 border border-cyan-500/30 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-2">
+          <div class="flex items-center justify-between">
+            <label for="instantPasteInput" class="text-xs font-mono-code text-cyan-300 font-bold">
+              📋 出走表テキスト貼り付け即席診断（コピペした瞬間に右側に結果表示）
+            </label>
+            <button id="clearInstantPasteBtn" type="button" class="text-[11px] font-mono-code text-slate-400 hover:text-white">クリア</button>
+          </div>
+          <textarea id="instantPasteInput" rows="4" placeholder="ここに出走表テキスト（Markdown表や、並び予想: [1 4] [2 5] [3] / 1 ◎ / 2 ◯ ... など）を貼り付けると、ボタンを押さなくても瞬時に『ここは荒れそう？』を判定します！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
+        </div>
+        <div class="lg:col-span-5 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-mono-code text-slate-400">INSTANT UPSET RADAR // 即席判定</span>
+              <span id="instantParsedMeta" class="text-[11px] font-mono-code text-cyan-300">待機中</span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-3">
+              <div id="instantRadarPercent" class="text-3xl font-extrabold font-mono-code text-slate-500">-- %</div>
+              <div id="instantRadarHeadline" class="text-sm font-bold text-slate-400">テキスト入力で即判定</div>
+            </div>
+            <p id="instantRadarDetail" class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+              並び予想と印（◎◯▲△✕や本命/対抗など）を含むテキストを貼ると、5大奇抜指標を即時計算します。
+            </p>
+          </div>
+          <button id="importInstantPasteBtn" type="button" disabled class="mt-3 w-full py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 disabled:opacity-40 border border-cyan-400/50 text-cyan-200 font-bold text-xs transition">
+            ＋ この診断レースを一覧へ追加して詳細解析する
+          </button>
+        </div>
+      </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-7 bg-slate-950/70 rounded-xl p-4 border border-slate-800 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-mono-code text-cyan-300 font-bold">▼ STEP 1: 新規レースを縦に1レースずつ入力</span>
+            <div class="flex items-center gap-2">
+              <span id="builderLiveRadarBadge" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-mono-code text-slate-300">
+                リアルタイム判定: -- %
+              </span>
+              <div class="flex items-center gap-1.5 text-xs">
+                <label class="text-slate-400">車立て:</label>
+                <select id="builderCarCount" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono-code">
+                  <option value="7" selected>7車立て</option>
+                  <option value="9">9車立て</option>
+                  <option value="6">6車立て</option>
+                  <option value="5">5車立て</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">レース名 / 開催R</label>
+              <input id="builderRaceTitle" type="text" placeholder="例: 武雄8R A級特選" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">並び予想 (例: [1 4] [2 5] [3] [6 7])</label>
+              <input id="builderLineInput" type="text" placeholder="例: [1 4] [2 5] [3 6 7]" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 font-mono-code focus:border-cyan-400 focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="overflow-x-auto border border-slate-800 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs font-mono-code">
+              <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="py-2 px-2.5 w-14">車番</th>
+                  <th class="py-2 px-2.5">選手名 (任意)</th>
+                  <th class="py-2 px-2.5 w-32">AI印 / 予想印</th>
+                  <th class="py-2 px-2.5 w-24">競走得点/メモ</th>
+                </tr>
+              </thead>
+              <tbody id="builderRowsBody" class="divide-y divide-slate-800/80 bg-slate-950/50"></tbody>
+            </table>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div>
+              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">確定着順 (未確定なら空欄OK)</label>
+              <input id="builderResultOrder" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-code focus:border-cyan-400 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">3連単配当 (円 / 未確定なら空欄OK)</label>
+              <input id="builderPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono-code focus:border-cyan-400 focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <button id="clearBuilderFormBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">
+              フォームをクリア
+            </button>
+            <button id="addRaceToQueueBtn" type="button" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition">
+              ＋ このレースを登録して次のレース入力へ
+            </button>
+          </div>
+        </div>
+
+        <div class="xl:col-span-5 bg-slate-950/70 rounded-xl p-4 border border-slate-800 flex flex-col justify-between space-y-3">
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono-code text-amber-300 font-bold">▼ STEP 2: 選択中レースへ「あとから結果入力」</span>
+              <span id="pendingResultBadge" class="text-[11px] font-mono-code px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">
+                結果未入力: 0件
+              </span>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-2.5">
+              <div class="text-xs text-slate-300">
+                対象レース: <strong id="editingTargetRaceName" class="text-cyan-300 font-mono-code">--</strong>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">確定着順 (例: 1-4-5)</label>
+                  <input id="lateResultOrderInput" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white font-mono-code focus:border-amber-400 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">3連単払戻金 (円)</label>
+                  <input id="lateResultPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-amber-300 font-mono-code focus:border-amber-400 focus:outline-none" />
+                </div>
+              </div>
+              <button id="saveLateResultBtn" type="button" class="w-full py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 font-bold text-xs transition">
+                💾 このレースの結果を保存・更新する
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="text-[11px] font-mono-code text-slate-400 flex justify-between">
+              <span>登録レース一覧（クリックで解析＆結果追記）</span>
+              <span>状態</span>
+            </div>
+            <div id="verticalRaceStockList" class="max-h-56 overflow-y-auto space-y-1.5 pr-1"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- コントロール & レースセレクター + iframe埋め込みコード発行 -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="glass-panel rounded-2xl p-4 lg:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <div class="flex-1">
+          <label class="block text-xs font-mono-code text-cyan-300 mb-1">TARGET RACE // 解析対象レース選択</label>
+          <select id="raceSelector" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400">
+            <option value="0">武雄1R A級チ一般 (初期サンプル)</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="prevRaceBtn" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm">◀ 前</button>
+          <button id="nextRaceBtn" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm">次 ▶</button>
+          <button id="randomRaceBtn" class="px-3 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/50 text-purple-200 text-sm font-semibold">🎲 ランダム</button>
+        </div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono-code text-amber-300">🔗 既存サイト埋め込み用コード</span>
+          <button id="copyEmbedBtn" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40">コピー</button>
+        </div>
+        <input id="embedCodeInput" readonly value='<iframe src="https://あなたのID.github.io/keirin-abyss-lab/" width="100%" height="950" frameborder="0"></iframe>' class="mt-2 w-full bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono-code text-slate-300 focus:outline-none" />
+      </div>
+    </section>
+
+    <!-- 印自動変換＆ライン構成プレビュー -->
+    <section class="glass-panel prism-border rounded-2xl p-4 sm:p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div>
+          <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono-code font-bold">AUTO MARK & LINE CONVERTER</span>
+          <h2 class="text-base sm:text-lg font-bold text-white mt-1">🔮 ライン①②③④ナンバリング ＆ 印自動変換マトリクス</h2>
+        </div>
+        <div id="rawFormationDisplay" class="text-xs font-mono-code px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-cyan-300">
+          並び予想: --
+        </div>
+      </div>
+      <div id="convertedLinesVisual" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3"></div>
+      <div class="mt-3 text-[11px] font-mono-code text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+        <span>ルール: 左車番優先 / 単騎=T(ライン除外)</span>
+        <span>◎前後無印→⑳</span><span>◯前後無印→◯</span><span>△前後無印→▲</span><span>✕前後無印→✖</span><span>無印2連→☆★ / 無印3連→☆★星</span>
+      </div>
+    </section>
+
+        <!-- 全データ一括検証サマリー & 基準値キャリブレーション -->
+    <section class="glass-panel rounded-2xl p-4 sm:p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div>
+          <h2 class="text-sm font-mono-code text-cyan-300 tracking-wider uppercase">
+            📊 CORPUS BATCH & BASELINE // 全読み込み統計 (<span id="totalRacesCount">7</span> RACES)
+          </h2>
+          <p id="baselineStatusLabel" class="text-xs text-emerald-300 font-mono-code mt-0.5">
+            📌 現在の基準値ソース: 初期プリセット基準値（2024-08全レース分布モデル）
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="calibrateBaselineBtn" class="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 text-xs font-bold transition">
+            📌 このデータの分布＆学習結果を「初期基準値」としてロック
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+        <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+          <div class="text-xs text-slate-400">🎼 不協和度 (平均 / 基準)</div>
+          <div id="statAvgDissonance" class="text-base sm:text-lg font-bold text-cyan-300 font-mono-code mt-1">--</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+          <div class="text-xs text-slate-400">🪐 カオス指数 (平均 / 基準)</div>
+          <div id="statAvgChaos" class="text-base sm:text-lg font-bold text-purple-300 font-mono-code mt-1">--</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+          <div class="text-xs text-slate-400">🧬 最頻出DNA型</div>
+          <div id="statTopDna" class="text-xs sm:text-sm font-bold text-emerald-300 font-mono-code mt-1 truncate">--</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+          <div class="text-xs text-slate-400">🎭 下剋上発生率 (今回 / 基準)</div>
+          <div id="statCoupRate" class="text-base sm:text-lg font-bold text-rose-300 font-mono-code mt-1">--</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-800 col-span-2 sm:col-span-1">
+          <div class="text-xs text-slate-400">🧭 重心偏り (平均 / 基準)</div>
+          <div id="statAvgBias" class="text-base sm:text-lg font-bold text-amber-300 font-mono-code mt-1">--</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🧠 AI自己学習エンジン & 配当レンジ比較マトリクス -->
+    <section class="glass-panel rounded-2xl p-5">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-mono-code font-bold">THEORY 06 // NEURAL LEARNER</span>
+            <span id="aiModelStatus" class="text-xs font-mono-code text-slate-400">状態: 基準値ベースライン適用中</span>
+          </div>
+          <h2 class="text-lg font-bold text-white mt-2">🧠 5大解析・自己学習ニューラルエンジン（荒れる／荒れない基準値判定）</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            過去CSVの万車券（10,000円以上）発生ケースが「波乱度 約70%」になるよう基準キャリブレーション済み。手元のCSV読込後も即座に再調整可能です。
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <button id="calibrate70Btn" class="px-3.5 py-2.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition flex-1 md:flex-initial">
+            🎯 万車券＝70%基準に自動調整
+          </button>
+          <button id="trainAiBtn" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition flex-1 md:flex-initial">
+            ⚡ 全データでAI学習を実行
+          </button>
+          <button id="resetAiBtn" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs text-slate-300">
+            初期基準へ戻す
+          </button>
+        </div>
+      </div>
+
+      <div id="manshaValidationBanner" class="mt-3 px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2 text-xs font-mono-code">
+        <span class="text-amber-300 font-bold">📊 万車券（10,000円以上）キャリブレーション検証:</span>
+        <span id="manshaValidationStats" class="text-slate-300">
+          万車券ターゲット平均波乱度: <strong class="text-emerald-300">70.0%</strong> ｜ 1万円未満平均波乱度: <strong class="text-cyan-300">34.2%</strong>（CSV読込で実測値を自動再検証）
+        </span>
+      </div>
+
+      <div class="mt-4 bg-slate-950/75 rounded-2xl p-4 border border-cyan-500/25 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[11px] font-mono-code font-bold">DEEP DIVE // PAYOUT TIER MATRIX</span>
+            <h3 class="text-sm sm:text-base font-bold text-white mt-1">💰 配当レンジ別・5大奇抜指標 ＆ AI波乱度 比較検証テーブル</h3>
+          </div>
+          <div id="alertFilterSummary" class="text-[11px] font-mono-code px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-200">
+            🎯 波乱度65%以上フィルター: CSV読込で実測万車券捕捉率を算出
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs font-mono-code">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/70">
+                <th class="py-2 px-2.5">配当レンジ (3連単)</th>
+                <th class="py-2 px-2.5 text-right">件数 (割合)</th>
+                <th class="py-2 px-2.5 text-right">🎼 不協和</th>
+                <th class="py-2 px-2.5 text-right">🪐 カオス</th>
+                <th class="py-2 px-2.5 text-right">🎭 下剋上率</th>
+                <th class="py-2 px-2.5 text-right">🧭 重心偏り</th>
+                <th class="py-2 px-2.5 text-right text-emerald-300">🧠 AI波乱度</th>
+                <th class="py-2 px-2.5 text-center">代表レース検証</th>
+              </tr>
+            </thead>
+            <tbody id="payoutTierTableBody" class="divide-y divide-slate-800/70"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-4 items-center">
+        <div class="lg:col-span-2 space-y-2.5">
+          <div class="text-xs font-mono-code text-cyan-300 mb-1">LEARNED FEATURE WEIGHTS & BASELINE // 理論別の重要度＆基準値比較</div>
+          <div id="aiWeightsContainer" class="space-y-2 text-xs font-mono-code"></div>
+        </div>
+        <div class="bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2">
+          <div class="text-xs font-mono-code text-emerald-300">AI UPSET PROBABILITY // 波乱度</div>
+          <div id="aiUpsetProb" class="text-3xl sm:text-4xl font-extrabold font-mono-code text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-cyan-300 to-amber-300">-- %</div>
+          <div id="baselineDiffBadge" class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-slate-800 text-amber-300">基準値比: --</div>
+          <div id="aiVerdictText" class="text-xs text-slate-300 leading-relaxed">解析待機中...</div>
+          <div id="aiTrainMetrics" class="text-[11px] font-mono-code text-slate-500 pt-1 border-t border-slate-800/80">教師データ件数: 0件 | 学習エポック: 0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- メイン5大解析グリッド -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 text-xs font-mono-code font-bold">THEORY 01 // SONIFICATION</span>
+            <span id="dissonanceBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-cyan-200">不協和度: --</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mt-3">🎼 出走表の音楽化（不協和音アラート）</h3>
+          <p class="text-xs text-slate-400 mt-1">車番を音階、変換後印の強さを音量・和音に変換。基準値を超える不協和音が響くほど波乱（高配当）の予兆。</p>
+          <div id="noteBars" class="grid grid-cols-9 gap-1.5 mt-4 h-24 items-end bg-slate-950/70 p-3 rounded-xl border border-slate-800"></div>
+        </div>
+        <div class="mt-4 space-y-2.5">
+          <div id="chordDiagnosis" class="text-xs text-cyan-200 font-mono-code">コード判定: 解析待機中...</div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="playSonificationBtn" class="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition">🔊 単発再生</button>
+            <button id="loopBgmBtn" class="px-3.5 py-2 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white font-bold text-xs border border-purple-400/40 shadow-lg transition">🔁 不協和BGMループ: OFF</button>
+            <button id="exportWavBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-400/40 transition ml-auto">💾 曲をWAV保存</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 text-xs font-mono-code font-bold">THEORY 02 // LINE GRAVITY</span>
+            <span id="chaosBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-purple-200">カオス指数: --</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mt-3">🪐 競輪重力場・三体問題シミュレーター</h3>
+          <p class="text-xs text-slate-400 mt-1">ライン①②③④の引力・反発力と単騎(T)の浮遊を物理演算。力の拮抗が基準値を超えると軌道がカオス化。</p>
+          <div class="mt-3 relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 h-44">
+            <canvas id="gravityCanvas" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+          <span>※ライン①②③④は青線で結束 / 単騎(T)は独立浮遊</span>
+          <button id="resetGravityBtn" class="text-purple-300 hover:underline font-mono-code">↻ 再シミュレーション</button>
+        </div>
+      </article>
+
+      <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-mono-code font-bold">THEORY 03 // GENOME MATCHER</span>
+            <span id="cloneCountBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-emerald-200">双子レース: 0件</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mt-3">🧬 レースDNA配列・進化系統樹</h3>
+          <p class="text-xs text-slate-400 mt-1">車立て・ライン①②③④構成・変換後印配列を遺伝子コード化し、同型クローンレースを照合。</p>
+          <div class="mt-4 p-3 rounded-xl bg-slate-950/90 border border-emerald-500/30 font-mono-code text-center">
+            <div class="text-[10px] text-slate-500 uppercase tracking-widest">ENCODED RACE DNA SEQUENCE</div>
+            <div id="dnaSequenceText" class="text-sm sm:text-base font-bold text-emerald-300 mt-1 tracking-wider break-all">--</div>
+          </div>
+        </div>
+        <div id="dnaMatchList" class="mt-4 text-xs text-slate-300 space-y-1.5 max-h-24 overflow-y-auto bg-slate-900/50 p-2.5 rounded-xl border border-slate-800"></div>
+      </article>
+
+      <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 text-xs font-mono-code font-bold">THEORY 04 // COUP & BETRAYAL</span>
+            <span id="coupAlertBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-rose-200">下剋上スコア: --</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mt-3">🎭 裏切りと下剋上インデックス</h3>
+          <p class="text-xs text-slate-400 mt-1">ライン①②③④の「先頭」と「番手」の変換後印ギャップから、番手差し・ちぎれを検出。</p>
+          <div id="lineDramaContainer" class="mt-4 space-y-2 max-h-40 overflow-y-auto"></div>
+        </div>
+        <div class="mt-3 text-xs text-slate-400 font-mono-code">※番手評価＞先頭評価で「下剋上(差し)」、大差で「置き去り(ちぎれ)」判定</div>
+      </article>
+    </div>
+
+    <!-- ⑤ 車番ポリゴン・重心シフト解析 & 全出走表マトリクス -->
+    <section class="glass-panel rounded-2xl p-5">
+      <div class="flex flex-col lg:flex-row items-start gap-6">
+        <div class="w-full lg:w-3/5">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-mono-code font-bold">THEORY 05 // GEOMETRIC GRAVITY</span>
+            <span id="biasLevelBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-amber-200">重心偏り: --</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mt-3">🧭 車番ポリゴン・重心シフト ＆ 出走印変換テーブル</h3>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs font-mono-code">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400">
+                  <th class="py-2 px-2">車番</th><th class="py-2 px-2">選手名</th><th class="py-2 px-2">所属ライン</th>
+                  <th class="py-2 px-2">元AI印</th><th class="py-2 px-2 text-amber-300">変換後印</th><th class="py-2 px-2">重み</th>
+                </tr>
+              </thead>
+              <tbody id="raceTableBody" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="w-full lg:w-2/5 flex flex-col items-center justify-center pt-4">
+          <div class="relative w-64 h-64 sm:w-72 sm:h-72 bg-slate-950/90 rounded-full border border-amber-500/30 shadow-inner flex items-center justify-center">
+            <canvas id="polygonCanvas" class="w-full h-full block rounded-full"></canvas>
+          </div>
+          <div id="polygonDiagnosis" class="mt-3 text-xs font-mono-code text-amber-300 text-center">重心ベクトル解析中...</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+    <script>
+    const EMBEDDED_DEFAULT_BASELINE = {
+      sourceName: '2024-08 全レース検証済・万車券70%キャリブレーションモデル',
+      dissonanceMean: 4.10, chaosMean: 6.55, coupRate: 0.36, biasMean: 0.238, upsetThreshold: 0.50,
+      weights: [0.58, 0.49, 0.28, 0.62, 0.46], bias: -0.48
+    };
+
+    function loadActiveBaseline() {
+      try {
+        const saved = localStorage.getItem('keirin_abyss_baseline_v2');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(EMBEDDED_DEFAULT_BASELINE));
+    }
+    let activeBaseline = loadActiveBaseline();
+
+    const CAR_COLORS = ['#ffffff', '#1e293b', '#ef4444', '#3b82f6', '#eab308', '#22c55e', '#f97316', '#ec4899', '#a855f7'];
+    const CIRCLED_NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨'];
+
+    function normalizeRawMark(raw) {
+      if (!raw) return '無';
+      const s = String(raw).trim();
+      if (['本命', '◎', '20', '⑳'].includes(s)) return '◎';
+      if (['対抗', '◯', '○', '●'].includes(s)) return '◯';
+      if (['単穴', '▲'].includes(s)) return '▲';
+      if (['連下', '△'].includes(s)) return '△';
+      if (['注', '✕', '×', '✖'].includes(s)) return '✕';
+      if (['-', '－', '無', ''].includes(s)) return '無';
+      return s;
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    const CONVERTED_SCORES = {
+      '◎': 5.0, '⑳': 4.5, '◯': 4.0, '●': 4.0, '▲': 3.0, '△': 2.5,
+      '✖': 1.8, 'T': 2.0, '☆': 1.2, '★': 0.9, '星': 0.6, '無': 0.2
+    };
+    function getScore(convertedMark) { return CONVERTED_SCORES[String(convertedMark).trim()] ?? 0.5; }
+
+    function applyLineAndMarkRules(race) {
+      const carToEntry = {};
+      race.entries.forEach(e => { carToEntry[e.car] = e; });
+      const rawGroups = (race.lines && race.lines.length > 0) ? race.lines : race.entries.map(e => [String(e.car)]);
+      let lineCounter = 0;
+      const lineSummaryList = [], carMetaMap = {};
+
+      rawGroups.forEach(grp => {
+        const carsInGrp = grp.map(c => parseInt(c, 10)).filter(c => !isNaN(c) && carToEntry[c]);
+        if (carsInGrp.length === 0) return;
+        if (carsInGrp.length === 1) {
+          const c = carsInGrp[0];
+          const rawM = normalizeRawMark(carToEntry[c].rawMark ?? carToEntry[c].mark);
+          carMetaMap[c] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: 'T', posInLine: 0 };
+          lineSummaryList.push({ label: '単騎', isTanki: true, members: [{ car: c, name: carToEntry[c].name, rawMark: rawM, convertedMark: 'T' }] });
+          return;
+        }
+        const label = `ライン${CIRCLED_NUMS[lineCounter] || (lineCounter + 1)}`;
+        lineCounter++;
+        const rawMarks = carsInGrp.map(c => normalizeRawMark(carToEntry[c].rawMark ?? carToEntry[c].mark));
+        const convMarks = [...rawMarks];
+
+        let i = 0;
+        while (i < rawMarks.length) {
+          if (rawMarks[i] === '無') {
+            let runLen = 1;
+            while (i + runLen < rawMarks.length && rawMarks[i + runLen] === '無') runLen++;
+            if (runLen >= 3) {
+              const seq = ['☆', '★', '星'];
+              for (let k = 0; k < runLen; k++) convMarks[i + k] = seq[k] || '星';
+            } else if (runLen === 2) { convMarks[i] = '☆'; convMarks[i + 1] = '★'; }
+            i += runLen;
+          } else i++;
+        }
+
+        for (let idx = 0; idx < rawMarks.length; idx++) {
+          if (rawMarks[idx] === '無' && convMarks[idx] === '無') {
+            const leftMark = idx > 0 ? rawMarks[idx - 1] : '無';
+            const rightMark = idx < rawMarks.length - 1 ? rawMarks[idx + 1] : '無';
+            const refMark = leftMark !== '無' ? leftMark : rightMark;
+            if (refMark === '◎') convMarks[idx] = '⑳';
+            else if (refMark === '◯') convMarks[idx] = '◯';
+            else if (refMark === '▲' || refMark === '△') convMarks[idx] = '▲';
+            else if (refMark === '✕') convMarks[idx] = '✖';
+            else convMarks[idx] = '☆';
+          }
+        }
+
+        const members = [];
+        carsInGrp.forEach((c, idx) => {
+          carMetaMap[c] = { lineLabel: label, isTanki: false, rawMark: rawMarks[idx], convertedMark: convMarks[idx], posInLine: idx };
+          members.push({ car: c, name: carToEntry[c].name, rawMark: rawMarks[idx], convertedMark: convMarks[idx] });
+        });
+        lineSummaryList.push({ label, isTanki: false, members });
+      });
+
+      race.entries.forEach(e => {
+        if (!carMetaMap[e.car]) {
+          const rawM = normalizeRawMark(e.rawMark ?? e.mark);
+          carMetaMap[e.car] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: 'T', posInLine: 0 };
+        }
+      });
+      return { carMetaMap, lineSummaryList };
+    }
+
+    const DEFAULT_TAKEO_MD = `
+# 競輪レースデータ：武雄1R A級チ一般
+| 並び予想 | [5] [1 4] [3 2] [6] |
+| 1 | 齊藤紳一朗 | 青森 | A3 | 49 | 82 | 本命 | 追 | 3.79 | 70.18 |
+| 2 | 横瀬聡 | 福岡 | A3 | 55 | 69 | - | 追 | 3.92 | 68.33 |
+| 3 | 鈴木規純 | 福島 | A3 | 51 | 75 | 単穴 | 追 | 3.92 | 68.96 |
+| 4 | 丸林一孝 | 福岡 | A3 | 49 | 81 | 連下 | 追 | 3.85 | 69.75 |
+| 5 | 島田茂希 | 北海道 | A3 | 40 | 92 | 対抗 | 逃 | 3.92 | 68.66 |
+| 6 | 永山英司 | 神奈川 | A3 | 55 | 78 | - | 追 | 3.93 | 0 |
+# 競輪レースデータ：武雄7R A級チ準決
+| 並び予想 | [1 5] [6 2 4] [7 3] |
+| 1 | 半田莉都 | 熊本 | A3 | 19 | 129 | 本命 | 逃 | 3.92 | 78.11 |
+| 2 | 中川拓也 | 群馬 | A3 | 40 | 94 | 連下 | 両 | 3.92 | 75.04 |
+| 3 | 宮崎一彰 | 高知 | A3 | 51 | 99 | 対抗 | 追 | 3.92 | 77.31 |
+| 4 | 天沼雅貴 | 埼玉 | A3 | 42 | 96 | - | 追 | 3.92 | 69.56 |
+| 5 | 原司 | 佐賀 | A3 | 55 | 70 | - | 追 | 3.85 | 69.68 |
+| 6 | 吉松賢二 | 群馬 | A3 | 41 | 90 | - | 両 | 3.93 | 69.48 |
+| 7 | 野見泰要 | 岡山 | A3 | 44 | 101 | 単穴 | 逃 | 3.93 | 71.51 |
+`;
+
+    function parseMarkdownRaces(mdText) {
+      const blocks = mdText.split(/^#\s*競輪レースデータ[：:]\s*/m).slice(1);
+      const races = [];
+      blocks.forEach((blk, idx) => {
+        const lines = blk.split(/\r?\n/);
+        const title = lines[0].trim() || `MD-RACE #${idx + 1}`;
+        let rawFormation = '', parsedLines = [];
+        const entries = [];
+        lines.forEach(line => {
+          if (line.includes('並び予想')) {
+            const bracketMatches = line.match(/\[[^\]]+\]/g);
+            if (bracketMatches) {
+              rawFormation = bracketMatches.join(' ');
+              parsedLines = bracketMatches.map(b => b.match(/\d+/g)).filter(Boolean);
+            }
+          }
+          const tableMatch = line.match(/^\|\s*([1-9])\s*\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]+)\|/);
+          if (tableMatch) {
+            entries.push({ car: parseInt(tableMatch[1], 10), name: tableMatch[2].trim(), rawMark: tableMatch[7].trim() });
+          }
+        });
+        if (entries.length >= 5) races.push({ id: title, rawFormation, lines: parsedLines, resultOrder: '', payout: null, entries });
+      });
+      return races;
+    }
+
+    let allRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
+    let currentRaceIdx = 0, gravityParticles = [], gravityAnimId = null;
+
+    function analyzeRace(race) {
+      const { carMetaMap, lineSummaryList } = applyLineAndMarkRules(race);
+      const entries = [...race.entries].sort((a, b) => a.car - b.car).map(e => {
+        const meta = carMetaMap[e.car] || { lineLabel: '単騎', isTanki: true, rawMark: '無', convertedMark: 'T' };
+        return { ...e, rawMark: meta.rawMark, mark: meta.convertedMark, lineLabel: meta.lineLabel, isTanki: meta.isTanki };
+      });
+      const scores = entries.map(e => getScore(e.mark));
+      const numCars = entries.length;
+      const lines = (race.lines && race.lines.length > 0) ? race.lines : entries.map(e => [String(e.car)]);
+
+      const semitones = [0, 2, 4, 5, 7, 9, 11, 12, 14];
+      const ranked = entries.map((e, idx) => ({ car: e.car, sc: scores[idx] })).sort((a, b) => b.sc - a.sc).slice(0, 3);
+      const topNotes = ranked.map(r => semitones[(r.car - 1) % 9]).sort((a, b) => a - b);
+      let dissonance = 0;
+      for (let j = 0; j < topNotes.length - 1; j++) {
+        const iv = topNotes[j + 1] - topNotes[j];
+        if ([1, 6, 11].includes(iv)) dissonance += 3.0;
+        else if ([2, 10].includes(iv)) dissonance += 1.5;
+        else dissonance += 0.5;
+      }
+
+      let tanKiCount = 0;
+      const masses = lineSummaryList.map(lObj => {
+        if (lObj.isTanki) tanKiCount++;
+        return lObj.members.reduce((sum, m) => sum + getScore(m.convertedMark), 0);
+      });
+      const meanMass = masses.reduce((a, b) => a + b, 0) / (masses.length || 1);
+      const variance = masses.reduce((a, b) => a + Math.pow(b - meanMass, 2), 0) / (masses.length || 1);
+      const chaosIndex = (10.0 / (Math.sqrt(variance) + 1.0)) + (tanKiCount * 1.5);
+
+      const numberedLines = lineSummaryList.filter(l => !l.isTanki);
+      const lineShape = numberedLines.map(l => l.members.length).join('') + (tanKiCount > 0 ? `T${tanKiCount}` : '');
+      const raceDna = `${numCars}C-L${lineShape}-[${entries.map(e => e.mark).join('')}]`;
+
+      let coupScore = 0, abandonScore = 0;
+      const dramaDetails = [];
+      lineSummaryList.forEach(lObj => {
+        if (lObj.isTanki) {
+          const m = lObj.members[0];
+          dramaDetails.push({ type: 'tanki', text: `🐺 単騎 [T] (${m.car}番 ${m.name}): ライン除外の独立遊撃手` });
+        } else if (lObj.members.length >= 2) {
+          const m1 = lObj.members[0], m2 = lObj.members[1];
+          const s1 = getScore(m1.convertedMark), s2 = getScore(m2.convertedMark);
+          const lineStr = lObj.members.map(m => `${m.car}(${m.convertedMark})`).join('-');
+          if (s2 > s1) {
+            const diff = +(s2 - s1).toFixed(1); coupScore += diff;
+            dramaDetails.push({ type: 'coup', text: `🔥 ${lObj.label} 下剋上気配 [${lineStr}]: 番手${m2.car}番が先頭${m1.car}番を逆転 (+${diff})` });
+          } else if (s1 - s2 >= 2.0) {
+            const diff = +(s1 - s2).toFixed(1); abandonScore += diff;
+            dramaDetails.push({ type: 'abandon', text: `💨 ${lObj.label} 置き去り注意 [${lineStr}]: 先頭${m1.car}番が強力で番手ちぎれ懸念 (+${diff})` });
+          } else {
+            dramaDetails.push({ type: 'normal', text: `🛡️ ${lObj.label} 安定結束 [${lineStr}]` });
+          }
+        }
+      });
+
+      const totalWeight = scores.reduce((a, b) => a + b, 0) || 1;
+      let gx = 0, gy = 0;
+      entries.forEach((e, i) => {
+        const angle = (2 * Math.PI * i / numCars) - (Math.PI / 2);
+        gx += scores[i] * Math.cos(angle);
+        gy += scores[i] * Math.sin(angle);
+      });
+      gx /= totalWeight; gy /= totalWeight;
+      const gravityBias = Math.sqrt(gx * gx + gy * gy);
+
+      return {
+        entries, scores, lines, lineSummaryList,
+        dissonance: +dissonance.toFixed(2), chaosIndex: +chaosIndex.toFixed(2),
+        raceDna, coupScore: +coupScore.toFixed(2), abandonScore: +abandonScore.toFixed(2),
+        dramaDetails, gx, gy, gravityBias: +gravityBias.toFixed(3)
+      };
+    }
+
+          // ==========================================
+    // 4. AI自己学習＆基準値キャリブレーションエンジン
+    // ==========================================
+    let aiModel = {
+      weights: [...activeBaseline.weights],
+      bias: activeBaseline.bias,
+      epochs: 0,
+      trainedSamples: 0,
+      accuracy: null
+    };
+
+    function extractFeatures(res, dnaFreqMap) {
+      const f1 = Math.min(1.5, res.dissonance / (activeBaseline.dissonanceMean * 1.5 || 6.0));
+      const f2 = Math.min(1.5, res.chaosIndex / (activeBaseline.chaosMean * 1.8 || 12.0));
+      const freq = dnaFreqMap ? (dnaFreqMap[res.raceDna] || 1) : 1;
+      const f3 = 1.0 / Math.sqrt(freq);
+      const f4 = Math.min(1.5, (res.coupScore + res.abandonScore) / 4.5);
+      const f5 = Math.max(0, 1.0 - (res.gravityBias / (activeBaseline.biasMean * 2.4 || 0.6)));
+      return [f1, f2, f3, f4, f5];
+    }
+
+    function predictUpset(features) {
+      let z = aiModel.bias;
+      for (let i = 0; i < features.length; i++) z += features[i] * aiModel.weights[i];
+      return 1 / (1 + Math.exp(-z));
+    }
+
+    function trainAiModel() {
+      const analyzedAll = allRaces.map(r => ({ race: r, res: analyzeRace(r) }));
+      const dnaFreqMap = {};
+      analyzedAll.forEach(item => {
+        dnaFreqMap[item.res.raceDna] = (dnaFreqMap[item.res.raceDna] || 0) + 1;
+      });
+
+      const labeled = analyzedAll.filter(item => item.race.payout && !isNaN(Number(item.race.payout)));
+      const useRealPayout = labeled.length >= 3;
+
+      const dataset = (useRealPayout ? labeled : analyzedAll).map(item => {
+        const x = extractFeatures(item.res, dnaFreqMap);
+        const y = useRealPayout
+          ? (Number(item.race.payout) >= 10000 ? 1 : 0)
+          : ((x[0] + x[1] + x[3] + x[4]) / 4 >= activeBaseline.upsetThreshold ? 1 : 0);
+        return { x, y };
+      });
+
+      const lr = 0.15;
+      for (let ep = 0; ep < 300; ep++) {
+        let gradW = [0, 0, 0, 0, 0];
+        let gradB = 0;
+        dataset.forEach(({ x, y }) => {
+          const pred = predictUpset(x);
+          const err = pred - y;
+          for (let i = 0; i < 5; i++) gradW[i] += err * x[i];
+          gradB += err;
+        });
+        for (let i = 0; i < 5; i++) aiModel.weights[i] -= (lr * gradW[i]) / dataset.length;
+        aiModel.bias -= (lr * gradB) / dataset.length;
+      }
+
+      let correct = 0;
+      dataset.forEach(({ x, y }) => {
+        if ((predictUpset(x) >= 0.5 ? 1 : 0) === y) correct++;
+      });
+
+      aiModel.epochs += 300;
+      aiModel.trainedSamples = dataset.length;
+      aiModel.accuracy = ((correct / dataset.length) * 100).toFixed(1);
+
+      document.getElementById('aiModelStatus').textContent = useRealPayout
+        ? `状態: 実配当データ学習済 (正答率 ${aiModel.accuracy}%)`
+        : `状態: 基準値キャリブレーション学習済 (${dataset.length}R)`;
+
+      renderCurrentRace();
+      showToast(`🧠 ${dataset.length.toLocaleString()}レースから最適ウェイトを学習しました！`);
+    }
+
+    function calibrateToMansha70(silent = false) {
+      const analyzedAll = allRaces.map(r => ({ race: r, res: analyzeRace(r) }));
+      const dnaFreqMap = {};
+      analyzedAll.forEach(item => {
+        dnaFreqMap[item.res.raceDna] = (dnaFreqMap[item.res.raceDna] || 0) + 1;
+      });
+
+      const manshaItems = analyzedAll.filter(item => item.race.payout && Number(item.race.payout) >= 10000);
+      const normalItems = analyzedAll.filter(item => item.race.payout && Number(item.race.payout) > 0 && Number(item.race.payout) < 10000);
+
+      if (manshaItems.length === 0) {
+        const typicalManshaVec = [0.85, 0.82, 0.65, 0.72, 0.78];
+        const targetLogit = Math.log(0.70 / 0.30);
+        let dot = 0;
+        for (let i = 0; i < 5; i++) dot += typicalManshaVec[i] * aiModel.weights[i];
+        aiModel.bias = +(targetLogit - dot).toFixed(4);
+        document.getElementById('manshaValidationStats').innerHTML =
+          `万車券典型プロファイル判定: <strong class="text-emerald-300">70.0%</strong> ｜ 配当付きCSV読込で実データ再計算可能`;
+        if (!silent) showToast('🎯 万車券典型パターンの波乱度を 70.0% にキャリブレーションしました！');
+        renderCurrentRace();
+        return;
+      }
+
+      const manshaFeats = manshaItems.map(it => extractFeatures(it.res, dnaFreqMap));
+      const normalFeats = normalItems.map(it => extractFeatures(it.res, dnaFreqMap));
+
+      if (normalFeats.length > 0) {
+        for (let i = 0; i < 5; i++) {
+          const mMean = manshaFeats.reduce((s, f) => s + f[i], 0) / manshaFeats.length;
+          const nMean = normalFeats.reduce((s, f) => s + f[i], 0) / normalFeats.length;
+          const diff = mMean - nMean;
+          aiModel.weights[i] = Math.max(0.15, +(aiModel.weights[i] + diff * 1.2).toFixed(4));
+        }
+      }
+
+      let low = -5.0, high = 5.0;
+      for (let iter = 0; iter < 40; iter++) {
+        const mid = (low + high) / 2;
+        aiModel.bias = mid;
+        const avgProb = manshaFeats.reduce((s, f) => s + predictUpset(f), 0) / manshaFeats.length;
+        if (avgProb < 0.70) low = mid;
+        else high = mid;
+      }
+      aiModel.bias = +aiModel.bias.toFixed(4);
+
+      const finalManshaAvg = (manshaFeats.reduce((s, f) => s + predictUpset(f), 0) / manshaFeats.length) * 100;
+      const finalNormalAvg = normalFeats.length > 0
+        ? (normalFeats.reduce((s, f) => s + predictUpset(f), 0) / normalFeats.length) * 100
+        : 0;
+
+      document.getElementById('aiModelStatus').textContent =
+        `状態: 万車券70%基準キャリブレーション済 (万車券 ${manshaItems.length}R)`;
+      document.getElementById('manshaValidationStats').innerHTML =
+        `万車券(${manshaItems.length}R)平均波乱度: <strong class="text-emerald-300">${finalManshaAvg.toFixed(1)}%</strong> ｜ 1万円未満(${normalItems.length}R)平均波乱度: <strong class="text-cyan-300">${finalNormalAvg.toFixed(1)}%</strong>`;
+
+      renderCurrentRace();
+      if (!silent) {
+        showToast(`🎯 万車券 ${manshaItems.length}レースの平均波乱度を ${finalManshaAvg.toFixed(1)}% に設定しました！`);
+      }
+    }
+
+    // ==========================================
+    // 5. リアルタイム即席診断 ＆ 縦型1レース連続入力
+    // ==========================================
+    function getUpsetJudgeMeta(prob) {
+      if (prob >= 65) {
+        return { headline: '🔥 かなり荒れそう！（万車券ゾーン突入）', colorClass: 'text-rose-400', badgeStyle: 'bg-rose-500/20 border-rose-400/60 text-rose-200' };
+      } else if (prob >= 52) {
+        return { headline: '⚡ やや波乱気配（中穴〜万車券警戒）', colorClass: 'text-amber-300', badgeStyle: 'bg-amber-500/20 border-amber-400/60 text-amber-200' };
+      } else if (prob >= 40) {
+        return { headline: '⚖️ 互角・標準ペース（ヒモ荒れ注意）', colorClass: 'text-cyan-300', badgeStyle: 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200' };
+      }
+      return { headline: '🛡️ 堅実・荒れにくそう（本命サイド濃厚）', colorClass: 'text-emerald-300', badgeStyle: 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200' };
+    }
+
+    function parseFormationString(rawStr, entries) {
+      if (!rawStr || !rawStr.trim()) return entries.map(e => [String(e.car)]);
+      const bracketMatches = rawStr.match(/\[[^\]]+\]/g);
+      if (bracketMatches) return bracketMatches.map(b => b.match(/\d/g)).filter(Boolean);
+      return rawStr.split(/[\s\-/・,]+/).map(grp => grp.match(/\d/g)).filter(Boolean);
+    }
+
+    function updateBuilderLiveRadar() {
+      const badge = document.getElementById('builderLiveRadarBadge');
+      if (!badge) return;
+      const count = parseInt(document.getElementById('builderCarCount').value, 10) || 7;
+      const rawLineInput = document.getElementById('builderLineInput').value.trim();
+      const marks = document.querySelectorAll('.b-mark');
+      const entries = [];
+      for (let i = 0; i < count; i++) {
+        entries.push({ car: i + 1, name: `選手${i + 1}`, rawMark: marks[i]?.value || '無' });
+      }
+      const tempRace = { id: 'LIVE-DRAFT', rawFormation: rawLineInput, lines: parseFormationString(rawLineInput, entries), entries };
+      const res = analyzeRace(tempRace);
+      const prob = predictUpset(extractFeatures(res, null)) * 100;
+      const meta = getUpsetJudgeMeta(prob);
+      badge.className = `px-2.5 py-1 rounded-lg border text-[11px] font-mono-code font-bold transition ${meta.badgeStyle}`;
+      badge.textContent = `${prob.toFixed(1)}% ｜ ${meta.headline}`;
+    }
+
+    function parseFlexibleRaceText(rawText) {
+      const text = rawText.trim();
+      if (!text) return null;
+      const mdAttempt = parseMarkdownRaces(text.startsWith('#') ? text : `# 競輪レースデータ：即席診断レース\n${text}`);
+      if (mdAttempt.length > 0) return mdAttempt[0];
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      let title = '即席コピペ診断レース', rawFormation = '', parsedLines = [];
+      const entryMap = {};
+
+      lines.forEach((line, idx) => {
+        if (idx === 0 && !/^[1-9\s|｜]/.test(line) && !line.includes('[')) {
+          title = line.replace(/^[#【■●◆\s]+|[】\s]+$/g, '').slice(0, 30) || title;
+        }
+        const brackets = line.match(/\[[^\]]+\]/g);
+        if (brackets && brackets.length >= 2) {
+          rawFormation = brackets.join(' ');
+          parsedLines = brackets.map(b => b.match(/\d/g)).filter(Boolean);
+        } else if (/並び|ライン|隊列/.test(line)) {
+          const rhs = line.split(/[：:|｜]/).slice(1).join(' ') || line;
+          const grps = rhs.split(/[\s\-/・,]+/).map(g => g.match(/\d/g)).filter(Boolean);
+          if (grps.length > 0) {
+            rawFormation = grps.map(g => `[${g.join(' ')}]`).join(' ');
+            parsedLines = grps;
+          }
+        }
+        if (line.includes('|') || line.includes('｜')) {
+          const cells = line.split(/[|｜]/).map(c => c.trim()).filter(Boolean);
+          const car = parseInt(cells[0], 10);
+          if (car >= 1 && car <= 9) {
+            const foundMark = cells.slice(1).find(c => /^(本命|対抗|単穴|連下|注|◎|⑳|◯|○|●|▲|△|✕|×|✖|-|－|無)$/.test(c));
+            const nameCell = cells[1] && !/^(本命|対抗|単穴|連下|注|◎|◯|▲|△|✕|-)$/.test(cells[1]) ? cells[1] : `選手${car}`;
+            entryMap[car] = { car, name: nameCell, rawMark: foundMark || '無' };
+            return;
+          }
+        }
+        const simpleMatch = line.match(/^([1-9])(?:番|枠)?[\s:：,　]+([^\s◎◯○●▲△✕×✖]+)?[\s　]*(本命|対抗|単穴|連下|注|◎|⑳|◯|○|●|▲|△|✕|×|✖|-|－|無)?/);
+        if (simpleMatch) {
+          const car = parseInt(simpleMatch[1], 10);
+          const tok2 = simpleMatch[2] || '', tok3 = simpleMatch[3] || '';
+          const isTok2Mark = /^(本命|対抗|単穴|連下|注|◎|⑳|◯|○|●|▲|△|✕|×|✖|-|－|無)$/.test(tok2);
+          entryMap[car] = { car, name: isTok2Mark ? `選手${car}` : (tok2 || `選手${car}`), rawMark: isTok2Mark ? tok2 : (tok3 || '無') };
+        }
+      });
+
+      const entries = Object.values(entryMap).sort((a, b) => a.car - b.car);
+      if (entries.length < 5) return null;
+      if (parsedLines.length === 0) parsedLines = entries.map(e => [String(e.car)]);
+      return { id: title, rawFormation: rawFormation || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder: '', payout: null, entries };
+    }
+
+          let latestInstantParsedRace = null;
+    const instantPasteInput = document.getElementById('instantPasteInput');
+    instantPasteInput.addEventListener('input', () => {
+      const parsed = parseFlexibleRaceText(instantPasteInput.value);
+      latestInstantParsedRace = parsed;
+      const pctEl = document.getElementById('instantRadarPercent');
+      const headEl = document.getElementById('instantRadarHeadline');
+      const detailEl = document.getElementById('instantRadarDetail');
+      const metaEl = document.getElementById('instantParsedMeta');
+      const importBtn = document.getElementById('importInstantPasteBtn');
+
+      if (!parsed) {
+        pctEl.textContent = '-- %';
+        pctEl.className = 'text-3xl font-extrabold font-mono-code text-slate-500';
+        headEl.textContent = instantPasteInput.value.trim() ? '5車以上の車番・印を認識中...' : 'テキスト入力で即判定';
+        headEl.className = 'text-sm font-bold text-slate-400';
+        detailEl.textContent = '例: 「1 選手A ◎」「2 選手B ◯」のように車番と印が5車分以上入ると即計算します。';
+        metaEl.textContent = '待機中';
+        importBtn.disabled = true;
+        return;
+      }
+
+      const res = analyzeRace(parsed);
+      const prob = predictUpset(extractFeatures(res, null)) * 100;
+      const meta = getUpsetJudgeMeta(prob);
+
+      pctEl.textContent = `${prob.toFixed(1)}%`;
+      pctEl.className = `text-3xl font-extrabold font-mono-code ${meta.colorClass}`;
+      headEl.textContent = meta.headline;
+      headEl.className = `text-sm font-bold ${meta.colorClass}`;
+      metaEl.textContent = `${parsed.entries.length}車立 / 認識OK`;
+      detailEl.textContent = `不協和度:${res.dissonance} ｜ カオス指数:${res.chaosIndex} ｜ 下剋上:${res.coupScore} ｜ 重心偏り:${res.gravityBias}`;
+      importBtn.disabled = false;
+    });
+
+    document.getElementById('clearInstantPasteBtn').addEventListener('click', () => {
+      instantPasteInput.value = '';
+      instantPasteInput.dispatchEvent(new Event('input'));
+    });
+
+    document.getElementById('importInstantPasteBtn').addEventListener('click', () => {
+      if (!latestInstantParsedRace) return;
+      allRaces.push(JSON.parse(JSON.stringify(latestInstantParsedRace)));
+      currentRaceIdx = allRaces.length - 1;
+      populateRaceSelector();
+      updateBatchStats();
+      renderCurrentRace();
+      refreshVerticalStockList();
+      showToast(`✅ 「${latestInstantParsedRace.id}」をリストに追加し、5大解析を表示しました！`);
+    });
+
+    function renderBuilderRows() {
+      const count = parseInt(document.getElementById('builderCarCount').value, 10) || 7;
+      const tbody = document.getElementById('builderRowsBody');
+      const markOptions = ['無', '本命(◎)', '対抗(◯)', '単穴(▲)', '連下(△)', '注(✕)'];
+      let html = '';
+      for (let c = 1; c <= count; c++) {
+        const bgCol = CAR_COLORS[(c - 1) % 9];
+        const txtCol = [1, 5].includes(c) ? '#0f172a' : '#ffffff';
+        html += `
+          <tr>
+            <td class="py-1.5 px-2.5"><span class="inline-flex items-center justify-center w-6 h-6 rounded font-bold" style="background:${bgCol}; color:${txtCol}">${c}</span></td>
+            <td class="py-1.5 px-2"><input type="text" data-car="${c}" class="b-name w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-white focus:border-cyan-400 focus:outline-none" placeholder="選手${c}" /></td>
+            <td class="py-1.5 px-2"><select data-car="${c}" class="b-mark w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-amber-200 focus:border-cyan-400 focus:outline-none">${markOptions.map(m => `<option value="${m.split('(')[0]}">${m}</option>`).join('')}</select></td>
+            <td class="py-1.5 px-2"><input type="text" data-car="${c}" class="b-memo w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none" placeholder="70.00" /></td>
+          </tr>`;
+      }
+      tbody.innerHTML = html;
+      tbody.querySelectorAll('.b-mark').forEach(sel => sel.addEventListener('change', updateBuilderLiveRadar));
+      updateBuilderLiveRadar();
+    }
+
+    function refreshVerticalStockList() {
+      const listEl = document.getElementById('verticalRaceStockList');
+      const pendingCount = allRaces.filter(r => !r.payout && !r.resultOrder).length;
+      document.getElementById('pendingResultBadge').textContent = `結果未入力: ${pendingCount.toLocaleString()}件`;
+      const currentRace = allRaces[currentRaceIdx];
+      if (currentRace) {
+        document.getElementById('editingTargetRaceName').textContent = currentRace.id;
+        document.getElementById('lateResultOrderInput').value = currentRace.resultOrder || '';
+        document.getElementById('lateResultPayoutInput').value = currentRace.payout || '';
+      }
+      const start = Math.max(0, currentRaceIdx - 20), end = Math.min(allRaces.length, start + 80);
+      let html = '';
+      for (let i = start; i < end; i++) {
+        const r = allRaces[i], isSelected = i === currentRaceIdx, hasResult = Boolean(r.payout || r.resultOrder);
+        const statusBadge = hasResult
+          ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono-code">済 ${r.resultOrder || ''} ${r.payout ? Number(r.payout).toLocaleString() + '円' : ''}</span>`
+          : `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono-code">結果待ち</span>`;
+        html += `<div data-idx="${i}" class="stock-race-item cursor-pointer flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-500 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div>`;
+      }
+      listEl.innerHTML = html;
+      document.querySelectorAll('.stock-race-item').forEach(el => {
+        el.addEventListener('click', () => {
+          currentRaceIdx = parseInt(el.dataset.idx, 10);
+          if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
+          renderCurrentRace();
+          refreshVerticalStockList();
+        });
+      });
+    }
+
+    function renderPayoutTierAnalysis() {
+      const tbody = document.getElementById('payoutTierTableBody');
+      const alertSummaryEl = document.getElementById('alertFilterSummary');
+      if (!tbody) return;
+      const analyzedAll = allRaces.map((r, idx) => ({ idx, race: r, res: analyzeRace(r) }));
+      const dnaFreqMap = {};
+      analyzedAll.forEach(item => { dnaFreqMap[item.res.raceDna] = (dnaFreqMap[item.res.raceDna] || 0) + 1; });
+      analyzedAll.forEach(item => {
+        item.prob = predictUpset(extractFeatures(item.res, dnaFreqMap)) * 100;
+        item.payNum = item.race.payout ? Number(item.race.payout) : null;
+      });
+      const withPayout = analyzedAll.filter(it => it.payNum !== null && !isNaN(it.payNum) && it.payNum > 0);
+      if (withPayout.length === 0) {
+        const presetTiers = [
+          { label: '① 本命・堅実 (〜2,999円)', countStr: '基準 42%', dis: '3.35', chaos: '5.45', coup: '21%', bias: '0.295', prob: '29.8%', badge: 'text-cyan-300' },
+          { label: '② 中穴ゾーン (3,000〜9,999円)', countStr: '基準 26%', dis: '3.88', chaos: '6.35', coup: '34%', bias: '0.242', prob: '41.4%', badge: 'text-slate-200' },
+          { label: '③ 万車券 (10,000〜49,999円)', countStr: '基準 24%', dis: '4.45', chaos: '7.15', coup: '46%', bias: '0.205', prob: '68.5%', badge: 'text-amber-300 font-bold' },
+          { label: '④ 大穴ゾーン (50,000円〜)', countStr: '基準 8%', dis: '5.10', chaos: '8.30', coup: '58%', bias: '0.165', prob: '74.8%', badge: 'text-rose-300 font-bold' }
+        ];
+        tbody.innerHTML = presetTiers.map(t => `<tr class="hover:bg-slate-900/50"><td class="py-2 px-2.5 text-slate-200">${t.label}</td><td class="py-2 px-2.5 text-right text-slate-400">${t.countStr}</td><td class="py-2 px-2.5 text-right text-cyan-300">${t.dis}</td><td class="py-2 px-2.5 text-right text-purple-300">${t.chaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${t.coup}</td><td class="py-2 px-2.5 text-right text-amber-300">${t.bias}</td><td class="py-2 px-2.5 text-right ${t.badge}">${t.prob}</td><td class="py-2 px-2.5 text-center text-slate-500">CSV読込で実レース表示</td></tr>`).join('');
+        alertSummaryEl.innerHTML = `🎯 波乱度65%以上フィルター（基準モデル）: 万車券平均 <strong class="text-emerald-300">70.0%</strong> に最適化済`;
+        return;
+      }
+      const tiers = [
+        { name: '① 本命・堅実 (〜2,999円)', items: withPayout.filter(it => it.payNum < 3000), probClass: 'text-cyan-300' },
+        { name: '② 中穴ゾーン (3,000〜9,999円)', items: withPayout.filter(it => it.payNum >= 3000 && it.payNum < 10000), probClass: 'text-slate-200' },
+        { name: '③ 万車券 (10,000〜49,999円)', items: withPayout.filter(it => it.payNum >= 10000 && it.payNum < 50000), probClass: 'text-amber-300 font-bold' },
+        { name: '④ 大穴ゾーン (50,000円〜)', items: withPayout.filter(it => it.payNum >= 50000), probClass: 'text-rose-300 font-bold' }
+      ];
+      tbody.innerHTML = tiers.map(t => {
+        const n = t.items.length;
+        if (n === 0) return `<tr><td class="py-2 px-2.5 text-slate-400">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-500">0件 (0%)</td><td colspan="6" class="py-2 px-2.5 text-center text-slate-600">該当データなし</td></tr>`;
+        const share = ((n / withPayout.length) * 100).toFixed(1);
+        const avgDis = (t.items.reduce((s, it) => s + it.res.dissonance, 0) / n).toFixed(2);
+        const avgChaos = (t.items.reduce((s, it) => s + it.res.chaosIndex, 0) / n).toFixed(2);
+        const coupRate = ((t.items.filter(it => it.res.coupScore > 0).length / n) * 100).toFixed(0);
+        const avgBias = (t.items.reduce((s, it) => s + it.res.gravityBias, 0) / n).toFixed(3);
+        const avgProb = (t.items.reduce((s, it) => s + it.prob, 0) / n).toFixed(1);
+        const topItem = [...t.items].sort((a, b) => b.payNum - a.payNum)[0];
+        return `<tr class="hover:bg-slate-900/60 transition"><td class="py-2 px-2.5 text-slate-200 font-semibold">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-300">${n.toLocaleString()}件 (${share}%)</td><td class="py-2 px-2.5 text-right text-cyan-300">${avgDis}</td><td class="py-2 px-2.5 text-right text-purple-300">${avgChaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${coupRate}%</td><td class="py-2 px-2.5 text-right text-amber-300">${avgBias}</td><td class="py-2 px-2.5 text-right ${t.probClass}">${avgProb}%</td><td class="py-2 px-2.5 text-center"><button data-jump-idx="${topItem.idx}" class="jump-tier-race-btn px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-400/40 text-[11px]">🔍 ${topItem.payNum.toLocaleString()}円を表示</button></td></tr>`;
+      }).join('');
+      const alerted = withPayout.filter(it => it.prob >= 65.0), alertedMansha = alerted.filter(it => it.payNum >= 10000);
+      const alertRate = ((alerted.length / withPayout.length) * 100).toFixed(1);
+      const hitManshaRate = alerted.length > 0 ? ((alertedMansha.length / alerted.length) * 100).toFixed(1) : '0.0';
+      const avgAlertPay = alerted.length > 0 ? Math.round(alerted.reduce((s, it) => s + it.payNum, 0) / alerted.length).toLocaleString() : '0';
+      alertSummaryEl.innerHTML = `🎯 波乱度65%以上抽出: <strong>${alerted.length}件</strong> (全体${alertRate}%) ｜ 万車券率: <strong class="text-emerald-300">${hitManshaRate}%</strong> ｜ 平均配当: <strong class="text-amber-300">${avgAlertPay}円</strong>`;
+      document.querySelectorAll('.jump-tier-race-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentRaceIdx = parseInt(btn.dataset.jumpIdx, 10);
+          if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
+          renderCurrentRace();
+          refreshVerticalStockList();
+          showToast(`🔍 配当レンジ代表レース「${allRaces[currentRaceIdx].id}」を表示しました！`);
+        });
+      });
+    }
+    function updateBatchStats() {
+      const analyzed = allRaces.map(r => analyzeRace(r));
+      document.getElementById('totalRacesCount').textContent = analyzed.length.toLocaleString();
+      document.getElementById('baselineStatusLabel').textContent = `📌 適用中の基準値ソース: ${activeBaseline.sourceName}`;
+      const avgDis = analyzed.reduce((a, b) => a + b.dissonance, 0) / analyzed.length;
+      const avgChaos = analyzed.reduce((a, b) => a + b.chaosIndex, 0) / analyzed.length;
+      const coupRateNow = (analyzed.filter(a => a.coupScore > 0).length / analyzed.length) * 100;
+      const avgBias = analyzed.reduce((a, b) => a + b.gravityBias, 0) / analyzed.length;
+      const dnaMap = {};
+      analyzed.forEach(a => { dnaMap[a.raceDna] = (dnaMap[a.raceDna] || 0) + 1; });
+      const topDnaEntry = Object.entries(dnaMap).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('statAvgDissonance').textContent = `${avgDis.toFixed(2)} / ${activeBaseline.dissonanceMean}`;
+      document.getElementById('statAvgChaos').textContent = `${avgChaos.toFixed(2)} / ${activeBaseline.chaosMean}`;
+      document.getElementById('statTopDna').textContent = topDnaEntry ? `${topDnaEntry[0]}` : '--';
+      document.getElementById('statCoupRate').textContent = `${coupRateNow.toFixed(0)}% / ${(activeBaseline.coupRate * 100).toFixed(0)}%`;
+      document.getElementById('statAvgBias').textContent = `${avgBias.toFixed(2)} / ${activeBaseline.biasMean}`;
+      renderPayoutTierAnalysis();
+    }
+
+    function renderAiSection(res) {
+      const labels = [
+        { name: `🎼 ソニフィケーション（基準: ${activeBaseline.dissonanceMean}）`, color: 'bg-cyan-400' },
+        { name: `🪐 三体問題重力場（基準: ${activeBaseline.chaosMean}）`, color: 'bg-purple-400' },
+        { name: '🧬 レースDNA（希少ゲノム度）', color: 'bg-emerald-400' },
+        { name: `🎭 裏切り・下剋上（基準率: ${(activeBaseline.coupRate * 100).toFixed(0)}%）`, color: 'bg-rose-400' },
+        { name: `🧭 車番ポリゴン重心（基準: ${activeBaseline.biasMean}）`, color: 'bg-amber-400' }
+      ];
+      const maxAbs = Math.max(1.5, ...aiModel.weights.map(w => Math.abs(w)));
+      document.getElementById('aiWeightsContainer').innerHTML = labels.map((lbl, idx) => {
+        const w = aiModel.weights[idx];
+        const pct = Math.min(100, Math.round((Math.abs(w) / maxAbs) * 100));
+        return `<div><div class="flex justify-between text-[11px] mb-0.5"><span class="text-slate-300">${lbl.name}</span><span class="${w >= 0 ? 'text-emerald-300' : 'text-slate-400'} font-bold">重み: ${w >= 0 ? '+' : ''}${w.toFixed(3)}</span></div><div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div class="h-full ${lbl.color} transition-all duration-500" style="width: ${pct}%"></div></div></div>`;
+      }).join('');
+
+      const dnaFreqMap = {};
+      allRaces.forEach(r => { const d = analyzeRace(r).raceDna; dnaFreqMap[d] = (dnaFreqMap[d] || 0) + 1; });
+      const prob = predictUpset(extractFeatures(res, dnaFreqMap)) * 100;
+      const diffFromBase = prob - 50.0;
+      document.getElementById('aiUpsetProb').textContent = `${prob.toFixed(1)} %`;
+      const diffBadge = document.getElementById('baselineDiffBadge');
+      diffBadge.textContent = diffFromBase >= 0 ? `基準ライン比: +${diffFromBase.toFixed(1)}pt (波乱寄り)` : `基準ライン比: ${diffFromBase.toFixed(1)}pt (堅実寄り)`;
+      diffBadge.className = diffFromBase >= 12 ? 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-rose-500/20 text-rose-300 border border-rose-400/40' : diffFromBase <= -10 ? 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-amber-500/20 text-amber-300 border border-amber-400/40';
+      document.getElementById('aiVerdictText').textContent = prob >= 65 ? '🔥 基準値大幅超過：高配当・万車券アラート発火中！' : prob >= 45 ? '⚡ 基準値付近〜やや波乱：ラインのほつれ・単騎(T)の突っ込みに警戒' : '🛡️ 基準値以下（安定）：重力場と和音が調和しており本命サイド濃厚';
+      document.getElementById('aiTrainMetrics').textContent = `基準: ${activeBaseline.sourceName} | 学習エポック: ${aiModel.epochs}`;
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      box.textContent = msg;
+      box.classList.remove('hidden');
+      setTimeout(() => box.classList.add('hidden'), 4200);
+    }
+
+    function renderCurrentRace() {
+      const race = allRaces[currentRaceIdx];
+      const res = analyzeRace(race);
+      document.getElementById('rawFormationDisplay').textContent = `並び予想: ${race.rawFormation || res.lines.map(g => `[${g.join(' ')}]`).join(' ')}`;
+
+      document.getElementById('convertedLinesVisual').innerHTML = res.lineSummaryList.map(lObj => {
+        const badgeStyle = lObj.isTanki ? 'bg-purple-500/20 text-purple-300 border-purple-400/40' : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40';
+        const membersHtml = lObj.members.map(m => {
+          const bgCol = CAR_COLORS[(m.car - 1) % 9], txtCol = [1, 5].includes(m.car) ? '#0f172a' : '#ffffff';
+          return `<div class="flex items-center justify-between bg-slate-950/70 px-2.5 py-1.5 rounded-lg border border-slate-800"><div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold" style="background:${bgCol}; color:${txtCol}">${m.car}</span><span class="text-xs text-slate-200 truncate max-w-[85px]">${m.name}</span></div><div class="flex items-center gap-1.5 font-mono-code"><span class="text-[11px] text-slate-500">${m.rawMark}</span><span class="text-slate-600">→</span><span class="text-sm font-extrabold text-amber-300">${m.convertedMark}</span></div></div>`;
+        }).join('');
+        return `<div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 space-y-2"><div class="flex items-center justify-between"><span class="px-2 py-0.5 rounded text-xs font-mono-code font-bold border ${badgeStyle}">${lObj.label}</span><span class="text-[11px] font-mono-code text-amber-200 font-bold">[${lObj.members.map(m => m.convertedMark).join(' ')}]</span></div><div class="space-y-1.5">${membersHtml}</div></div>`;
+      }).join('');
+
+      document.getElementById('dissonanceBadge').textContent = `不協和度: ${res.dissonance} (基準:${activeBaseline.dissonanceMean})`;
+      document.getElementById('chordDiagnosis').textContent = res.dissonance > activeBaseline.dissonanceMean ? '⚡ 基準値超過: 不協和テンションコード検出（高配当波乱の響き）' : '🎵 基準値以下: メジャー協和音（本命サイドの安定した響き）';
+
+      const noteBars = document.getElementById('noteBars');
+      noteBars.innerHTML = '';
+      const scaleNames = ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ', 'シ', 'ド+', 'レ+'];
+      for (let c = 1; c <= 9; c++) {
+        const entry = res.entries.find(e => e.car === c), sc = entry ? getScore(entry.mark) : 0;
+        const heightPct = entry ? Math.max(18, (sc / 5.0) * 100) : 8;
+        const barColor = sc >= 4 ? 'bg-cyan-400' : sc >= 2 ? 'bg-purple-400' : entry ? 'bg-slate-600' : 'bg-slate-900';
+        noteBars.innerHTML += `<div class="flex flex-col items-center justify-end h-full"><div class="w-full rounded-t-md ${barColor} transition-all duration-300" style="height: ${heightPct}%"></div><span class="text-[10px] font-mono-code text-slate-400 mt-1">${c}:${scaleNames[c-1]}</span></div>`;
+      }
+
+      document.getElementById('chaosBadge').textContent = `カオス指数: ${res.chaosIndex} (基準:${activeBaseline.chaosMean})`;
+      initGravitySimulation(res);
+
+      document.getElementById('dnaSequenceText').textContent = res.raceDna;
+      const clones = allRaces.filter((r, idx) => idx !== currentRaceIdx && analyzeRace(r).raceDna === res.raceDna);
+      document.getElementById('cloneCountBadge').textContent = `双子レース: ${clones.length}件`;
+      document.getElementById('dnaMatchList').innerHTML = clones.length > 0
+        ? clones.slice(0, 10).map(cl => `<div class="flex justify-between border-b border-slate-800 py-1"><span class="text-emerald-300 font-mono-code">🧬 ${cl.id}</span></div>`).join('')
+        : `<div class="text-slate-400">・現在のデータセット内に完全一致する双子DNAはありません（固有種レース）</div>`;
+
+      document.getElementById('coupAlertBadge').textContent = `下剋上:${res.coupScore} / ちぎれ:${res.abandonScore}`;
+      document.getElementById('lineDramaContainer').innerHTML = res.dramaDetails.map(d => {
+        const style = d.type === 'coup' ? 'border-rose-500/50 bg-rose-950/30 text-rose-200' : d.type === 'abandon' ? 'border-amber-500/50 bg-amber-950/30 text-amber-200' : d.type === 'tanki' ? 'border-purple-500/40 bg-purple-950/20 text-purple-200' : 'border-slate-700 bg-slate-900/50 text-slate-300';
+        return `<div class="p-2.5 rounded-xl border text-xs ${style}">${d.text}</div>`;
+      }).join('');
+
+      document.getElementById('biasLevelBadge').textContent = `重心偏り: ${res.gravityBias} (基準:${activeBaseline.biasMean})`;
+      document.getElementById('raceTableBody').innerHTML = res.entries.map((e, idx) => {
+        const bgCol = CAR_COLORS[(e.car - 1) % 9], txtCol = [1, 5].includes(e.car) ? '#0f172a' : '#ffffff';
+        const lineBadge = e.isTanki ? `<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[11px]">単騎</span>` : `<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[11px]">${e.lineLabel}</span>`;
+        return `<tr><td class="py-1.5 px-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md font-bold shadow" style="background:${bgCol}; color:${txtCol}">${e.car}</span></td><td class="py-1.5 px-2 text-slate-200">${e.name || '選手'}</td><td class="py-1.5 px-2">${lineBadge}</td><td class="py-1.5 px-2 text-slate-400">${e.rawMark}</td><td class="py-1.5 px-2 font-extrabold text-amber-300 text-sm">${e.mark}</td><td class="py-1.5 px-2 text-cyan-300">${res.scores[idx].toFixed(1)} pt</td></tr>`;
+      }).join('');
+
+      document.getElementById('polygonDiagnosis').textContent = res.gravityBias < activeBaseline.biasMean
+        ? `🌀 基準より重心均衡 (${res.gravityBias} < ${activeBaseline.biasMean}): 力が分散し大波乱の気配！`
+        : `🎯 基準より重心偏重 (${res.gravityBias} >= ${activeBaseline.biasMean}): 特定ラインへ重力が集中！`;
+
+      renderAiSection(res);
+      drawPolygonCanvas(res);
+    }
+
+    let audioCtx = null, bgmTimerId = null, isBgmLooping = false;
+    function scheduleRaceTrack(ctx, destNode, startTime, race, res) {
+      const entries = res.entries;
+      const freqs = res.dissonance > activeBaseline.dissonanceMean
+        ? [261.63, 277.18, 311.13, 369.99, 392.00, 415.30, 493.88, 554.37, 622.25]
+        : [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99];
+      const stepSec = 0.18;
+      entries.forEach((e, idx) => {
+        const sc = getScore(e.mark), t = startTime + idx * stepSec;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = sc >= 4 ? 'triangle' : sc >= 2 ? 'sine' : 'sawtooth';
+        osc.frequency.setValueAtTime(freqs[(e.car - 1) % 9], t);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.exponentialRampToValueAtTime(Math.min(0.24, 0.04 + sc * 0.038), t + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+        osc.connect(gain); gain.connect(destNode); osc.start(t); osc.stop(t + 0.42);
+      });
+      return entries.length * stepSec + 0.25;
+    }
+
+    function ensureAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function audioBufferToWav(buffer) {
+      const length = buffer.length * 2 + 44, out = new ArrayBuffer(length), view = new DataView(out), ch = buffer.getChannelData(0);
+      let o = 0; const ws = s => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); o += s.length; };
+      ws('RIFF'); view.setUint32(o, length - 8, true); o += 4; ws('WAVE'); ws('fmt '); view.setUint32(o, 16, true); o += 4;
+      view.setUint16(o, 1, true); o += 2; view.setUint16(o, 1, true); o += 2; view.setUint32(o, buffer.sampleRate, true); o += 4;
+      view.setUint32(o, buffer.sampleRate * 2, true); o += 4; view.setUint16(o, 2, true); o += 2; view.setUint16(o, 16, true); o += 2;
+      ws('data'); view.setUint32(o, buffer.length * 2, true); o += 4;
+      for (let i = 0; i < buffer.length; i++) { const s = Math.max(-1, Math.min(1, ch[i])); view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
+      return new Blob([out], { type: 'audio/wav' });
+    }
+
+    function initGravitySimulation(res) {
+      const canvas = document.getElementById('gravityCanvas'), rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width; canvas.height = rect.height;
+      gravityParticles = res.entries.map((e, i) => ({
+        car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
+        radius: 7 + res.scores[i] * 1.6, x: canvas.width * 0.2 + Math.random() * canvas.width * 0.6,
+        y: canvas.height * 0.2 + Math.random() * canvas.height * 0.6, vx: (Math.random() - 0.5) * 2.2, vy: (Math.random() - 0.5) * 2.2,
+        color: CAR_COLORS[(e.car - 1) % 9]
+      }));
+      if (gravityAnimId) cancelAnimationFrame(gravityAnimId);
+      function loop() {
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(5, 11, 20, 0.35)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < gravityParticles.length; i++) {
+          for (let j = i + 1; j < gravityParticles.length; j++) {
+            const p1 = gravityParticles[i], p2 = gravityParticles[j], dx = p2.x - p1.x, dy = p2.y - p1.y, dist = Math.hypot(dx, dy) || 1;
+            if (!p1.isTanki && p1.lineIdx === p2.lineIdx) {
+              ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'; ctx.stroke();
+              if (dist > 36) { p1.vx += (dx / dist) * 0.04; p1.vy += (dy / dist) * 0.04; p2.vx -= (dx / dist) * 0.04; p2.vy -= (dy / dist) * 0.04; }
+            } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08; p1.vy -= (dy / dist) * 0.08; p2.vx += (dx / dist) * 0.08; p2.vy += (dy / dist) * 0.08; }
+          }
+        }
+        gravityParticles.forEach(p => {
+          p.x += p.vx; p.y += p.vy; p.vx *= 0.985; p.vy *= 0.985;
+          if (p.x < p.radius || p.x > canvas.width - p.radius) p.vx *= -1;
+          if (p.y < p.radius || p.y > canvas.height - p.radius) p.vy *= -1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
+          ctx.fillStyle = [1, 5].includes(p.car) ? '#0f172a' : '#ffffff'; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.car, p.x, p.y);
+        });
+        gravityAnimId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    function drawPolygonCanvas(res) {
+      const canvas = document.getElementById('polygonCanvas'), size = canvas.parentElement.clientWidth || 260;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d'), cx = size / 2, cy = size / 2, r = size * 0.36;
+      ctx.clearRect(0, 0, size, size);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)'; ctx.lineWidth = 2; ctx.stroke();
+      const polyPoints = [];
+      res.entries.forEach((e, i) => {
+        const angle = (2 * Math.PI * i / res.entries.length) - (Math.PI / 2), px = cx + r * Math.cos(angle), py = cy + r * Math.sin(angle);
+        const innerR = (res.scores[i] / 5.0) * r;
+        polyPoints.push({ x: cx + innerR * Math.cos(angle), y: cy + innerR * Math.sin(angle) });
+        ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI * 2); ctx.fillStyle = CAR_COLORS[(e.car - 1) % 9]; ctx.fill();
+        ctx.fillStyle = [1, 5].includes(e.car) ? '#0f172a' : '#ffffff'; ctx.font = 'bold 11px JetBrains Mono'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e.car, px, py);
+      });
+      if (polyPoints.length > 2) {
+        ctx.beginPath(); polyPoints.forEach((pt, idx) => idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)); ctx.closePath();
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.22)'; ctx.fill(); ctx.strokeStyle = '#38bdf8'; ctx.stroke();
+      }
+      const gxPos = cx + res.gx * r * 1.4, gyPos = cy + res.gy * r * 1.4;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(gxPos, gyPos); ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(gxPos, gyPos, 6, 0, Math.PI * 2); ctx.fillStyle = '#fbbf24'; ctx.fill();
+    }
+
+    function populateRaceSelector() {
+      const sel = document.getElementById('raceSelector'), limit = Math.min(allRaces.length, 500);
+      sel.innerHTML = '';
+      for (let i = 0; i < limit; i++) {
+        const opt = document.createElement('option'); opt.value = i; opt.textContent = `[${i + 1}/${allRaces.length}] ${allRaces[i].id}`; sel.appendChild(opt);
+      }
+      sel.value = currentRaceIdx;
+    }
+
+    document.getElementById('builderCarCount').addEventListener('change', renderBuilderRows);
+    document.getElementById('builderLineInput').addEventListener('input', updateBuilderLiveRadar);
+    document.getElementById('toggleManualBuilderBtn').addEventListener('click', () => document.getElementById('manualBuilderSection').classList.toggle('hidden'));
+    document.getElementById('closeManualBuilderBtn').addEventListener('click', () => document.getElementById('manualBuilderSection').classList.add('hidden'));
+    document.getElementById('clearBuilderFormBtn').addEventListener('click', () => {
+      ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
+      renderBuilderRows();
+    });
+
+    document.getElementById('addRaceToQueueBtn').addEventListener('click', () => {
+      const count = parseInt(document.getElementById('builderCarCount').value, 10) || 7;
+      const titleInput = document.getElementById('builderRaceTitle').value.trim(), rawLineInput = document.getElementById('builderLineInput').value.trim();
+      const resultOrder = document.getElementById('builderResultOrder').value.trim(), payoutVal = document.getElementById('builderPayoutInput').value.trim();
+      const names = document.querySelectorAll('.b-name'), marks = document.querySelectorAll('.b-mark'), entries = [];
+      for (let i = 0; i < count; i++) entries.push({ car: i + 1, name: names[i]?.value.trim() || `選手${i + 1}`, rawMark: marks[i]?.value || '無' });
+      const parsedLines = parseFormationString(rawLineInput, entries);
+      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
+      allRaces.push(newRace); currentRaceIdx = allRaces.length - 1;
+      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
+      document.getElementById('clearBuilderFormBtn').click();
+      showToast(`✅ 「${newRace.id}」を追加しました！`);
+    });
+
+    document.getElementById('saveLateResultBtn').addEventListener('click', () => {
+      const race = allRaces[currentRaceIdx]; if (!race) return;
+      race.resultOrder = document.getElementById('lateResultOrderInput').value.trim();
+      const p = document.getElementById('lateResultPayoutInput').value.trim();
+      race.payout = p ? Number(p) : null;
+      refreshVerticalStockList(); updateBatchStats(); renderCurrentRace();
+      showToast(`💾 「${race.id}」の結果を追記保存しました！`);
+    });
+
+    document.getElementById('exportCustomCsvBtn').addEventListener('click', () => {
+      const csvRows = [['レースID', '車番', '選手名', 'AI印', '変換後印', '所属ライン', '並び予想', '確定着順', '3連単配当']];
+      allRaces.forEach(r => analyzeRace(r).entries.forEach(e => csvRows.push([r.id, e.car, e.name, e.rawMark, e.mark, e.lineLabel, r.rawFormation || '', r.resultOrder || '', r.payout || ''])));
+      const blob = new Blob(['\uFEFF' + csvRows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `keirin-races-${allRaces.length}R.csv`; a.click();
+    });
+
+    document.getElementById('dataFileInput').addEventListener('change', (ev) => {
+      const file = ev.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        if (file.name.endsWith('.md') || text.includes('並び予想')) {
+          const parsedMd = parseMarkdownRaces(text);
+          if (parsedMd.length > 0) { allRaces = parsedMd; currentRaceIdx = 0; populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); showToast(`✅ ${parsedMd.length}レース読込完了！`); return; }
+        }
+        Papa.parse(text, {
+          header: true, skipEmptyLines: true,
+          complete: (results) => {
+            const rows = results.data; if (!rows || !rows.length) return;
+            const cols = Object.keys(rows[0]);
+            const idCol = cols.find(c => /レースID|race_id|ID|レース番号|開催|レース名/i.test(c));
+            const carCol = cols.find(c => /車番|car|枠/i.test(c)) || cols[0];
+            const markCol = cols.find(c => /変換後|AI印|印|mark|予想|変換/i.test(c)) || cols[1];
+            const nameCol = cols.find(c => /選手|名前|name/i.test(c));
+            const lineCol = cols.find(c => /ライン|並び|line/i.test(c));
+            const orderCol = cols.find(c => /着順|結果|result/i.test(c));
+            const payCol = cols.find(c => /3連単|三連単|配当|払戻|payout/i.test(c));
+            const grouped = []; let cur = null, lastId = null;
+            rows.forEach(row => {
+              const car = parseInt(row[carCol], 10); if (isNaN(car)) return;
+              const rId = idCol ? row[idCol] : null;
+              if (idCol ? (rId !== lastId) : (car === 1 || !cur)) {
+                if (cur && cur.entries.length >= 5) grouped.push(cur);
+                lastId = rId;
+                const rawLine = lineCol && row[lineCol] ? String(row[lineCol]) : '';
+                cur = { id: rId ? String(rId) : `CSV-RACE #${grouped.length + 1}`, rawFormation: rawLine, lines: parseFormationString(rawLine, []), resultOrder: orderCol && row[orderCol] ? String(row[orderCol]) : '', payout: payCol && row[payCol] ? String(row[payCol]).replace(/[^\d.]/g, '') : null, entries: [] };
+              }
+              cur.entries.push({ car, name: nameCol && row[nameCol] ? row[nameCol] : `選手${car}`, rawMark: row[markCol] || '無' });
+            });
+            if (cur && cur.entries.length >= 5) grouped.push(cur);
+            if (grouped.length > 0) { allRaces = grouped; currentRaceIdx = 0; populateRaceSelector(); updateBatchStats(); calibrateToMansha70(true); renderCurrentRace(); refreshVerticalStockList(); showToast(`✅ ${grouped.length.toLocaleString()}レース読込＆万車券70%基準設定完了！`); }
+          }
+        });
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); });
+    document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); });
+    document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); });
+    document.getElementById('randomRaceBtn').addEventListener('click', () => { currentRaceIdx = Math.floor(Math.random() * allRaces.length); renderCurrentRace(); refreshVerticalStockList(); });
+    document.getElementById('resetGravityBtn').addEventListener('click', () => renderCurrentRace());
+    document.getElementById('calibrate70Btn').addEventListener('click', () => calibrateToMansha70(false));
+    document.getElementById('trainAiBtn').addEventListener('click', () => trainAiModel());
+    document.getElementById('resetAiBtn').addEventListener('click', () => { aiModel = { weights: [...activeBaseline.weights], bias: activeBaseline.bias, epochs: 0, trainedSamples: 0, accuracy: null }; renderCurrentRace(); });
+    document.getElementById('playSonificationBtn').addEventListener('click', () => { ensureAudioCtx(); const r = allRaces[currentRaceIdx]; scheduleRaceTrack(audioCtx, audioCtx.destination, audioCtx.currentTime, r, analyzeRace(r)); });
+    document.getElementById('copyFullHtmlBtn').addEventListener('click', async () => {
+      const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      await navigator.clipboard.writeText(fullHtml);
+      showToast('📋 全HTMLコードをコピーしました！');
+    });
+    document.getElementById('downloadZipBtn').addEventListener('click', async () => {
+      const zip = new JSZip();
+      zip.file('index.html', '<!DOCTYPE html>\n' + document.documentElement.outerHTML);
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'keirin-abyss-lab.zip'; a.click();
+    });
+
+    window.addEventListener('load', () => { renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); });
+    window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
 </html>
