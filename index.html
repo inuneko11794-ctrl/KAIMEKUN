@@ -99,7 +99,7 @@
         <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
           <span>ATLANTIS VELODROME ARCHIVE // V7.2</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
-          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.3 · 2026/11/16</button>
+          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.7 · 2026/11/16</button>
         </div>
         <h1 class="font-ancient text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-purple-300 mt-1">
           KEIRIN 5大奇抜解析ラボ
@@ -615,6 +615,15 @@
       const carToEntry = {};
       race.entries.forEach(e => { carToEntry[e.car] = e; });
       const rawGroups = (race.lines && race.lines.length > 0) ? race.lines : race.entries.map(e => [String(e.car)]);
+      const validCarGroups = rawGroups
+        .map(grp => grp.map(c => parseInt(c, 10)).filter(c => !isNaN(c) && carToEntry[c]))
+        .filter(grp => grp.length > 0);
+      const groupedCars = validCarGroups.flat();
+      // 開催名・レース名の文字列ではなく、全員が単騎かどうかだけでガールズ判定する。
+      const isGirlsRace = race.entries.length > 0 &&
+        validCarGroups.length === race.entries.length &&
+        validCarGroups.every(grp => grp.length === 1) &&
+        new Set(groupedCars).size === race.entries.length;
       let lineCounter = 0;
       const lineSummaryList = [], carMetaMap = {};
 
@@ -689,7 +698,7 @@
           carMetaMap[e.car] = { lineLabel: '単騎', isTanki: true, rawMark: rawM, convertedMark: convertedM, posInLine: 0 };
         }
       });
-      return { carMetaMap, lineSummaryList };
+      return { carMetaMap, lineSummaryList, isGirlsRace };
     }
 
     const DEFAULT_TAKEO_MD = `
@@ -755,7 +764,7 @@
     let currentRaceIdx = 0, gravityParticles = [], gravityAnimId = null;
 
     function analyzeRace(race) {
-      const { carMetaMap, lineSummaryList } = applyLineAndMarkRules(race);
+      const { carMetaMap, lineSummaryList, isGirlsRace } = applyLineAndMarkRules(race);
       const entries = [...race.entries].sort((a, b) => a.car - b.car).map(e => {
         const meta = carMetaMap[e.car] || { lineLabel: '単騎', isTanki: true, rawMark: '無', convertedMark: 'T' };
         return { ...e, rawMark: meta.rawMark, mark: meta.convertedMark, lineLabel: meta.lineLabel, isTanki: meta.isTanki };
@@ -821,7 +830,7 @@
       const gravityBias = Math.sqrt(gx * gx + gy * gy);
 
       return {
-        entries, scores, lines, lineSummaryList,
+        entries, scores, lines, lineSummaryList, isGirlsRace,
         dissonance: +dissonance.toFixed(2), chaosIndex: +chaosIndex.toFixed(2),
         raceDna, coupScore: +coupScore.toFixed(2), abandonScore: +abandonScore.toFixed(2),
         dramaDetails, gx, gy, gravityBias: +gravityBias.toFixed(3)
@@ -1756,8 +1765,8 @@
     });
 
 
-    const APP_RELEASE_VERSION = '1.6-20261116';
-    const APP_RELEASE_LABEL = '更新版 v1.6 · 2026/11/16';
+    const APP_RELEASE_VERSION = '1.7-20261116';
+    const APP_RELEASE_LABEL = '更新版 v1.7 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
