@@ -1453,29 +1453,86 @@
       '⑳': 1.16, '●': 1.11, '▲': 1.05, '✖': 1.00,
       '☆': 0.89, 'T': 0.84, '★': 0.83, '星': 0.44
     };
+
+    // 順位・着順を学習材料にしない。予想時点で判定できる機能ごとに点数を分離する。
+    // 未検証の機能は0点から開始し、機能単位の検証が済むまで推測で加点しない。
+    const FEATURE_POINT_CONFIG = {
+      mark: { label: '印の基礎点', initial: 0 },
+      markConversion: { label: '印変換', initial: 0 },
+      lineRole: { label: 'ライン内の位置', initial: 0 },
+      lineLength: { label: 'ライン人数', initial: 0 },
+      lineMarkRelation: { label: 'ライン内の印関係', initial: 0 },
+      tanki: { label: '単騎・ガールズ構造', initial: 0 },
+      raceStructure: { label: '車立て・全体構造', initial: 0 },
+      dissonance: { label: '不協和度', initial: 0 },
+      chaosIndex: { label: 'ライン強度の分散', initial: 0 },
+      coupAbandon: { label: '競り・離脱要素', initial: 0 },
+      gravityBias: { label: '重力偏り', initial: 0 },
+      fanoPattern: { label: 'ファノ配置', initial: 0 }
+    };
+
     function getEmpiricalMarkPoints(mark) {
       const key = String(mark || '').trim();
-      const base = EMPIRICAL_MARK_POINTS[key] ?? 0.5;
-      const learned = getLearnedMarkAdjustment(key);
-      return Math.max(0.1, +(base + learned).toFixed(2));
+      return EMPIRICAL_MARK_POINTS[key] ?? 0.5;
     }
-    function getLearnedMarkAdjustment(mark) {
-      if (!Array.isArray(allRaces)) return 0;
-      let total = 0, count = 0, globalTotal = 0, globalCount = 0;
-      allRaces.forEach(r => {
-        const finish = parseFinish(r);
-        if (finish.length < 3 || !r.autoTickets || !Array.isArray(r.autoTickets.predictionSnapshot)) return;
-        r.autoTickets.predictionSnapshot.forEach(p => {
-          const rank = finish.indexOf(Number(p.car));
-          const value = rank === 0 ? 3 : rank === 1 ? 2 : rank === 2 ? 1 : 0;
-          globalTotal += value; globalCount++;
-          if (String(p.mark) === mark) { total += value; count++; }
+
+    function calculateCarPointScores(res) {
+      const lineByCar = new Map();
+      (res.lineSummaryList || []).forEach(line => {
+        line.members.forEach((member, index) => {
+          lineByCar.set(Number(member.car), { line, index });
         });
       });
-      if (!count || !globalCount) return 0;
-      const baseline = globalTotal / globalCount;
-      const observed = (total + baseline * 20) / (count + 20);
-      return Math.max(-1.5, Math.min(1.5, (observed - baseline) * 1.25));
+
+      const raceFeatureValues = {
+        raceStructure: (Number(res.entries?.length || 0) - 7) / 2,
+        dissonance: Number(res.dissonance || 0),
+        chaosIndex: Number(res.chaosIndex || 0),
+        coupAbandon: Number(res.coupScore || 0) + Number(res.abandonScore || 0),
+        gravityBias: Number(res.gravityBias || 0),
+        fanoPattern: calculateFanoPlaneStats(res).hasMatch ? 1 : 0
+      };
+
+      return res.entries.map(entry => {
+        const info = lineByCar.get(Number(entry.car));
+        const line = info?.line;
+        const pos = info?.index ?? 0;
+        const markPoints = getEmpiricalMarkPoints(entry.mark);
+        const featurePoints = {
+          mark: markPoints,
+          markConversion: 0,
+          lineRole: 0,
+          lineLength: 0,
+          lineMarkRelation: 0,
+          tanki: line?.isTanki ? 0 : 0,
+          ...raceFeatureValues
+        };
+        const reasons = [];
+        if (line) {
+          featurePoints.lineRole = 0;
+          featurePoints.lineLength = 0;
+          featurePoints.tanki = 0;
+          if (!line.isTanki && line.members.length >= 2) {
+            const front = line.members[0];
+            const current = line.members[pos];
+            const frontScore = getScore(front.convertedMark);
+            const currentScore = getScore(current.convertedMark);
+            if (pos === 1 && currentScore > frontScore) {
+              featurePoints.lineMarkRelation = 1.0;
+              reasons.push('番手の印が先頭を上回る条件 +1.0');
+            }
+          }
+        }
+        const totalFeaturePoints = Object.values(featurePoints).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        return {
+          ...entry,
+          basePoints: markPoints,
+          adjustment: +(totalFeaturePoints - markPoints).toFixed(2),
+          featurePoints,
+          reasons,
+          totalPoints: +totalFeaturePoints.toFixed(2)
+        };
+      }).sort((a, b) => b.totalPoints - a.totalPoints || a.car - b.car);
     }
 
     // 1〜7のファノ平面に現れる7つの三つ組。ライン内に3車すべてが存在するかを照合する。
