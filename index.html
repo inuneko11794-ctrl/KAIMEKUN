@@ -2023,10 +2023,8 @@
       const win = cars.slice(0,4);
       const exacta = [];
       for (const first of cars.slice(0,2)) {
-        for (const second of cars) {
-          if (second !== first) { exacta.push([first,second]); if (exacta.length === 4) break; }
-        }
-        if (exacta.length === 4) break;
+        const seconds = cars.filter(second => second !== first).slice(0,2);
+        seconds.forEach(second => exacta.push([first,second]));
       }
       const firsts = cars.slice(0,2);
       const trifecta = [];
@@ -2061,7 +2059,9 @@
     function renderBetLab() {
       const race = allRaces[currentRaceIdx];
       if (!race) return;
+      const hadTickets = !!race.autoTickets;
       const tickets = ensureRaceTickets(race);
+      if (!hadTickets) persistRaces();
       const show = (arr, n) => arr.map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　') || '--';
       document.getElementById('autoWinPicks').textContent = show(tickets.win, 4);
       document.getElementById('autoExactaPicks').textContent = show(tickets.exacta, 4);
