@@ -120,7 +120,7 @@
 
     <section id="kaimekunBetLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div><div class="text-xs font-mono-code text-amber-300 font-bold">AUTO BET MATRIX</div><h2 class="text-lg font-bold">自動買い目・成績検証</h2><p class="text-xs text-slate-300">1点100円固定。予測は実績印ポイント＋検証済み番手補正の順位を使用。</p></div>
+        <div><div class="text-xs font-mono-code text-amber-300 font-bold">AUTO BET MATRIX</div><h2 class="text-lg font-bold">自動買い目・成績検証</h2></div>
         <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2119,7 +2119,7 @@
     });
     document.getElementById('betStatsPeriod').addEventListener('change', renderBetStats);
 
-    const APP_RELEASE_VERSION = '2.3-20261116';
+    const APP_RELEASE_VERSION = '2.4-20261117';
     const APP_RELEASE_LABEL = '更新版 v2.3 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
