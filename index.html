@@ -117,6 +117,24 @@
       </div>
     </header>
 
+
+    <section id="kaimekunBetLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div><div class="text-xs font-mono-code text-amber-300 font-bold">AUTO BET MATRIX</div><h2 class="text-lg font-bold">自動買い目・成績検証</h2><p class="text-xs text-slate-300">1点100円固定。予測は実績印ポイント＋検証済み番手補正の順位を使用。</p></div>
+        <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 4点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 4点</div><div id="autoExactaPicks" class="font-mono-code text-sm">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 15点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div></div>
+      </div>
+      <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-3">
+        <div class="flex flex-wrap items-center gap-2 justify-between"><div class="text-sm font-bold">期間別成績</div><select id="betStatsPeriod" class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm"><option value="all">全期間</option><option value="7">直近7日</option><option value="30" selected>直近30日</option><option value="90">直近90日</option><option value="180">直近180日</option><option value="365">直近365日</option></select></div>
+        <div id="betStatsSummary" class="text-xs text-slate-200">結果・配当を登録すると集計します。</div>
+        <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="betStatsRows"></tbody></table></div>
+      </div>
+      <p class="text-[11px] text-slate-400">3連単は上位2車を1着候補に固定し、全15点で1着車番がちょうど2種類になるよう生成。過去レースは買い目初回生成時点の順位を保存します。</p>
+    </section>
     <!-- ✍️ 縦型1レースずつ連続入力＆MD/テキスト即席診断 -->
     <section id="manualBuilderSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-5">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -295,6 +313,14 @@
                     <input id="lateResultPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code focus:border-amber-400 focus:outline-none" />
                     <button type="button" data-clear-target="lateResultPayoutInput" class="clear-field-btn px-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
                   </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">2車単配当 (円)</label>
+                  <input id="lateExactaPayoutInput" type="number" placeholder="例: 1850" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">単勝配当 (円)</label>
+                  <input id="lateWinPayoutInput" type="number" placeholder="例: 420" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code" />
                 </div>
               </div>
               <button id="saveLateResultBtn" type="button" class="w-full py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 font-bold text-xs transition">
@@ -1729,7 +1755,7 @@
       const names = document.querySelectorAll('.b-name'), marks = document.querySelectorAll('.b-mark'), entries = [];
       for (let i = 0; i < count; i++) entries.push({ car: i + 1, name: names[i]?.value.trim() || `選手${i + 1}`, rawMark: marks[i]?.value || '無' });
       const parsedLines = parseFormationString(rawLineInput, entries);
-      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
+      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, date: new Date().toISOString().slice(0,10), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
       allRaces.push(newRace); persistRaces(); currentRaceIdx = allRaces.length - 1;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
@@ -1742,10 +1768,18 @@
       race.resultOrder = document.getElementById('lateResultOrderInput').value.trim();
       const p = document.getElementById('lateResultPayoutInput').value.trim();
       race.payout = p ? Number(p) : null;
+      const ep = document.getElementById('lateExactaPayoutInput').value.trim();
+      const wp = document.getElementById('lateWinPayoutInput').value.trim();
+      race.exactaPayout = ep ? Number(ep) : null;
+      race.winPayout = wp ? Number(wp) : null;
+      race.date = race.date || new Date().toISOString().slice(0,10);
       persistRaces();
       refreshVerticalStockList(); updateBatchStats(); renderCurrentRace();
       document.getElementById('lateResultOrderInput').value = '';
       document.getElementById('lateResultPayoutInput').value = '';
+      document.getElementById('lateExactaPayoutInput').value = '';
+      document.getElementById('lateWinPayoutInput').value = '';
+      renderBetLab();
       showToast(`💾 「${race.id}」の結果を保存しました！`);
     });
 
@@ -1890,9 +1924,9 @@
       await navigator.clipboard.writeText(document.getElementById('embedCodeInput').value);
       showToast('🔗 埋め込みコードをコピーしました');
     });
-    document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); });
-    document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); });
-    document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); });
+    document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     document.getElementById('randomRaceBtn').addEventListener('click', () => { currentRaceIdx = Math.floor(Math.random() * allRaces.length); renderCurrentRace(); refreshVerticalStockList(); });
     document.getElementById('resetGravityBtn').addEventListener('click', () => renderCurrentRace());
     document.getElementById('calibrate70Btn').addEventListener('click', () => calibrateToMansha70(false));
@@ -1980,6 +2014,91 @@
     });
 
 
+
+    // AUTO BET MATRIX: deterministic ranking-based tickets and historical performance.
+    function buildAutoTickets(race) {
+      const ranked = calculateCarPointScores(analyzeRace(race)).map(x => Number(x.car));
+      const cars = ranked.filter((x,i,a) => a.indexOf(x) === i);
+      if (cars.length < 3) return { win: [], exacta: [], trifecta: [], ranked: cars };
+      const win = cars.slice(0,4);
+      const exacta = [];
+      for (const first of cars.slice(0,2)) {
+        for (const second of cars) {
+          if (second !== first) { exacta.push([first,second]); if (exacta.length === 4) break; }
+        }
+        if (exacta.length === 4) break;
+      }
+      const firsts = cars.slice(0,2);
+      const trifecta = [];
+      firsts.forEach((first, fi) => {
+        const others = cars.filter(c => c !== first);
+        for (let i=0; i<others.length; i++) {
+          for (let j=0; j<others.length; j++) {
+            if (i === j) continue;
+            trifecta.push([first, others[i], others[j]]);
+          }
+        }
+      });
+      // 1着2車を両方使い、順位順の候補を交互に採用して15点に固定。
+      const selected = [];
+      let a = trifecta.filter(t => t[0] === firsts[0]);
+      let b = trifecta.filter(t => t[0] === firsts[1]);
+      while (selected.length < 15 && (a.length || b.length)) {
+        if (a.length && selected.length < 15) selected.push(a.shift());
+        if (b.length && selected.length < 15) selected.push(b.shift());
+      }
+      return { win, exacta, trifecta: selected, ranked: cars };
+    }
+    function ensureRaceTickets(race, force=false) {
+      if (!race.autoTickets || force) race.autoTickets = buildAutoTickets(race);
+      if (!race.date) race.date = (race.id && /^\\d{4}-\\d{2}-\\d{2}/.test(race.id)) ? race.id.slice(0,10) : new Date().toISOString().slice(0,10);
+      return race.autoTickets;
+    }
+    function parseFinish(race) {
+      const nums = String(race.resultOrder || '').match(/[1-9]/g);
+      return nums ? nums.map(Number).slice(0,3) : [];
+    }
+    function renderBetLab() {
+      const race = allRaces[currentRaceIdx];
+      if (!race) return;
+      const tickets = ensureRaceTickets(race);
+      const show = (arr, n) => arr.map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　') || '--';
+      document.getElementById('autoWinPicks').textContent = show(tickets.win, 4);
+      document.getElementById('autoExactaPicks').textContent = show(tickets.exacta, 4);
+      document.getElementById('autoTrifectaPicks').innerHTML = tickets.trifecta.map(t => '<div class="py-0.5">'+t.join('-')+'</div>').join('');
+      document.getElementById('autoFirstCandidates').textContent = '1着候補: ' + [...new Set(tickets.trifecta.map(t=>t[0]))].join('・') + '番';
+      renderBetStats();
+    }
+    function renderBetStats() {
+      const period = document.getElementById('betStatsPeriod')?.value || '30';
+      const now = new Date(); const cutoff = period === 'all' ? null : new Date(now.getTime() - Number(period)*86400000);
+      const eligible = allRaces.filter(r => {
+        const finish = parseFinish(r);
+        if (finish.length < 3) return false;
+        const d = new Date((r.date || '').slice(0,10) + 'T23:59:59');
+        return !cutoff || (Number.isFinite(d.getTime()) && d >= cutoff);
+      });
+      const configs = [
+        {key:'win',label:'単勝',count:4,payout:'winPayout',hit:r=>ensureRaceTickets(r).win.includes(parseFinish(r)[0])},
+        {key:'exacta',label:'2車単',count:4,payout:'exactaPayout',hit:r=>ensureRaceTickets(r).exacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1])},
+        {key:'trifecta',label:'3連単',count:15,payout:'payout',hit:r=>ensureRaceTickets(r).trifecta.some(t=>t.join('-')===parseFinish(r).join('-'))}
+      ];
+      const rows = configs.map(c => {
+        const data = eligible.filter(r => Number.isFinite(Number(r[c.payout])) && Number(r[c.payout]) > 0);
+        const hits = data.filter(c.hit).length;
+        const investment = data.length*c.count*100;
+        const returned = data.filter(c.hit).reduce((sum,r)=>sum+Number(r[c.payout]),0);
+        return {label:c.label,n:data.length,hits,rate:data.length?hits/data.length*100:0,investment,roi:investment?returned/investment*100:0};
+      });
+      document.getElementById('betStatsSummary').textContent = '配当入力済み・結果確定レース: ' + Math.max(...rows.map(x=>x.n),0) + 'R / 1点100円';
+      document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+x.investment.toLocaleString()+'円</td><td>'+x.roi.toFixed(2)+'%</td></tr>').join('');
+    }
+    document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
+      const race = allRaces[currentRaceIdx]; if (!race) return;
+      race.autoTickets = buildAutoTickets(race); persistRaces(); renderBetLab();
+    });
+    document.getElementById('betStatsPeriod').addEventListener('change', renderBetStats);
+
     const APP_RELEASE_VERSION = '2.3-20261116';
     const APP_RELEASE_LABEL = '更新版 v2.3 · 2026/11/16';
     function initUpdateBadge() {
@@ -2002,7 +2121,7 @@
         badge.title = '現在の更新を確認済みです';
       });
     }
-    window.addEventListener('load', () => { initUpdateBadge(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); });
+    window.addEventListener('load', () => { initUpdateBadge(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
