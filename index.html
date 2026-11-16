@@ -127,9 +127,13 @@
             Markdownファイル(.md)の読み込み、またはテキスト貼り付けの瞬間に「ここは荒れそう？（波乱度％）」を即時判定します。
           </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="saveRecordsNowBtn" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-xs text-emerald-200 font-mono-code">💾 保存</button>
+          <button id="exportBackupJsonBtn" type="button" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-xs text-cyan-200 font-mono-code">📦 全記録バックアップ</button>
+          <button id="importBackupJsonBtn" type="button" class="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/35 border border-purple-400/40 text-xs text-purple-200 font-mono-code">📂 バックアップ読込</button>
+          <input id="jsonBackupInput" type="file" accept=".json,application/json" class="hidden" />
           <button id="exportCustomCsvBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs text-cyan-300 font-mono-code">
-            📥 入力済データをCSV保存
+            📥 CSV保存
           </button>
           <button id="closeManualBuilderBtn" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-400">
             閉じる ✕
@@ -1585,6 +1589,51 @@
       allRaces.forEach(r => analyzeRace(r).entries.forEach(e => csvRows.push([r.id, e.car, e.name, e.rawMark, e.mark, e.lineLabel, r.rawFormation || '', r.resultOrder || '', r.payout || ''])));
       const blob = new Blob(['\uFEFF' + csvRows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `keirin-races-${allRaces.length}R.csv`; a.click();
+    });
+
+    document.getElementById('saveRecordsNowBtn').addEventListener('click', () => {
+      if (persistRaces()) showToast(`💾 ${allRaces.length.toLocaleString()}レースをこの端末に保存しました`);
+    });
+
+    document.getElementById('exportBackupJsonBtn').addEventListener('click', () => {
+      const backup = { app: 'KAIMEKUN', formatVersion: 1, exportedAt: new Date().toISOString(), races: allRaces };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = `KAIMEKUN_backup_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
+      showToast(`📦 ${allRaces.length.toLocaleString()}レースのバックアップを作成しました`);
+    });
+
+    document.getElementById('importBackupJsonBtn').addEventListener('click', () => {
+      document.getElementById('jsonBackupInput').click();
+    });
+
+    document.getElementById('jsonBackupInput').addEventListener('change', (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const imported = Array.isArray(parsed) ? parsed : parsed && parsed.app === 'KAIMEKUN' ? parsed.races : null;
+          if (!Array.isArray(imported) || imported.length === 0 ||
+              !imported.every(r => r && Array.isArray(r.entries) && r.entries.length >= 5)) {
+            throw new Error('KAIMEKUN形式のレース記録が見つかりません');
+          }
+          if (!confirm(`${imported.length.toLocaleString()}レースを読み込みます。現在の記録は置き換わります。続行しますか？`)) return;
+          allRaces = imported;
+          currentRaceIdx = 0;
+          if (!persistRaces()) throw new Error('端末への保存に失敗しました');
+          populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
+          document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${imported.length.toLocaleString()}レース復元`;
+          showToast(`📂 ${imported.length.toLocaleString()}レースを復元しました`);
+        } catch (err) {
+          showToast('⚠️ バックアップ読込失敗: ' + (err.message || 'ファイル形式を確認してください'));
+        } finally {
+          ev.target.value = '';
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
     });
 
     document.getElementById('dataFileInput').addEventListener('change', (ev) => {
