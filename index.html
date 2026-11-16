@@ -596,6 +596,7 @@
         </table>
       </div>
       <div id="carPointContext" class="text-[11px] text-slate-300 leading-relaxed"></div>
+      <div id="carPointEvidence" class="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-[11px] leading-relaxed space-y-2"></div>
       <p class="text-[11px] text-slate-400">※これは既存の印点とライン内の印配置から計算する説明可能な初期スコアです。過去結果から学習した車番別AI点数ではありません。実績検証を通すまでは買い目の自動決定に使いません。</p>
     </section>
 
@@ -1414,13 +1415,12 @@
         if (!secondRow) return;
 
         if (secondScore > frontScore) {
-          const diff = +(secondScore - frontScore).toFixed(1);
-          secondRow.adjustment += diff;
-          secondRow.reasons.push(`番手逆転 +${diff.toFixed(1)}`);
+          // 全25,477レース検証で番手の1着率上昇が直近20%でも再現したため、暫定+1.0点。
+          secondRow.adjustment += 1.0;
+          secondRow.reasons.push('番手逆転 +1.0（実績検証）');
         } else if (frontScore - secondScore >= 2.0) {
-          const diff = +(frontScore - secondScore).toFixed(1);
-          secondRow.adjustment -= diff;
-          secondRow.reasons.push(`先頭との印差 -${diff.toFixed(1)}`);
+          // 減点傾向は全期間で小さく、直近20%で再現しなかったため点数には反映せず記録のみ。
+          secondRow.reasons.push('先頭との印差大（減点保留）');
         }
       });
 
@@ -1499,6 +1499,25 @@
       }).join('');
       document.getElementById('carPointContext').textContent =
         `レース全体の参考指標：不協和度 ${res.dissonance} ／ カオス指数 ${res.chaosIndex} ／ 重心偏り ${res.gravityBias} ／ 下剋上 ${res.coupScore} ／ ちぎれ懸念 ${res.abandonScore}。これらは現段階では車番別の根拠に分解できないため、ランキング点には加算していません。`;
+      document.getElementById('carPointEvidence').innerHTML =
+        `<div class="font-bold text-emerald-300 mb-2">実績検証：全25,477レース／番手67,174件（2024-07-30〜2026-06-15）</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="rounded-lg bg-emerald-950/30 border border-emerald-500/30 p-3">
+            <div class="font-bold text-emerald-200">番手の印が先頭より強い：24,343件</div>
+            <div class="mt-1">1着率 22.5%（通常 11.1%）</div>
+            <div>2着以内 39.8%（通常 28.7%）</div>
+            <div>3着以内 53.6%（通常 41.9%）</div>
+            <div class="text-emerald-300 mt-1">直近20%でも1着率 21.3%（通常 10.7%）</div>
+          </div>
+          <div class="rounded-lg bg-slate-900 border border-slate-700 p-3">
+            <div class="font-bold text-amber-200">先頭との印差2点以上：6,940件</div>
+            <div class="mt-1">1着率 9.9%（通常 11.1%）</div>
+            <div>2着以内 28.2%（通常 28.7%）</div>
+            <div>3着以内 45.0%（通常 41.9%）</div>
+            <div class="text-amber-200 mt-1">直近20%では1着率差がほぼ消失。減点は保留。</div>
+          </div>
+        </div>
+        <div class="text-slate-400 mt-2">通常＝印の逆転・大きな印差のどちらにも該当しない番手。率は番手選手の着順を集計。条件の因果効果を証明するものではなく、今後も全期間と直近データを継続比較します。</div>`;
 
       document.getElementById('polygonDiagnosis').textContent = res.gravityBias < activeBaseline.biasMean
         ? `🌀 基準より重心均衡 (${res.gravityBias} < ${activeBaseline.biasMean}): 力が分散し大波乱の気配！`
@@ -1893,8 +1912,8 @@
     });
 
 
-    const APP_RELEASE_VERSION = '2.0-20261116';
-    const APP_RELEASE_LABEL = '更新版 v2.0 · 2026/11/16';
+    const APP_RELEASE_VERSION = '2.1-20261116';
+    const APP_RELEASE_LABEL = '更新版 v2.1 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
