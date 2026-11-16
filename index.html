@@ -1421,8 +1421,8 @@
         reasons: []
       }]));
 
-      // ライン内で番手の印が先頭を上回る場合は番手へ差分加点。
-      // 先頭の印が2.0以上強い場合は、番手のちぎれ懸念として番手のみ差分減点。
+      // ライン内で番手の印が先頭を上回る場合は、実績検証に基づき番手へ+1.0点。
+      // 先頭の印が2.0以上強い条件は、直近データで1着率差が再現しないため減点保留。
       res.lineSummaryList.forEach(line => {
         if (line.isTanki || line.members.length < 2) return;
         const front = line.members[0];
