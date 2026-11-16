@@ -606,6 +606,24 @@
         </div>
         <div class="text-slate-400 mt-2">着順実績を1着3点・2着2点・3着1点で集計し、◎=5.00に正規化。直近20%でも大枠の順位を確認済み。既存の音楽・重力解析スコアとは独立。</div>
       </div>
+      <div id="fanoMathLab" class="rounded-xl border border-amber-400/35 bg-amber-950/20 p-3 text-[11px] leading-relaxed space-y-2">
+        <div class="font-bold text-amber-200">MATHEMATICAL PATTERN LAB // 1〜7・ファノ平面検証</div>
+        <div id="fanoMathCurrent" class="text-slate-100">現在レースのライン構造を照合します。</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="rounded-lg bg-slate-950/70 p-2">
+            <div class="text-amber-200 font-bold">3連単・10,000円以上</div>
+            <div>該当あり：23.48%（最新20% 22.16%）</div>
+            <div>該当なし：28.77%（最新20% 28.61%）</div>
+          </div>
+          <div class="rounded-lg bg-slate-950/70 p-2">
+            <div class="text-amber-200 font-bold">2連単・2,001円以上</div>
+            <div>該当あり：26.97%（最新20% 24.37%）</div>
+            <div>該当なし：33.47%（最新20% 33.23%）</div>
+          </div>
+        </div>
+        <div class="text-slate-400">全25,477レース（6〜9車立てを含む）で照合。該当あり n=6,282、該当なし n=19,194。ファノ平面の三つ組が同一ライン内にそろう条件。ライン本数・最大ライン長との重なりがあるため、独立した加点・減点ではなく波乱基準の参考値として表示。</div>
+        <div class="text-slate-400">1〜7の総和28・二乗和140、7! = 5040、123−4+5+6+7 = 137は、通常の7車立てでは全車番がそろうと固定値になるため、単独ではレース間の波乱差を判別できません。</div>
+      </div>
       <p class="text-[11px] text-slate-400">※これは既存の印点とライン内の印配置から計算する説明可能な初期スコアです。過去結果から学習した車番別AI点数ではありません。実績検証を通すまでは買い目の自動決定に使いません。</p>
     </section>
 
@@ -1413,6 +1431,30 @@
       return EMPIRICAL_MARK_POINTS[String(mark || '').trim()] ?? 0.5;
     }
 
+    // 1〜7のファノ平面に現れる7つの三つ組。ライン内に3車すべてが存在するかを照合する。
+    const FANO_PLANE_TRIPLES = [
+      [1, 2, 4], [2, 3, 5], [3, 4, 6], [4, 5, 7],
+      [5, 6, 1], [6, 7, 2], [7, 1, 3]
+    ];
+    function calculateFanoPlaneStats(res) {
+      const matches = [];
+      (res.lineSummaryList || []).forEach(line => {
+        if (line.isTanki || !Array.isArray(line.members)) return;
+        const cars = new Set(line.members.map(member => Number(member.car)));
+        FANO_PLANE_TRIPLES.forEach(triple => {
+          if (triple.every(car => cars.has(car))) {
+            matches.push({ line: line.label, triple: [...triple] });
+          }
+        });
+      });
+      return {
+        matches,
+        hasMatch: matches.length > 0,
+        lineSum: (res.entries || []).reduce((sum, entry) => sum + Number(entry.car || 0), 0),
+        squareSum: (res.entries || []).reduce((sum, entry) => sum + Number(entry.car || 0) ** 2, 0)
+      };
+    }
+
     function calculateCarPointScores(res) {
       const byCar = new Map(res.entries.map((entry, idx) => [entry.car, {
         ...entry,
@@ -1517,6 +1559,14 @@
       }).join('');
       document.getElementById('carPointContext').textContent =
         `レース全体の参考指標：不協和度 ${res.dissonance} ／ カオス指数 ${res.chaosIndex} ／ 重心偏り ${res.gravityBias} ／ 下剋上 ${res.coupScore} ／ ちぎれ懸念 ${res.abandonScore}。これらは現段階では車番別の根拠に分解できないため、ランキング点には加算していません。`;
+      const fanoStats = calculateFanoPlaneStats(res);
+      const fanoCurrent = document.getElementById('fanoMathCurrent');
+      if (fanoCurrent) {
+        const matchedText = fanoStats.matches.length
+          ? fanoStats.matches.map(item => `${item.line}：(${item.triple.join(',')})`).join(' ／ ')
+          : '該当する三つ組なし';
+        fanoCurrent.innerHTML = `<span class="text-amber-200 font-bold">${fanoStats.hasMatch ? '該当あり' : '該当なし'}</span> ／ ${matchedText}<br>車番合計 ${fanoStats.lineSum} ／ 二乗和 ${fanoStats.squareSum}`;
+      }
       document.getElementById('carPointEvidence').innerHTML =
         `<div class="font-bold text-emerald-300 mb-2">実績検証：全25,477レース／番手67,174件（2024-07-30〜2026-06-15）</div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1930,8 +1980,8 @@
     });
 
 
-    const APP_RELEASE_VERSION = '2.2-20261116';
-    const APP_RELEASE_LABEL = '更新版 v2.2 · 2026/11/16';
+    const APP_RELEASE_VERSION = '2.3-20261116';
+    const APP_RELEASE_LABEL = '更新版 v2.3 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
