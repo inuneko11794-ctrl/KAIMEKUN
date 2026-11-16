@@ -2049,7 +2049,6 @@
     }
     function ensureRaceTickets(race, force=false) {
       if (!race.autoTickets || force) race.autoTickets = buildAutoTickets(race);
-      if (!race.date) race.date = (race.id && /^\\d{4}-\\d{2}-\\d{2}/.test(race.id)) ? race.id.slice(0,10) : new Date().toISOString().slice(0,10);
       return race.autoTickets;
     }
     function parseFinish(race) {
