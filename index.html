@@ -1757,7 +1757,7 @@
       const parsedLines = parseFormationString(rawLineInput, entries);
       const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, date: new Date().toISOString().slice(0,10), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
       allRaces.push(newRace); persistRaces(); currentRaceIdx = allRaces.length - 1;
-      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
+      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
       renderBuilderRows();
       showToast(`✅ 「${newRace.id}」を追加しました！`);
@@ -1927,7 +1927,7 @@
     document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
-    document.getElementById('randomRaceBtn').addEventListener('click', () => { currentRaceIdx = Math.floor(Math.random() * allRaces.length); renderCurrentRace(); refreshVerticalStockList(); });
+    document.getElementById('randomRaceBtn').addEventListener('click', () => { currentRaceIdx = Math.floor(Math.random() * allRaces.length); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     document.getElementById('resetGravityBtn').addEventListener('click', () => renderCurrentRace());
     document.getElementById('calibrate70Btn').addEventListener('click', () => calibrateToMansha70(false));
     document.getElementById('trainAiBtn').addEventListener('click', () => trainAiModel());
