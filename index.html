@@ -133,7 +133,6 @@
         <div id="betStatsSummary" class="text-xs text-slate-200">結果・配当を登録すると集計します。</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="betStatsRows"></tbody></table></div>
       </div>
-      <p class="text-[11px] text-slate-400">3連単は上位2車を1着候補に固定し、全15点で1着車番がちょうど2種類になるよう生成。過去レースは買い目初回生成時点の順位を保存します。</p>
     </section>
     <!-- ✍️ 縦型1レースずつ連続入力＆MD/テキスト即席診断 -->
     <section id="manualBuilderSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-5">
@@ -823,7 +822,7 @@
             entries.push({ car: parseInt(tableMatch[1], 10), name: tableMatch[2].trim(), rawMark: tableMatch[7].trim() });
           }
         });
-        if (entries.length >= 5) races.push({ id: title, rawFormation, lines: parsedLines, resultOrder: '', payout: null, entries });
+        if (entries.length >= 5) races.push({ id: title, recordedAt: new Date().toISOString(), rawFormation, lines: parsedLines, resultOrder: '', payout: null, entries });
       });
       return races;
     }
@@ -1454,7 +1453,28 @@
       '☆': 0.89, 'T': 0.84, '★': 0.83, '星': 0.44
     };
     function getEmpiricalMarkPoints(mark) {
-      return EMPIRICAL_MARK_POINTS[String(mark || '').trim()] ?? 0.5;
+      const key = String(mark || '').trim();
+      const base = EMPIRICAL_MARK_POINTS[key] ?? 0.5;
+      const learned = getLearnedMarkAdjustment(key);
+      return Math.max(0.1, +(base + learned).toFixed(2));
+    }
+    function getLearnedMarkAdjustment(mark) {
+      if (!Array.isArray(allRaces)) return 0;
+      let total = 0, count = 0, globalTotal = 0, globalCount = 0;
+      allRaces.forEach(r => {
+        const finish = parseFinish(r);
+        if (finish.length < 3 || !r.autoTickets || !Array.isArray(r.autoTickets.predictionSnapshot)) return;
+        r.autoTickets.predictionSnapshot.forEach(p => {
+          const rank = finish.indexOf(Number(p.car));
+          const value = rank === 0 ? 3 : rank === 1 ? 2 : rank === 2 ? 1 : 0;
+          globalTotal += value; globalCount++;
+          if (String(p.mark) === mark) { total += value; count++; }
+        });
+      });
+      if (!count || !globalCount) return 0;
+      const baseline = globalTotal / globalCount;
+      const observed = (total + baseline * 20) / (count + 20);
+      return Math.max(-1.5, Math.min(1.5, (observed - baseline) * 1.25));
     }
 
     // 1〜7のファノ平面に現れる7つの三つ組。ライン内に3車すべてが存在するかを照合する。
@@ -1755,7 +1775,7 @@
       const names = document.querySelectorAll('.b-name'), marks = document.querySelectorAll('.b-mark'), entries = [];
       for (let i = 0; i < count; i++) entries.push({ car: i + 1, name: names[i]?.value.trim() || `選手${i + 1}`, rawMark: marks[i]?.value || '無' });
       const parsedLines = parseFormationString(rawLineInput, entries);
-      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, date: new Date().toISOString().slice(0,10), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
+      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, recordedAt: new Date().toISOString(), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
       allRaces.push(newRace); persistRaces(); currentRaceIdx = allRaces.length - 1;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
@@ -1772,7 +1792,7 @@
       const wp = document.getElementById('lateWinPayoutInput').value.trim();
       race.exactaPayout = ep ? Number(ep) : null;
       race.winPayout = wp ? Number(wp) : null;
-      race.date = race.date || new Date().toISOString().slice(0,10);
+      race.resultRecordedAt = new Date().toISOString();
       persistRaces();
       refreshVerticalStockList(); updateBatchStats(); renderCurrentRace();
       document.getElementById('lateResultOrderInput').value = '';
@@ -2017,7 +2037,8 @@
 
     // AUTO BET MATRIX: deterministic ranking-based tickets and historical performance.
     function buildAutoTickets(race) {
-      const ranked = calculateCarPointScores(analyzeRace(race)).map(x => Number(x.car));
+      const scored = calculateCarPointScores(analyzeRace(race));
+      const ranked = scored.map(x => Number(x.car));
       const cars = ranked.filter((x,i,a) => a.indexOf(x) === i);
       if (cars.length < 3) return { win: [], exacta: [], trifecta: [], ranked: cars };
       const win = cars.slice(0,4);
@@ -2045,7 +2066,7 @@
         if (a.length && selected.length < 15) selected.push(a.shift());
         if (b.length && selected.length < 15) selected.push(b.shift());
       }
-      return { win, exacta, trifecta: selected, ranked: cars };
+      return { win, exacta, trifecta: selected, ranked: cars, predictionSnapshot: scored.map(x => ({car:x.car, mark:x.mark, basePoints:x.basePoints, adjustment:x.adjustment})) };
     }
     function ensureRaceTickets(race, force=false) {
       if (!race.autoTickets || force) race.autoTickets = buildAutoTickets(race);
@@ -2074,7 +2095,7 @@
       const eligible = allRaces.filter(r => {
         const finish = parseFinish(r);
         if (finish.length < 3) return false;
-        const d = new Date((r.date || '').slice(0,10) + 'T23:59:59');
+        const d = new Date(r.recordedAt || '');
         return !cutoff || (Number.isFinite(d.getTime()) && d >= cutoff);
       });
       const configs = [
