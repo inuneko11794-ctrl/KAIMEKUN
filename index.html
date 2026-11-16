@@ -722,44 +722,45 @@
         lineCounter++;
         const rawMarks = carsInGrp.map(c => normalizeRawMark(carToEntry[c].rawMark ?? carToEntry[c].mark));
         const convMarks = [...rawMarks];
+        const convertedFor = { '◎': '⑳', '◯': '●', '△': '▲', '✕': '✖' };
+        const claimedUnmarked = new Set();
+        const baseIndices = rawMarks.map((mark, idx) => convertedFor[mark] ? idx : -1).filter(idx => idx >= 0);
 
-        // 無印の連続は☆・★・星。単独の無印は基準印の隣に1つだけ変換印を付ける。
-        // 基準印の反対側に対応する変換印が既にある場合、追加の無印は☆にする。
+        // 変換印は基準印の左隣を最優先。左が無印なら左を変換し、右側など残りは☆。
+        // 左隣で変換できなかった基準印だけ、右隣の無印を変換する。
+        baseIndices.forEach(idx => {
+          const leftIdx = idx - 1;
+          if (leftIdx >= 0 && rawMarks[leftIdx] === '無' && !claimedUnmarked.has(leftIdx)) {
+            convMarks[leftIdx] = convertedFor[rawMarks[idx]];
+            claimedUnmarked.add(leftIdx);
+          }
+        });
+        baseIndices.forEach(idx => {
+          const rightIdx = idx + 1;
+          if (rightIdx < rawMarks.length && rawMarks[rightIdx] === '無' && !claimedUnmarked.has(rightIdx)) {
+            convMarks[rightIdx] = convertedFor[rawMarks[idx]];
+            claimedUnmarked.add(rightIdx);
+          }
+        });
+
+        // 変換に使われなかった無印は、変換印に続くものなら☆。
+        // 基準印と無関係な連続無印は従来どおり☆・★・星。
         let i = 0;
         while (i < rawMarks.length) {
-          if (rawMarks[i] === '無') {
-            let runLen = 1;
-            while (i + runLen < rawMarks.length && rawMarks[i + runLen] === '無') runLen++;
-            if (runLen >= 3) {
-              const seq = ['☆', '★', '星'];
-              for (let k = 0; k < runLen; k++) convMarks[i + k] = seq[k] || '星';
-            } else if (runLen === 2) {
-              convMarks[i] = '☆'; convMarks[i + 1] = '★';
-            }
-            i += runLen;
-          } else i++;
-        }
-
-        const convertedFor = { '◎': '⑳', '◯': '●', '△': '▲', '✕': '✖' };
-        const baseForConverted = { '⑳': '◎', '●': '◯', '▲': '△', '✖': '✕' };
-        for (let idx = 0; idx < rawMarks.length; idx++) {
-          if (rawMarks[idx] !== '無' || convMarks[idx] !== '無') continue;
-          const left = idx > 0 ? rawMarks[idx - 1] : '無';
-          const right = idx < rawMarks.length - 1 ? rawMarks[idx + 1] : '無';
-          const refMark = left !== '無' ? left : right;
-          if (convertedFor[refMark]) {
-            const anchorIdx = left !== '無' ? idx - 1 : idx + 1;
-            const otherIdx = anchorIdx === idx - 1 ? anchorIdx - 1 : anchorIdx + 1;
-            const alreadyUsed = otherIdx >= 0 && otherIdx < rawMarks.length &&
-              (convMarks[otherIdx] === convertedFor[refMark] ||
-               rawMarks[otherIdx] === convertedFor[refMark] ||
-               baseForConverted[rawMarks[otherIdx]] === refMark);
-            convMarks[idx] = alreadyUsed ? '☆' : convertedFor[refMark];
-          } else if (baseForConverted[refMark]) {
-            // 変換済み印に隣接する追加の無印は☆扱い
-            convMarks[idx] = '☆';
+          if (rawMarks[i] !== '無' || claimedUnmarked.has(i)) { i++; continue; }
+          let run = [];
+          while (i < rawMarks.length && rawMarks[i] === '無' && !claimedUnmarked.has(i)) {
+            run.push(i++);
+          }
+          const touchesConverted = run.some(idx =>
+            (idx > 0 && claimedUnmarked.has(idx - 1)) ||
+            (idx + 1 < rawMarks.length && claimedUnmarked.has(idx + 1))
+          );
+          if (touchesConverted) {
+            run.forEach(idx => { convMarks[idx] = '☆'; });
           } else {
-            convMarks[idx] = '☆';
+            const seq = ['☆', '★', '星'];
+            run.forEach((idx, k) => { convMarks[idx] = seq[k] || '星'; });
           }
         }
 
