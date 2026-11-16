@@ -577,6 +577,28 @@
     </section>
   </div>
 
+    <!-- 車番別ポイント評価 -->
+    <section class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <span class="text-xs font-mono-code text-amber-300 font-bold">CAR POINT MATRIX // 車番別加減点</span>
+          <h2 class="text-lg font-bold text-white mt-1">車番別ポイントランキング（初期ルール版）</h2>
+          <p class="text-xs text-slate-300 mt-1">変換後印の基礎点に、ライン内の番手逆転・先頭との印差を反映。波乱度などレース全体の指標は、車番へ無理に配分しません。</p>
+        </div>
+        <div id="carPointTopSummary" class="text-sm font-mono-code text-amber-200">評価待機中</div>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs font-mono-code">
+          <thead class="bg-slate-900 text-slate-300">
+            <tr><th class="p-2">順位</th><th class="p-2">車番</th><th class="p-2">変換印</th><th class="p-2">基礎点</th><th class="p-2">加減点</th><th class="p-2">合計</th><th class="p-2">根拠</th></tr>
+          </thead>
+          <tbody id="carPointTableBody" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+      <div id="carPointContext" class="text-[11px] text-slate-300 leading-relaxed"></div>
+      <p class="text-[11px] text-slate-400">※これは既存の印点とライン内の印配置から計算する説明可能な初期スコアです。過去結果から学習した車番別AI点数ではありません。実績検証を通すまでは買い目の自動決定に使いません。</p>
+    </section>
+
     <script>
     const EMBEDDED_DEFAULT_BASELINE = {
       sourceName: '2024-08 全レース検証済・万車券70%キャリブレーションモデル',
@@ -1372,6 +1394,42 @@
       setTimeout(() => box.classList.add('hidden'), 4200);
     }
 
+    function calculateCarPointScores(res) {
+      const byCar = new Map(res.entries.map((entry, idx) => [entry.car, {
+        ...entry,
+        basePoints: res.scores[idx],
+        adjustment: 0,
+        reasons: []
+      }]));
+
+      // ライン内で番手の印が先頭を上回る場合は番手へ差分加点。
+      // 先頭の印が2.0以上強い場合は、番手のちぎれ懸念として番手のみ差分減点。
+      res.lineSummaryList.forEach(line => {
+        if (line.isTanki || line.members.length < 2) return;
+        const front = line.members[0];
+        const second = line.members[1];
+        const frontScore = getScore(front.convertedMark);
+        const secondScore = getScore(second.convertedMark);
+        const secondRow = byCar.get(second.car);
+        if (!secondRow) return;
+
+        if (secondScore > frontScore) {
+          const diff = +(secondScore - frontScore).toFixed(1);
+          secondRow.adjustment += diff;
+          secondRow.reasons.push(`番手逆転 +${diff.toFixed(1)}`);
+        } else if (frontScore - secondScore >= 2.0) {
+          const diff = +(frontScore - secondScore).toFixed(1);
+          secondRow.adjustment -= diff;
+          secondRow.reasons.push(`先頭との印差 -${diff.toFixed(1)}`);
+        }
+      });
+
+      return [...byCar.values()].map(row => ({
+        ...row,
+        totalPoints: +(row.basePoints + row.adjustment).toFixed(1)
+      })).sort((a, b) => b.totalPoints - a.totalPoints || a.car - b.car);
+    }
+
     function renderCurrentRace() {
       const race = allRaces[currentRaceIdx];
       const res = analyzeRace(race);
@@ -1421,6 +1479,26 @@
         const lineBadge = e.isTanki ? `<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[11px]">単騎</span>` : `<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[11px]">${e.lineLabel}</span>`;
         return `<tr><td class="py-1.5 px-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md font-bold shadow" style="background:${bgCol}; color:${txtCol}">${e.car}</span></td><td class="py-1.5 px-2 text-slate-200">${e.name || '選手'}</td><td class="py-1.5 px-2">${lineBadge}</td><td class="py-1.5 px-2 text-slate-400">${e.rawMark}</td><td class="py-1.5 px-2 font-extrabold text-amber-300 text-sm">${e.mark}</td><td class="py-1.5 px-2 text-cyan-300">${res.scores[idx].toFixed(1)} pt</td></tr>`;
       }).join('');
+
+      const carPointRows = calculateCarPointScores(res);
+      document.getElementById('carPointTopSummary').textContent = carPointRows.length
+        ? `先頭候補: ${carPointRows.slice(0, 3).map(r => `${r.car}番 ${r.totalPoints.toFixed(1)}pt`).join(' / ')}`
+        : '評価対象なし';
+      document.getElementById('carPointTableBody').innerHTML = carPointRows.map((r, idx) => {
+        const bgCol = CAR_COLORS[(r.car - 1) % 9], txtCol = [1, 5].includes(r.car) ? '#0f172a' : '#ffffff';
+        const adjustClass = r.adjustment > 0 ? 'text-emerald-300' : r.adjustment < 0 ? 'text-rose-300' : 'text-slate-300';
+        return `<tr>
+          <td class="p-2 text-slate-300">${idx + 1}</td>
+          <td class="p-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded font-bold" style="background:${bgCol};color:${txtCol}">${r.car}</span></td>
+          <td class="p-2 text-amber-200">${r.mark}</td>
+          <td class="p-2 text-slate-200">${r.basePoints.toFixed(1)}</td>
+          <td class="p-2 ${adjustClass}">${r.adjustment > 0 ? '+' : ''}${r.adjustment.toFixed(1)}</td>
+          <td class="p-2 font-bold text-amber-300">${r.totalPoints.toFixed(1)}</td>
+          <td class="p-2 text-slate-300">${r.reasons.length ? r.reasons.join(' / ') : '印基礎点のみ'}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('carPointContext').textContent =
+        `レース全体の参考指標：不協和度 ${res.dissonance} ／ カオス指数 ${res.chaosIndex} ／ 重心偏り ${res.gravityBias} ／ 下剋上 ${res.coupScore} ／ ちぎれ懸念 ${res.abandonScore}。これらは現段階では車番別の根拠に分解できないため、ランキング点には加算していません。`;
 
       document.getElementById('polygonDiagnosis').textContent = res.gravityBias < activeBaseline.biasMean
         ? `🌀 基準より重心均衡 (${res.gravityBias} < ${activeBaseline.biasMean}): 力が分散し大波乱の気配！`
@@ -1815,8 +1893,8 @@
     });
 
 
-    const APP_RELEASE_VERSION = '1.9-20261116';
-    const APP_RELEASE_LABEL = '更新版 v1.9 · 2026/11/16';
+    const APP_RELEASE_VERSION = '2.0-20261116';
+    const APP_RELEASE_LABEL = '更新版 v2.0 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
