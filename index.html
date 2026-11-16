@@ -597,6 +597,15 @@
       </div>
       <div id="carPointContext" class="text-[11px] text-slate-300 leading-relaxed"></div>
       <div id="carPointEvidence" class="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-[11px] leading-relaxed space-y-2"></div>
+      <div id="carMarkCalibration" class="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-3 text-[11px] leading-relaxed">
+        <div class="font-bold text-cyan-200 mb-2">印別・実績基礎点（全25,477レース）</div>
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 font-mono-code">
+          <span>◎ 5.00</span><span>◯ 3.75</span><span>△ 2.44</span><span>✕ 1.86</span>
+          <span>⑳ 1.16</span><span>● 1.11</span><span>▲ 1.05</span><span>✖ 1.00</span>
+          <span>☆ 0.89</span><span>T 0.84</span><span>★ 0.83</span><span>星 0.44</span>
+        </div>
+        <div class="text-slate-400 mt-2">着順実績を1着3点・2着2点・3着1点で集計し、◎=5.00に正規化。直近20%でも大枠の順位を確認済み。既存の音楽・重力解析スコアとは独立。</div>
+      </div>
       <p class="text-[11px] text-slate-400">※これは既存の印点とライン内の印配置から計算する説明可能な初期スコアです。過去結果から学習した車番別AI点数ではありません。実績検証を通すまでは買い目の自動決定に使いません。</p>
     </section>
 
@@ -1395,10 +1404,19 @@
       setTimeout(() => box.classList.add('hidden'), 4200);
     }
 
+    const EMPIRICAL_MARK_POINTS = {
+      '◎': 5.00, '◯': 3.75, '△': 2.44, '✕': 1.86,
+      '⑳': 1.16, '●': 1.11, '▲': 1.05, '✖': 1.00,
+      '☆': 0.89, 'T': 0.84, '★': 0.83, '星': 0.44
+    };
+    function getEmpiricalMarkPoints(mark) {
+      return EMPIRICAL_MARK_POINTS[String(mark || '').trim()] ?? 0.5;
+    }
+
     function calculateCarPointScores(res) {
       const byCar = new Map(res.entries.map((entry, idx) => [entry.car, {
         ...entry,
-        basePoints: res.scores[idx],
+        basePoints: getEmpiricalMarkPoints(entry.mark),
         adjustment: 0,
         reasons: []
       }]));
@@ -1912,8 +1930,8 @@
     });
 
 
-    const APP_RELEASE_VERSION = '2.1-20261116';
-    const APP_RELEASE_LABEL = '更新版 v2.1 · 2026/11/16';
+    const APP_RELEASE_VERSION = '2.2-20261116';
+    const APP_RELEASE_LABEL = '更新版 v2.2 · 2026/11/16';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
