@@ -199,6 +199,7 @@
           <button id="exportBackupJsonBtn" type="button" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-xs text-cyan-200 font-mono-code">📦 全記録バックアップ</button>
           <button id="importBackupJsonBtn" type="button" class="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/35 border border-purple-400/40 text-xs text-purple-200 font-mono-code">📂 バックアップ読込</button>
           <input id="jsonBackupInput" type="file" accept=".json,application/json" class="hidden" />
+          <a id="codeVersionHistoryLink" href="https://github.com/inuneko11794-ctrl/KAIMEKUN/commits/main/index.html" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-xs text-amber-200 font-mono-code">🕘 コード履歴・旧版確認</a>
           <button id="exportCustomCsvBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs text-cyan-300 font-mono-code">
             📥 CSV保存
           </button>
@@ -206,6 +207,12 @@
             閉じる ✕
           </button>
         </div>
+      </div>
+      <div class="rounded-lg border border-amber-400/25 bg-amber-500/5 px-3 py-2 text-[11px] leading-relaxed text-slate-300">
+        <span class="font-bold text-amber-200">コードの旧版復元：</span>
+        「コード履歴・旧版確認」から過去の更新を選び、その時点の index.html を確認できます。
+        コード変更はGitHubのコミット履歴に保存されます。旧版へ戻す場合はGitHub側で復元してください。
+        レース記録はコードとは別管理です。復元前に「全記録バックアップ」でJSONを保存してください。
       </div>
 
       <!-- MD読込＆コピペ即席診断ボックス -->
