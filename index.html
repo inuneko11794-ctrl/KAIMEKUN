@@ -601,7 +601,7 @@
   </div>
 
     <!-- 車番別ポイント評価 -->
-    <section class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-3">
+    <section class="hidden glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <span class="text-xs font-mono-code text-amber-300 font-bold">CAR POINT MATRIX // 車番別加減点</span>
@@ -1870,7 +1870,7 @@
     });
 
     document.getElementById('exportBackupJsonBtn').addEventListener('click', () => {
-      const backup = { app: 'KAIMEKUN', formatVersion: 1, exportedAt: new Date().toISOString(), races: allRaces };
+      const backup = { app: 'KAIMEKUN', formatVersion: 2, exportedAt: new Date().toISOString(), adaptiveReasonPoints, races: allRaces };
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob), a = document.createElement('a');
       a.href = url; a.download = `KAIMEKUN_backup_${new Date().toISOString().slice(0,10)}.json`;
@@ -1896,6 +1896,10 @@
           }
           if (!confirm(`${imported.length.toLocaleString()}レースを読み込みます。現在の記録は置き換わります。続行しますか？`)) return;
           allRaces = imported;
+          if (parsed && parsed.adaptiveReasonPoints) {
+            adaptiveReasonPoints = Object.fromEntries(ADAPTIVE_FEATURES.map(k=>[k,Math.max(-1.5,Math.min(1.5,Number(parsed.adaptiveReasonPoints[k])||0))]));
+            saveAdaptivePoints();
+          }
           currentRaceIdx = 0;
           if (!persistRaces()) throw new Error('端末への保存に失敗しました');
           populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
