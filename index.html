@@ -125,7 +125,7 @@
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 4点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 4点</div><div id="autoExactaPicks" class="font-mono-code text-sm">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 4点</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 15点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div></div>
       </div>
       <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-3">
@@ -382,10 +382,7 @@
         </div>
       </div>
       <div id="convertedLinesVisual" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3"></div>
-      <div class="mt-3 text-[11px] font-mono-code text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
-        <span>ルール: 左車番優先 / 単騎=T(ライン除外)</span>
-        <span>◎前後無印→⑳</span><span>◯前後無印→●</span><span>△前後無印→▲</span><span>✕前後無印→✖</span><span>変換印使用済みの反対側の無印→☆ / 無印2連→☆★ / 無印3連→☆★星</span>
-      </div>
+
     </section>
 
 
@@ -608,8 +605,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <span class="text-xs font-mono-code text-amber-300 font-bold">CAR POINT MATRIX // 車番別加減点</span>
-          <h2 class="text-lg font-bold text-white mt-1">車番別ポイントランキング（初期ルール版）</h2>
-          <p class="text-xs text-slate-300 mt-1">変換後印の基礎点に、ライン内の番手逆転・先頭との印差を反映。波乱度などレース全体の指標は、車番へ無理に配分しません。</p>
+          <h2 class="text-lg font-bold text-white mt-1">車番別ポイントランキング</h2>
         </div>
         <div id="carPointTopSummary" class="text-sm font-mono-code text-amber-200">評価待機中</div>
       </div>
@@ -1542,103 +1538,42 @@
       };
     }
 
-    function calculateCarPointScores(res) {
-      const byCar = new Map();
-      (res.lineSummaryList || []).forEach(line => {
-        line.members.forEach((member, index) => {
-          byCar.set(Number(member.car), { line, index });
-        });
-      });
-
-      const cfg = FEATURE_POINT_BASELINE.rider;
-      return res.entries.map(entry => {
-        const info = byCar.get(Number(entry.car));
-        const line = info?.line;
-        const position = info?.index ?? 0;
-        const isTanki = !line || !!line.isTanki;
-        const role = isTanki ? 'tanki' : position === 0 ? 'front' : position === 1 ? 'second' : 'rear';
-        const lengthKey = isTanki ? 'tanki' : line.members.length >= 4 ? '4+' : String(line.members.length);
-        const secondMarkHigher = !isTanki && position === 1 &&
-          getScore(line.members[1].convertedMark) > getScore(line.members[0].convertedMark);
-        const markPoints = getEmpiricalMarkPoints(entry.mark);
-        const featurePoints = {
-          mark: markPoints,
-          lineRole: Number(cfg.lineRole[role] || 0) * cfg.lineRole.scale,
-          lineLength: Number(cfg.lineLength[lengthKey] || 0) * cfg.lineLength.scale,
-          markRelation: Number(secondMarkHigher ? cfg.markRelation.secondMarkHigher : cfg.markRelation.normal) * cfg.markRelation.scale
-        };
-        const adjustment = featurePoints.lineRole + featurePoints.lineLength + featurePoints.markRelation;
-        const reasons = [];
-        if (role !== 'front') reasons.push('ライン位置');
-        if (secondMarkHigher) reasons.push('番手の印関係');
-        return {
-          ...entry,
-          basePoints: markPoints,
-          adjustment: +adjustment.toFixed(3),
-          featurePoints,
-          reasons,
-          totalPoints: +(markPoints + adjustment).toFixed(3)
-        };
-      }).sort((a, b) => b.totalPoints - a.totalPoints || a.car - b.car);
+    const ADAPTIVE_POINT_KEY = 'kaimekun_reason_points_v1';
+    const ADAPTIVE_FEATURES = ['mark','lineRole','markRelation'];
+    const ADAPTIVE_REASON_LABELS = {mark:'印配置',lineRole:'ライン内位置',markRelation:'番手の印関係'};
+    function loadAdaptivePoints() {
+      try {
+        const saved=JSON.parse(localStorage.getItem(ADAPTIVE_POINT_KEY)||'{}');
+        return Object.fromEntries(ADAPTIVE_FEATURES.map(k=>[k,Math.max(-1.5,Math.min(1.5,Number(saved[k])||0))]));
+      } catch(e) { return {mark:0,lineRole:0,markRelation:0}; }
     }
-
-    // 1〜7のファノ平面に現れる7つの三つ組。ライン内に3車すべてが存在するかを照合する。
-    const FANO_PLANE_TRIPLES = [
-      [1, 2, 4], [2, 3, 5], [3, 4, 6], [4, 5, 7],
-      [5, 6, 1], [6, 7, 2], [7, 1, 3]
-    ];
-    function calculateFanoPlaneStats(res) {
-      const matches = [];
-      (res.lineSummaryList || []).forEach(line => {
-        if (line.isTanki || !Array.isArray(line.members)) return;
-        const cars = new Set(line.members.map(member => Number(member.car)));
-        FANO_PLANE_TRIPLES.forEach(triple => {
-          if (triple.every(car => cars.has(car))) {
-            matches.push({ line: line.label, triple: [...triple] });
-          }
+    let adaptiveReasonPoints=loadAdaptivePoints();
+    function saveAdaptivePoints(){try{localStorage.setItem(ADAPTIVE_POINT_KEY,JSON.stringify(adaptiveReasonPoints));}catch(e){}}
+    function calculateCarPointScores(res,options={}) {
+      const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints;
+      const byCar=new Map(res.entries.map(entry=>{
+        const markLearned=disabled==='mark'?0:Number(adaptive.mark||0);
+        return [Number(entry.car),{...entry,basePoints:getEmpiricalMarkPoints(entry.mark),adjustment:0,reasons:[],
+          featureContributions:{mark:markLearned,lineRole:0,markRelation:0}}];
+      }));
+      res.lineSummaryList.forEach(line=>{
+        line.members.forEach((member,index)=>{
+          const row=byCar.get(Number(member.car));if(!row)return;
+          const roleValue=line.isTanki?-0.02:index===0?0.02:index===1?0.04:-0.02;
+          row.featureContributions.lineRole=disabled==='lineRole'?0:roleValue+Number(adaptive.lineRole||0);
+          if(index>0||line.isTanki)row.reasons.push(line.isTanki?'単騎':'ライン内位置');
         });
+        if(line.isTanki||line.members.length<2)return;
+        const front=line.members[0],second=line.members[1],row=byCar.get(Number(second.car));if(!row)return;
+        const relationBase=getScore(second.convertedMark)>getScore(front.convertedMark)?1.0:0;
+        row.featureContributions.markRelation=disabled==='markRelation'?0:relationBase+Number(adaptive.markRelation||0);
+        if(relationBase>0)row.reasons.push('番手の印関係');
       });
-      return {
-        matches,
-        hasMatch: matches.length > 0,
-        lineSum: (res.entries || []).reduce((sum, entry) => sum + Number(entry.car || 0), 0),
-        squareSum: (res.entries || []).reduce((sum, entry) => sum + Number(entry.car || 0) ** 2, 0)
-      };
-    }
-
-    function calculateCarPointScores(res) {
-      const byCar = new Map(res.entries.map((entry, idx) => [entry.car, {
-        ...entry,
-        basePoints: getEmpiricalMarkPoints(entry.mark),
-        adjustment: 0,
-        reasons: []
-      }]));
-
-      // ライン内で番手の印が先頭を上回る場合は、実績検証に基づき番手へ+1.0点。
-      // 先頭の印が2.0以上強い条件は、直近データで1着率差が再現しないため減点保留。
-      res.lineSummaryList.forEach(line => {
-        if (line.isTanki || line.members.length < 2) return;
-        const front = line.members[0];
-        const second = line.members[1];
-        const frontScore = getScore(front.convertedMark);
-        const secondScore = getScore(second.convertedMark);
-        const secondRow = byCar.get(second.car);
-        if (!secondRow) return;
-
-        if (secondScore > frontScore) {
-          // 全25,477レース検証で番手の1着率上昇が直近20%でも再現したため、暫定+1.0点。
-          secondRow.adjustment += 1.0;
-          secondRow.reasons.push('番手逆転 +1.0（実績検証）');
-        } else if (frontScore - secondScore >= 2.0) {
-          // 減点傾向は全期間で小さく、直近20%で再現しなかったため点数には反映せず記録のみ。
-          secondRow.reasons.push('先頭との印差大（減点保留）');
-        }
-      });
-
-      return [...byCar.values()].map(row => ({
-        ...row,
-        totalPoints: +(row.basePoints + row.adjustment).toFixed(1)
-      })).sort((a, b) => b.totalPoints - a.totalPoints || a.car - b.car);
+      return [...byCar.values()].map(row=>{
+        row.adjustment=+ADAPTIVE_FEATURES.reduce((sum,k)=>sum+Number(row.featureContributions[k]||0),0).toFixed(3);
+        row.totalPoints=+(row.basePoints+row.adjustment).toFixed(3);
+        return row;
+      }).sort((a,b)=>b.totalPoints-a.totalPoints||a.car-b.car);
     }
 
     function renderCurrentRace() {
@@ -1901,6 +1836,7 @@
       race.exactaPayout = ep ? Number(ep) : null;
       race.winPayout = wp ? Number(wp) : null;
       race.resultRecordedAt = new Date().toISOString();
+      learnAdaptiveReasonPoints(race);
       persistRaces();
       refreshVerticalStockList(); updateBatchStats(); renderCurrentRace();
       document.getElementById('lateResultOrderInput').value = '';
@@ -2144,52 +2080,48 @@
 
 
     // AUTO BET MATRIX: CSV基準ポイントを使った予想スナップショット。
-    function buildAutoTickets(race) {
-      const res = analyzeRace(race);
-      const scored = calculateCarPointScores(res);
-      const raceFeaturePoints = calculateRaceFeaturePoints(res);
-      const ranked = scored.map(x => Number(x.car));
-      const cars = ranked.filter((x,i,a) => a.indexOf(x) === i);
-      const generatedAt = new Date().toISOString();
-      const generatedAfterResult = parseFinish(race).length >= 3 || !!race.resultRecordedAt;
-      if (cars.length < 3) return {
-        win: [], exacta: [], trifecta: [], ranked: cars,
-        featureBaselineVersion: FEATURE_POINT_BASELINE.version,
-        generatedAt, generatedAfterResult, raceFeaturePoints
+    function buildAutoTickets(race,options={}) {
+      const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints};
+      const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
+      const ranked=scored.map(x=>Number(x.car)),cars=ranked.filter((x,i,a)=>a.indexOf(x)===i);
+      const generatedAt=new Date().toISOString(),generatedAfterResult=parseFinish(race).length>=3||!!race.resultRecordedAt;
+      const reasonFor=ticket=>{
+        const sums={mark:0,lineRole:0,markRelation:0};
+        ticket.forEach(car=>{const row=scored.find(x=>Number(x.car)===Number(car));if(row)ADAPTIVE_FEATURES.forEach(k=>sums[k]+=Number(row.featureContributions[k]||0));});
+        const top=ADAPTIVE_FEATURES.filter(k=>sums[k]>0.001).sort((a,b)=>sums[b]-sums[a]).slice(0,2);
+        return top.length?top.map(k=>ADAPTIVE_REASON_LABELS[k]).join('・'):'印配置・ライン構成';
       };
-      const win = cars.slice(0,4);
-      const exacta = [];
-      for (const first of cars.slice(0,2)) {
-        const seconds = cars.filter(second => second !== first).slice(0,2);
-        seconds.forEach(second => exacta.push([first,second]));
-      }
-      const firsts = cars.slice(0,2);
-      const trifecta = [];
-      firsts.forEach(first => {
-        const others = cars.filter(c => c !== first);
-        for (let i=0; i<others.length; i++) {
-          for (let j=0; j<others.length; j++) {
-            if (i === j) continue;
-            trifecta.push([first, others[i], others[j]]);
-          }
-        }
+      if(cars.length<3)return {win:[],exacta:[],trifecta:[],ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
+      const win=cars.slice(0,4),exacta=[];
+      for(const first of cars.slice(0,2))cars.filter(second=>second!==first).slice(0,2).forEach(second=>exacta.push([first,second]));
+      const firsts=cars.slice(0,2),allTrifecta=[];
+      firsts.forEach(first=>{const others=cars.filter(c=>c!==first);for(let i=0;i<others.length;i++)for(let j=0;j<others.length;j++)if(i!==j)allTrifecta.push([first,others[i],others[j]]);});
+      const selected=[],a=allTrifecta.filter(t=>t[0]===firsts[0]),b=allTrifecta.filter(t=>t[0]===firsts[1]);
+      while(selected.length<15&&(a.length||b.length)){if(a.length&&selected.length<15)selected.push(a.shift());if(b.length&&selected.length<15)selected.push(b.shift());}
+      const withReasons=arr=>arr.map(ticket=>({ticket:Array.isArray(ticket)?ticket.join('-'):String(ticket),reason:reasonFor(Array.isArray(ticket)?ticket:[ticket])}));
+      return {win,exacta,trifecta:selected,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
+        ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
+        predictionSnapshot:scored.map(x=>({car:x.car,mark:x.mark,basePoints:x.basePoints,adjustment:x.adjustment,featureContributions:x.featureContributions,reasons:x.reasons,totalPoints:x.totalPoints}))};
+    }
+    function ticketContains(list,target){return (list||[]).some(t=>Array.isArray(t)&&t.length===target.length&&t.every((v,i)=>Number(v)===Number(target[i])));}
+    function learnAdaptiveReasonPoints(race) {
+      const saved=race.autoTickets,finish=parseFinish(race);
+      if(!saved||!saved.generatedAt||saved.generatedAfterResult||saved.learningAppliedAt||finish.length<3)return false;
+      const generated=new Date(saved.generatedAt),resultTime=new Date(race.resultRecordedAt||'');
+      if(!Number.isFinite(generated.getTime())||!Number.isFinite(resultTime.getTime())||generated>resultTime)return false;
+      const targets=[{key:'exacta',target:finish.slice(0,2)},{key:'trifecta',target:finish.slice(0,3)}];
+      const baselineHits=targets.filter(x=>ticketContains(saved[x.key],x.target)).length,changes={};
+      ADAPTIVE_FEATURES.forEach(feature=>{
+        const without=buildAutoTickets(race,{disabledFeature:feature,adaptiveSnapshot:saved.adaptivePointSnapshot||{...adaptiveReasonPoints}});
+        const withoutHits=targets.filter(x=>ticketContains(without[x.key],x.target)).length;
+        const delta=baselineHits-withoutHits,change=delta===0?0:delta>0?0.05:-0.05;
+        changes[feature]=change;
+        adaptiveReasonPoints[feature]=Math.max(-1.5,Math.min(1.5,Number(adaptiveReasonPoints[feature]||0)+change));
       });
-      const selected = [];
-      let a = trifecta.filter(t => t[0] === firsts[0]);
-      let b = trifecta.filter(t => t[0] === firsts[1]);
-      while (selected.length < 15 && (a.length || b.length)) {
-        if (a.length && selected.length < 15) selected.push(a.shift());
-        if (b.length && selected.length < 15) selected.push(b.shift());
-      }
-      return {
-        win, exacta, trifecta: selected, ranked: cars,
-        featureBaselineVersion: FEATURE_POINT_BASELINE.version,
-        generatedAt, generatedAfterResult, raceFeaturePoints,
-        predictionSnapshot: scored.map(x => ({
-          car:x.car, mark:x.mark, basePoints:x.basePoints, adjustment:x.adjustment,
-          featurePoints:x.featurePoints, totalPoints:x.totalPoints
-        }))
-      };
+      race.autoTickets.learningAppliedAt=new Date().toISOString();
+      race.autoTickets.learningChanges=changes;
+      saveAdaptivePoints();
+      return true;
     }
     function ensureRaceTickets(race, force=false) {
       const resultKnown = parseFinish(race).length >= 3 || !!race.resultRecordedAt;
@@ -2210,10 +2142,11 @@
       const tickets = ensureRaceTickets(race);
       if (tickets.generatedAt && (!previousVersion || (!tickets.generatedAfterResult && previousVersion !== tickets.featureBaselineVersion))) persistRaces();
       const show = (arr, n) => arr.map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　') || '--';
-      document.getElementById('autoWinPicks').textContent = show(tickets.win, 4);
-      document.getElementById('autoExactaPicks').textContent = show(tickets.exacta, 4);
-      document.getElementById('autoTrifectaPicks').innerHTML = tickets.trifecta.map(t => '<div class="py-0.5">'+t.join('-')+'</div>').join('');
-      document.getElementById('autoFirstCandidates').textContent = '1着候補: ' + [...new Set(tickets.trifecta.map(t=>t[0]))].join('・') + '番';
+      const renderReasons=(rows,fallback)=>rows?.length?rows.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+x.ticket+'</div><div class="text-[10px] text-cyan-300">理由: '+x.reason+'</div></div>').join(''):fallback;
+      document.getElementById('autoWinPicks').innerHTML=tickets.winReasons?.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+x.ticket+'</div><div class="text-[10px] text-cyan-300">理由: '+x.reason+'</div></div>').join('')||show(tickets.win,4);
+      document.getElementById('autoExactaPicks').innerHTML=renderReasons(tickets.exactaReasons,show(tickets.exacta,4));
+      document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
+      document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
       renderBetStats();
     }
     function renderBetStats() {
@@ -2261,8 +2194,8 @@
       renderBetStats();
     });
 
-    const APP_RELEASE_VERSION = '2.5-20261117';
-    const APP_RELEASE_LABEL = '更新版 v2.5 · 2026/11/17';
+    const APP_RELEASE_VERSION = '2.6-20261117';
+    const APP_RELEASE_LABEL = '更新版 v2.6 · 2026/11/17';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
