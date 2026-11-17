@@ -137,6 +137,42 @@
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="betStatsRows"></tbody></table></div>
       </div>
     </section>
+
+    <!-- 洛書・九宮図 独立判定ラボ -->
+    <section id="rakushoJudgeLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs font-mono-code text-amber-300 font-bold">RAKUSHO × KEIRIN MARK MATRIX</div>
+          <h2 class="text-lg font-bold">洛書・九宮図 買い目判定</h2>
+          <p class="text-xs text-slate-300 mt-1">独自変換印・正位盤面・左90度回転・全12フィルターを独立判定します。既存の予測ポイントや自動買い目には影響しません。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label class="text-xs text-slate-300">戦型
+          <select id="rakushoRaceType" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+            <option value="3">三分戦</option><option value="2">二分戦</option>
+          </select>
+        </label>
+        <label class="text-xs text-slate-300">ライン並び
+          <input id="rakushoLines" type="text" value="2-4-6 / 3-1 / 7-5" placeholder="例：2-4-6 / 3-1 / 7-5" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono-code">
+        </label>
+        <label class="text-xs text-slate-300 md:col-span-2">基本印（車番と印を入力）
+          <input id="rakushoMarks" type="text" value="◎1 ◯3 △2 ✕4" placeholder="例：◎1 ◯3 △2 ✕4" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono-code">
+          <span class="block mt-1 text-[11px] text-slate-400">入力例：◎1 ◯3 △2 ✕4。基本印のない車番はライン配置に従って変換します。</span>
+        </label>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="rakushoJudgeBtn" type="button" class="px-4 py-2 rounded-lg bg-amber-400/20 border border-amber-300/50 text-amber-100 text-sm font-bold">洛書判定を実行</button>
+        <button id="rakushoClearBtn" type="button" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 text-slate-200 text-sm">入力をクリア</button>
+      </div>
+      <div id="rakushoError" class="hidden text-sm text-rose-300"></div>
+      <div id="rakushoGridOutput" class="space-y-3"></div>
+      <div id="rakushoPickOutput" class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-2">
+        <div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div>
+        <div class="text-xs text-slate-300">ラインと基本印を入力して判定してください。</div>
+      </div>
+    </section>
+
     <!-- ✍️ 縦型1レースずつ連続入力＆MD/テキスト即席診断 -->
     <section id="manualBuilderSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-5">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -2359,8 +2395,133 @@
       renderBetStats();
     });
 
-    const APP_RELEASE_VERSION = '2.7-20261117';
-    const APP_RELEASE_LABEL = '更新版 v2.7 · 2026/11/17';
+
+    // RAKUSHO JUDGE: independent manual evaluator; does not alter existing AI scores or tickets.
+    (() => {
+      const $ = id => document.getElementById(id);
+      const normMark = m => ({'〇':'◯','○':'◯','×':'✕','✖':'✖','▲':'▲'}[m] || m);
+      function parseMarkMap(raw) {
+        const map = {};
+        const re = /(◎|◯|〇|○|△|▲|✕|×|✖)\s*([1-7])/g;
+        let m;
+        while ((m = re.exec(raw)) !== null) {
+          const mark = normMark(m[1]), car = Number(m[2]);
+          if (map[car]) throw new Error(car + '番車に基本印が重複しています');
+          map[car] = mark;
+        }
+        return map;
+      }
+      function parseLines(raw) {
+        const lines = raw.split(/[／/]+/).map(s => s.trim()).filter(Boolean)
+          .map(s => s.split(/[-ー‐−\s]+/).filter(Boolean).map(Number));
+        if (![2,3].includes(lines.length)) throw new Error('ラインは二分戦または三分戦の2〜3本で入力してください');
+        const cars = lines.flat();
+        if (cars.some(n => !Number.isInteger(n) || n < 1 || n > 7)) throw new Error('車番は1〜7で入力してください');
+        if (new Set(cars).size !== cars.length) throw new Error('同じ車番が複数ラインにあります');
+        if (cars.length > 7) throw new Error('車番は合計7人以内にしてください');
+        return lines;
+      }
+      function transformMarks(lines, basic) {
+        const marks = {...basic};
+        const derived = new Set();
+        const map = {'◎':'⑳','◯':'●','△':'▲','✕':'✖'};
+        // Adjacent unmarked riders: prefer the left-side rider when both sides are available.
+        lines.forEach(line => line.forEach((car, i) => {
+          const base = marks[car];
+          if (!map[base]) return;
+          const candidates = [i-1, i+1];
+          for (const j of candidates) {
+            if (j < 0 || j >= line.length) continue;
+            const target = line[j];
+            if (!marks[target] && !derived.has(target)) {
+              marks[target] = map[base]; derived.add(target); break;
+            }
+          }
+        }));
+        lines.forEach(line => {
+          if (line.length === 1 && !marks[line[0]]) { marks[line[0]] = 'T'; derived.add(line[0]); return; }
+          const remaining = line.filter(car => !marks[car]);
+          remaining.forEach((car, i) => {
+            marks[car] = ['☆','★','星'][Math.min(i,2)];
+            derived.add(car);
+          });
+        });
+        return {marks, derived};
+      }
+      const palace = [[4,9,2],[3,5,7],[8,1,6]];
+      const rotated = [[2,7,6],[9,5,1],[4,3,8]];
+      function gridHtml(lines, marks, layout, label) {
+        let out = '<div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs font-bold text-amber-200 mb-2">' + label + '</div><div class="grid grid-cols-3 gap-2">';
+        for (let r=0;r<3;r++) for (let c=0;c<3;c++) {
+          const car = lines[r]?.[c];
+          const palaceNo = layout[r][c];
+          const match = car === palaceNo;
+          out += '<div class="min-h-16 rounded-lg border p-2 ' + (match?'border-amber-300 bg-amber-300/10':'border-slate-700 bg-slate-900/70') + '">';
+          out += '<div class="text-[10px] text-slate-400">宮' + palaceNo + (match?' · 一致':'') + '</div>';
+          out += '<div class="text-lg font-bold font-mono-code">' + (car ? car + '番' : '—') + '</div>';
+          out += '<div class="text-sm text-amber-200">' + (car ? (marks[car] || '無') : ' ') + '</div></div>';
+        }
+        return out + '</div></div>';
+      }
+      function judge() {
+        $('rakushoError').classList.add('hidden');
+        try {
+          const lines = parseLines($('rakushoLines').value);
+          const type = Number($('rakushoRaceType').value);
+          if (type === 3 && lines.length !== 3) throw new Error('三分戦を選択した場合はラインを3本入力してください');
+          if (type === 2 && lines.length !== 2) throw new Error('二分戦を選択した場合はラインを2本入力してください');
+          const basic = parseMarkMap($('rakushoMarks').value);
+          const {marks, derived} = transformMarks(lines, basic);
+          const carMark = car => marks[car] || '';
+          const head = lines.map(x => x[0]);
+          const second = lines.map(x => x[1]);
+          const picks = [];
+          const add = (name, ticket, reason) => picks.push({name,ticket,reason});
+          // A. Horizontal / within-line rules
+          lines.forEach((line, i) => {
+            if (line.length >= 2) {
+              const [a,b,c] = line, m1=carMark(a), m2=carMark(b);
+              const headPalace = (i===0 && a===4) || (i===1 && a===3);
+              if (headPalace && m1==='◯' && m2==='△') add('洛書L1',a+'→'+b,'対象先頭の宮一致＋◯-△');
+              if (headPalace && m1==='△' && m2==='◎') add('洛書L2',a+'→'+b,'対象先頭の宮一致＋△-◎');
+              if (headPalace && m1==='▲' && m2==='△') add('洛書L3',a+'→'+b,'対象先頭の宮一致＋▲-△');
+              if (((i===1 && b===5)||(i===2 && b===1)) && m1==='☆' && m2==='★') add('洛書L4',a+'→'+b,'番手の宮一致＋☆-★');
+            }
+            if (line.length === 3) {
+              const key = [...line].sort((a,b)=>a-b).join('-');
+              const valid = ['2-6-7','3-5-7','4-5-6'].includes(key);
+              if (valid && carMark(line[0])==='◎' && carMark(line[1])==='◯' && carMark(line[2])==='●') add('洛書L5',line.join('→'),'車番合計15の指定組＋◎-◯-●');
+              if (valid && carMark(line[0])==='◯' && carMark(line[1])==='◎' && carMark(line[2])==='⑳') add('洛書L6',line.join('→'),'車番合計15の指定組＋◯-◎-⑳');
+            }
+          });
+          if (lines[0]?.[0]===2 && lines[0].length>=2 && carMark(lines[0][0])==='△' && carMark(lines[0][1])==='✕') add('左90度回転R1',lines[0][0]+'→'+lines[0][1],'第1ライン先頭が宮2＋△-✕');
+          // B. Vertical rules only for three-line formations
+          if (type===3 && lines.length===3) {
+            if (carMark(head[1])==='◯' && carMark(head[2])==='✕') add('縦1',head[1]+'→'+head[2],'H2=◯、H3=✕');
+            if (carMark(head[0])==='◯' && carMark(head[1])==='☆') add('縦2',head[1]+'→'+head[0],'H1=◯、H2=☆');
+            if (carMark(head[0])==='▲' && carMark(head[1])==='◎') add('縦3',head[0]+'→'+head[1],'H1=▲、H2=◎');
+            if (carMark(head[0])==='☆' && carMark(head[2])==='◯') add('縦4',head[0]+'→'+head[2],'H1=☆、H3=◯');
+            if (second[0] && second[2] && carMark(second[0])==='★' && carMark(second[2])==='✕') add('縦5',second[2]+'→'+second[0],'S1=★、S3=✕');
+          }
+          const marksText = lines.map((line,i)=>'第'+(i+1)+'ライン：'+line.map(car=>car+'番['+carMark(car)+']').join(' - ')).join('<br>');
+          $('rakushoGridOutput').innerHTML = '<div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs font-bold text-amber-200 mb-2">変換後のライン配置</div><div class="text-sm leading-7">'+marksText+'</div><div class="text-[11px] text-slate-400 mt-2">変換された車番：'+([...derived].sort((a,b)=>a-b).map(c=>c+'番='+carMark(c)).join(' / ')||'なし')+'</div></div>' + gridHtml(lines,marks,palace,'洛書・正位') + gridHtml(lines,marks,rotated,'洛書・左90度回転');
+          $('rakushoPickOutput').innerHTML = '<div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div>' + (picks.length ? picks.map(p=>'<div class="rounded-lg border border-amber-300/30 bg-amber-300/5 p-3"><div class="text-xs font-bold text-amber-200">'+p.name+'</div><div class="text-lg font-mono-code font-bold mt-1">'+p.ticket+'</div><div class="text-xs text-slate-300 mt-1">根拠：'+p.reason+'</div></div>').join('') : '<div class="text-sm text-slate-200">見送り（該当なし）</div>');
+        } catch (e) {
+          $('rakushoError').textContent = e.message || '入力を確認してください';
+          $('rakushoError').classList.remove('hidden');
+        }
+      }
+      $('rakushoJudgeBtn').addEventListener('click', judge);
+      $('rakushoClearBtn').addEventListener('click', () => {
+        $('rakushoLines').value=''; $('rakushoMarks').value=''; $('rakushoGridOutput').innerHTML='';
+        $('rakushoPickOutput').innerHTML='<div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div><div class="text-xs text-slate-300">ラインと基本印を入力して判定してください。</div>';
+        $('rakushoError').classList.add('hidden');
+      });
+    })();
+
+
+    const APP_RELEASE_VERSION = '2.8-20261117';
+    const APP_RELEASE_LABEL = '更新版 v2.8 · 洛書判定追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
