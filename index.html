@@ -1757,7 +1757,22 @@
 
     function renderCurrentRace() {
       const race = allRaces[currentRaceIdx];
-      const res = analyzeRace(race);
+      if (!race || !Array.isArray(race.entries) || !race.entries.length) {
+        const status = document.getElementById('gravityVectorReadout');
+        if (status) status.textContent = 'ベクトル計算不可：レースデータまたは出走選手がありません';
+        return;
+      }
+      let res;
+      try {
+        res = analyzeRace(race);
+      } catch (error) {
+        console.error('[KAIMEKUN] レース解析エラー', error);
+        const status = document.getElementById('gravityVectorReadout');
+        const diagnosis = document.getElementById('polygonDiagnosis');
+        if (status) status.textContent = 'ベクトル計算エラー：' + (error?.message || '解析に失敗');
+        if (diagnosis) diagnosis.textContent = '解析エラー。出走表とライン情報を確認してください。';
+        return;
+      }
       // 解析結果を先に表示し、後続の描画処理で例外が起きても「解析中」のまま残さない。
       const vectorMagnitude = Math.hypot(Number(res.gx) || 0, Number(res.gy) || 0);
       const vectorAngleNow = (Math.atan2(Number(res.gy) || 0, Number(res.gx) || 0) * 180 / Math.PI + 360) % 360;
@@ -1799,7 +1814,8 @@
       }
 
       document.getElementById('chaosBadge').textContent = `カオス指数: ${res.chaosIndex} (基準:${activeBaseline.chaosMean})`;
-      initGravitySimulation(res);
+      try { initGravitySimulation(res); }
+      catch (error) { console.error('[KAIMEKUN] 重力シミュレーション描画エラー', error); }
 
       document.getElementById('dnaSequenceText').textContent = res.raceDna;
       renderLineGapAnalysis(race);
@@ -1877,8 +1893,10 @@
       const vectorReadout=document.getElementById('gravityVectorReadout');
       if(vectorReadout)vectorReadout.textContent=`重心ベクトル X: ${Number(res.gx).toFixed(3)} / Y: ${Number(res.gy).toFixed(3)} / 方向: ${vectorDir}（${vectorAngle.toFixed(1)}°）`;
 
-      renderAiSection(res);
-      drawPolygonCanvas(res);
+      try { renderAiSection(res); }
+      catch (error) { console.error('[KAIMEKUN] AI表示描画エラー', error); }
+      try { drawPolygonCanvas(res); }
+      catch (error) { console.error('[KAIMEKUN] 重心図描画エラー', error); }
     }
 
     let audioCtx = null;
@@ -1907,8 +1925,14 @@
     }
 
     function initGravitySimulation(res) {
-      const canvas = document.getElementById('gravityCanvas'), rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width; canvas.height = rect.height;
+      const canvas = document.getElementById('gravityCanvas');
+      if (!canvas || !canvas.parentElement) throw new Error('gravityCanvas または親要素が見つかりません');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width || canvas.clientWidth || 320));
+      const height = Math.max(1, Math.floor(rect.height || canvas.clientHeight || 220));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('gravityCanvas の2D描画コンテキストを取得できません');
+      canvas.width = width; canvas.height = height;
       gravityParticles = res.entries.map((e, i) => ({
         car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
         radius: 7 + res.scores[i] * 1.6, x: canvas.width * 0.2 + Math.random() * canvas.width * 0.6,
@@ -1917,7 +1941,7 @@
       }));
       if (gravityAnimId) cancelAnimationFrame(gravityAnimId);
       function loop() {
-        const ctx = canvas.getContext('2d');
+        if (!canvas.isConnected) return;
         ctx.fillStyle = 'rgba(5, 11, 20, 0.35)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         for (let i = 0; i < gravityParticles.length; i++) {
           for (let j = i + 1; j < gravityParticles.length; j++) {
@@ -1941,9 +1965,13 @@
     }
 
     function drawPolygonCanvas(res) {
-      const canvas = document.getElementById('polygonCanvas'), size = canvas.parentElement.clientWidth || 260;
+      const canvas = document.getElementById('polygonCanvas');
+      if (!canvas || !canvas.parentElement) throw new Error('polygonCanvas または親要素が見つかりません');
+      const size = Math.max(1, Math.floor(canvas.parentElement.clientWidth || 260));
       canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d'), cx = size / 2, cy = size / 2, r = size * 0.36;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('polygonCanvas の2D描画コンテキストを取得できません');
+      const cx = size / 2, cy = size / 2, r = size * 0.36;
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)'; ctx.lineWidth = 2; ctx.stroke();
       const polyPoints = [];
