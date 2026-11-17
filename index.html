@@ -1756,6 +1756,7 @@
     }
 
     function renderCurrentRace() {
+      try {
       const race = allRaces[currentRaceIdx];
       if (!race || !Array.isArray(race.entries) || !race.entries.length) {
         const status = document.getElementById('gravityVectorReadout');
@@ -1897,6 +1898,11 @@
       catch (error) { console.error('[KAIMEKUN] AI表示描画エラー', error); }
       try { drawPolygonCanvas(res); }
       catch (error) { console.error('[KAIMEKUN] 重心図描画エラー', error); }
+      } catch (error) {
+        console.error('[KAIMEKUN] 画面描画処理エラー', error);
+        const status = document.getElementById('gravityVectorReadout');
+        if (status) status.textContent = '画面描画エラー：' + (error?.message || '表示処理に失敗');
+      }
     }
 
     let audioCtx = null;
