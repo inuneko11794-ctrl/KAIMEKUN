@@ -121,7 +121,10 @@
     <section id="kaimekunBetLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div><div class="text-xs font-mono-code text-amber-300 font-bold">AUTO BET MATRIX</div><h2 class="text-lg font-bold">自動買い目・成績検証</h2></div>
-        <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
+        <div class="flex flex-wrap gap-2">
+          <button id="resetAdaptivePointsBtn" type="button" class="px-3 py-2 rounded-lg bg-rose-500/15 border border-rose-400/30 text-rose-200 text-xs font-bold">学習ポイント削除</button>
+          <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
+        </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 4点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
@@ -348,9 +351,12 @@
       <div class="glass-panel rounded-2xl p-4 lg:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div class="flex-1">
           <label class="block text-xs font-mono-code text-cyan-300 mb-1">TARGET RACE // 解析対象レース選択</label>
-          <select id="raceSelector" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400">
-            <option value="0">武雄1R A級チ一般 (初期サンプル)</option>
-          </select>
+          <div class="flex items-center gap-2">
+            <select id="raceSelector" class="min-w-0 flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400">
+              <option value="0">武雄1R A級チ一般 (初期サンプル)</option>
+            </select>
+            <button id="deleteTargetRaceBtn" type="button" class="shrink-0 px-3 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-rose-200 text-xs font-bold">🗑️ 削除</button>
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <button id="prevRaceBtn" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm">◀ 前</button>
@@ -1819,6 +1825,20 @@
     document.getElementById('deleteSelectedRaceBtn').addEventListener('click', () => {
       const race = allRaces[currentRaceIdx];
       if (race && confirm(`「${race.id}」を削除します。よろしいですか？`)) deleteRaceByIndex(currentRaceIdx);
+    });
+    document.getElementById('deleteTargetRaceBtn').addEventListener('click', () => {
+      const race = allRaces[currentRaceIdx];
+      if (!race) return;
+      if (confirm(`解析対象の「${race.id}」と保存済みの結果・買い目を削除しますか？`)) deleteRaceByIndex(currentRaceIdx);
+    });
+    document.getElementById('resetAdaptivePointsBtn').addEventListener('click', () => {
+      if (!confirm('蓄積した理由別の学習ポイントを初期化します。レース記録・CSV基準値は削除しません。よろしいですか？')) return;
+      adaptiveReasonPoints = { mark:0, lineRole:0, markRelation:0 };
+      try { localStorage.removeItem(ADAPTIVE_POINT_KEY); } catch(e) {}
+      saveAdaptivePoints();
+      renderCurrentRace();
+      renderBetLab();
+      showToast('学習ポイントを初期化しました');
     });
     document.getElementById('clearNonSampleRacesBtn').addEventListener('click', () => {
       if (!confirm('登録したレースと結果をすべて削除し、初期サンプルに戻します。よろしいですか？')) return;
