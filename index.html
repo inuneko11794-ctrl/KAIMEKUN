@@ -1860,8 +1860,8 @@
       document.getElementById('polygonDiagnosis').textContent = res.gravityBias < activeBaseline.biasMean
         ? `重心偏り ${res.gravityBias} ／ 基準 ${activeBaseline.biasMean}：均衡寄り`
         : `重心偏り ${res.gravityBias} ／ 基準 ${activeBaseline.biasMean}：偏重寄り`;
-      const vectorAngle=(Math.atan2(res.gy,-res.gx)*180/Math.PI+360)%360;
-      const vectorDir=res.gravityBias<0.0005?'中心（方向なし）':vectorAngle<22.5||vectorAngle>=337.5?'上':vectorAngle<67.5?'右上':vectorAngle<112.5?'右':vectorAngle<157.5?'右下':vectorAngle<202.5?'下':vectorAngle<247.5?'左下':vectorAngle<292.5?'左':'左上';
+      const vectorAngle=(Math.atan2(res.gy,res.gx)*180/Math.PI+360)%360;
+      const vectorDir=res.gravityBias<0.0005?'中心（方向なし）':vectorAngle<22.5||vectorAngle>=337.5?'右':vectorAngle<67.5?'右下':vectorAngle<112.5?'下':vectorAngle<157.5?'左下':vectorAngle<202.5?'左':vectorAngle<247.5?'左上':vectorAngle<292.5?'上':'右上';
       const vectorReadout=document.getElementById('gravityVectorReadout');
       if(vectorReadout)vectorReadout.textContent=`重心ベクトル X: ${Number(res.gx).toFixed(3)} / Y: ${Number(res.gy).toFixed(3)} / 方向: ${vectorDir}（${vectorAngle.toFixed(1)}°）`;
 
