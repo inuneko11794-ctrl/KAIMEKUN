@@ -2287,6 +2287,8 @@
     const RAKUSHO_POINT_WEIGHTS = {L1:0,L2:0,L3:0,L4:0,L5:0,L6:0,R1:0,V1:0,V2:0,V3:0,V4:0,V5:0};
     function evaluateRakushoRules(res) {
       const lines=(res.lineSummaryList||[]).filter(x=>!x.isTanki).map(x=>x.members||[]);
+      const starters=(res.entries||[]).map(x=>Number(x.car));
+      if(starters.length!==7||new Set(starters).size!==7||![2,3].includes(lines.length))return [];
       const mark=car=>{for(const line of lines){const m=line.find(x=>Number(x.car)===Number(car));if(m)return String(m.convertedMark||'');}return '';};
       const picks=[];
       const add=(id,label,ticket,type,reason)=>picks.push({id,label,ticket,type,reason,point:Number(RAKUSHO_POINT_WEIGHTS[id]||0)});
