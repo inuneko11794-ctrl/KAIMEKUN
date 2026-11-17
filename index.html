@@ -233,7 +233,7 @@
           <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
           <div id="instantResultEntryArea" class="hidden mt-3 rounded-xl border border-amber-400/30 bg-slate-900/80 p-3 space-y-3">
             <div class="text-xs font-bold text-amber-200">読み込みレースの結果・日付入力</div>
-            <p class="text-[11px] text-slate-300">各レースの開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
+            <p class="text-[11px] text-slate-300">各レースの確定着順・開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
             <div id="instantResultEntryRows" class="space-y-3"></div>
           </div>
         </div>
@@ -1298,6 +1298,10 @@
         return;
       }
       const before = allRaces.length;
+      importedRaces.forEach(race => {
+        race.resultOrder = String(race.resultOrder || '').trim();
+        if (race.resultOrder && !race.resultRecordedAt) race.resultRecordedAt = new Date().toISOString();
+      });
       allRaces.push(...importedRaces);
       if (!persistRaces()) { allRaces.splice(before); return; }
       currentRaceIdx = before;
@@ -1337,6 +1341,7 @@
         <div class="rounded-lg border border-slate-700 bg-slate-950/70 p-3 space-y-2">
           <div class="text-xs font-bold text-cyan-200">${idx + 1}. ${String(race.id || 'レース').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>
           <div class="grid grid-cols-2 gap-2">
+            <label class="text-[11px] text-slate-300 col-span-2">確定着順（1着-2着-3着）<input data-md-field="resultOrder" data-md-index="${idx}" type="text" inputmode="numeric" placeholder="例: 1-4-5" value="${race.resultOrder || ''}" class="block w-full mt-1 bg-slate-900 border border-amber-500/50 rounded-lg px-2 py-2 text-sm font-bold text-white"></label>
             <label class="text-[11px] text-slate-300">開催日<input data-md-field="eventDate" data-md-index="${idx}" type="date" value="${race.eventDate || ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
             <label class="text-[11px] text-slate-300">データ入力日<input data-md-field="dataEntryDate" data-md-index="${idx}" type="date" value="${race.dataEntryDate || todayForEntry()}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
             <label class="text-[11px] text-slate-300">2車単配当（円）<input data-md-field="exactaPayout" data-md-index="${idx}" type="number" min="0" placeholder="例: 1850" value="${race.exactaPayout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
@@ -1347,6 +1352,7 @@
         const idx = Number(input.dataset.mdIndex), key = input.dataset.mdField;
         if (!pendingInstantMdRaces[idx]) return;
         pendingInstantMdRaces[idx][key] = key === 'exactaPayout' || key === 'payout' ? (input.value.trim() ? Number(input.value) : null) : input.value;
+        if (key === 'resultOrder') pendingInstantMdRaces[idx].resultRecordedAt = input.value.trim() ? new Date().toISOString() : null;
       }));
     }
     document.getElementById('chooseInstantMdFileBtn').addEventListener('click', () => {
