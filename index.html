@@ -169,10 +169,8 @@
               📋 MDファイル読込 ＆ 出走表テキスト貼り付け
             </label>
             <div class="flex items-center gap-2">
-              <label class="cursor-pointer px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-[11px] font-mono-code text-purple-200 font-bold transition">
-                📄 MD読み込み
-                <input type="file" id="instantMdFileInput" accept=".md,.txt,.markdown" class="hidden" />
-              </label>
+              <button id="chooseInstantMdFileBtn" type="button" class="px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-[11px] font-mono-code text-purple-200 font-bold transition">📄 MDファイルを選択</button>
+              <input type="file" id="instantMdFileInput" accept=".md,.txt,.markdown" class="hidden" />
               <button id="applyInstantMdBtn" type="button" disabled class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-[11px] text-emerald-200 font-bold disabled:opacity-40">反映・登録</button>
               <button id="clearInstantPasteBtn" type="button" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-[11px] font-mono-code text-rose-200 font-bold transition">
                 🗑️ 削除
@@ -186,6 +184,11 @@
             <span id="instantReadStatus" class="text-[11px] text-slate-400 self-center">テキスト未確認</span>
           </div>
           <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
+          <div id="instantResultEntryArea" class="hidden mt-3 rounded-xl border border-amber-400/30 bg-slate-900/80 p-3 space-y-3">
+            <div class="text-xs font-bold text-amber-200">読み込みレースの結果・日付入力</div>
+            <p class="text-[11px] text-slate-300">各レースの開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
+            <div id="instantResultEntryRows" class="space-y-3"></div>
+          </div>
         </div>
         <div class="lg:col-span-5 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
           <div>
@@ -1186,7 +1189,7 @@
     instantPasteInput.addEventListener('input', runInstantDiagnosisFromTextarea);
 
     document.getElementById('applyInstantMdBtn').addEventListener('click', () => {
-      const importedRaces = parseMarkdownRaces(instantPasteInput.value || '');
+      const importedRaces = pendingInstantMdRaces.length ? pendingInstantMdRaces : parseMarkdownRaces(instantPasteInput.value || '');
       if (!importedRaces.length) {
         document.getElementById('instantReadStatus').textContent = 'MD形式のレースを認識できません。内容を確認してください';
         return;
@@ -1198,7 +1201,9 @@
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
       document.getElementById('instantReadStatus').textContent = `${importedRaces.length}レースを一覧へ反映・登録しました`;
       document.getElementById('applyInstantMdBtn').disabled = true;
-      showToast(`MDから ${importedRaces.length}レースを一覧へ登録しました`);
+      pendingInstantMdRaces = [];
+      renderInstantResultEntryRows();
+      showToast(`MDから ${importedRaces.length}レースを日付・配当付きで一覧へ登録しました`);
     });
 
     document.getElementById('dnaMatchList').addEventListener('click', (ev) => {
@@ -1217,19 +1222,49 @@
       showToast('レースDNAの一致データを削除しました');
     });
 
-    // 即席エリアからのMDファイル直接読み込み
+    // MD読み込み後のレースごとの日付・配当入力
+    let pendingInstantMdRaces = [];
+    const todayForEntry = () => new Date().toISOString().slice(0,10);
+    function renderInstantResultEntryRows() {
+      const area = document.getElementById('instantResultEntryArea');
+      const rows = document.getElementById('instantResultEntryRows');
+      if (!pendingInstantMdRaces.length) { area.classList.add('hidden'); rows.innerHTML = ''; return; }
+      area.classList.remove('hidden');
+      rows.innerHTML = pendingInstantMdRaces.map((race, idx) => `
+        <div class="rounded-lg border border-slate-700 bg-slate-950/70 p-3 space-y-2">
+          <div class="text-xs font-bold text-cyan-200">${idx + 1}. ${String(race.id || 'レース').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="text-[11px] text-slate-300">開催日<input data-md-field="eventDate" data-md-index="${idx}" type="date" value="${race.eventDate || ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
+            <label class="text-[11px] text-slate-300">データ入力日<input data-md-field="dataEntryDate" data-md-index="${idx}" type="date" value="${race.dataEntryDate || todayForEntry()}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
+            <label class="text-[11px] text-slate-300">2車単配当（円）<input data-md-field="exactaPayout" data-md-index="${idx}" type="number" min="0" placeholder="例: 1850" value="${race.exactaPayout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
+            <label class="text-[11px] text-slate-300">3連単配当（円）<input data-md-field="payout" data-md-index="${idx}" type="number" min="0" placeholder="例: 12450" value="${race.payout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
+          </div>
+        </div>`).join('');
+      rows.querySelectorAll('[data-md-field]').forEach(input => input.addEventListener('input', () => {
+        const idx = Number(input.dataset.mdIndex), key = input.dataset.mdField;
+        if (!pendingInstantMdRaces[idx]) return;
+        pendingInstantMdRaces[idx][key] = key === 'exactaPayout' || key === 'payout' ? (input.value.trim() ? Number(input.value) : null) : input.value;
+      }));
+    }
+    document.getElementById('chooseInstantMdFileBtn').addEventListener('click', () => {
+      document.getElementById('instantMdFileInput').click();
+    });
     document.getElementById('instantMdFileInput').addEventListener('change', (ev) => {
-      const file = ev.target.files[0];
+      const file = ev.target.files && ev.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
-        const text = e.target.result;
+        const text = String(e.target.result || '');
         instantPasteInput.value = text;
-        const parsedCount = parseMarkdownRaces(text).length;
-        document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${text.split(/\r?\n/).length}行 / MD形式 ${parsedCount}レース検出。反映ボタンで登録`;
+        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate:'', dataEntryDate:todayForEntry(), exactaPayout:null, payout:null}));
+        document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${pendingInstantMdRaces.length}レース検出。下欄に日付・配当を入力してください`;
         runInstantDiagnosisFromTextarea();
-        document.getElementById('applyInstantMdBtn').disabled = parsedCount === 0;
+        renderInstantResultEntryRows();
+        document.getElementById('applyInstantMdBtn').disabled = pendingInstantMdRaces.length === 0;
         ev.target.value = '';
+      };
+      reader.onerror = () => {
+        document.getElementById('instantReadStatus').textContent = 'ファイルを読み込めませんでした。別のファイルを選択してください';
       };
       reader.readAsText(file, 'UTF-8');
     });
@@ -1237,6 +1272,9 @@
     document.getElementById('clearInstantPasteBtn').addEventListener('click', () => {
       instantPasteInput.value = '';
       document.getElementById('instantMdFileInput').value = '';
+      pendingInstantMdRaces = [];
+      renderInstantResultEntryRows();
+      document.getElementById('applyInstantMdBtn').disabled = true;
       document.getElementById('instantReadStatus').textContent = '入力欄を削除しました';
       runInstantDiagnosisFromTextarea();
       showToast('🗑️ 貼り付けテキストを削除しました');
