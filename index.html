@@ -167,9 +167,10 @@
             </label>
             <div class="flex items-center gap-2">
               <label class="cursor-pointer px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-[11px] font-mono-code text-purple-200 font-bold transition">
-                📄 MDファイル読込 (.md/.txt)
+                📄 MD読み込み
                 <input type="file" id="instantMdFileInput" accept=".md,.txt,.markdown" class="hidden" />
               </label>
+              <button id="applyInstantMdBtn" type="button" disabled class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-[11px] text-emerald-200 font-bold disabled:opacity-40">反映・登録</button>
               <button id="clearInstantPasteBtn" type="button" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-[11px] font-mono-code text-rose-200 font-bold transition">
                 🗑️ 削除
               </button>
@@ -1178,6 +1179,38 @@
 
     instantPasteInput.addEventListener('input', runInstantDiagnosisFromTextarea);
 
+    document.getElementById('applyInstantMdBtn').addEventListener('click', () => {
+      const importedRaces = parseMarkdownRaces(instantPasteInput.value || '');
+      if (!importedRaces.length) {
+        document.getElementById('instantReadStatus').textContent = 'MD形式のレースを認識できません。内容を確認してください';
+        return;
+      }
+      const before = allRaces.length;
+      allRaces.push(...importedRaces);
+      if (!persistRaces()) { allRaces.splice(before); return; }
+      currentRaceIdx = before;
+      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
+      document.getElementById('instantReadStatus').textContent = `${importedRaces.length}レースを一覧へ反映・登録しました`;
+      document.getElementById('applyInstantMdBtn').disabled = true;
+      showToast(`MDから ${importedRaces.length}レースを一覧へ登録しました`);
+    });
+
+    document.getElementById('dnaMatchList').addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-dna-delete]');
+      if (!btn) return;
+      const idx = Number(btn.dataset.dnaDelete);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= allRaces.length || idx === currentRaceIdx) return;
+      const target = allRaces[idx];
+      if (!confirm(`「${target.id}」をレース一覧から削除しますか？この操作は元に戻せません。`)) return;
+      allRaces.splice(idx, 1);
+      if (idx < currentRaceIdx) currentRaceIdx--;
+      if (currentRaceIdx >= allRaces.length) currentRaceIdx = Math.max(0, allRaces.length - 1);
+      persistRaces(); populateRaceSelector(); updateBatchStats();
+      if (allRaces.length) renderCurrentRace();
+      refreshVerticalStockList();
+      showToast('レースDNAの一致データを削除しました');
+    });
+
     // 即席エリアからのMDファイル直接読み込み
     document.getElementById('instantMdFileInput').addEventListener('change', (ev) => {
       const file = ev.target.files[0];
@@ -1186,23 +1219,10 @@
       reader.onload = (e) => {
         const text = e.target.result;
         instantPasteInput.value = text;
-        document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${text.split(/\r?\n/).length}行`;
+        const parsedCount = parseMarkdownRaces(text).length;
+        document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${text.split(/\r?\n/).length}行 / MD形式 ${parsedCount}レース検出。反映ボタンで登録`;
         runInstantDiagnosisFromTextarea();
-        const multiMd = parseMarkdownRaces(text);
-        if (multiMd.length >= 2) {
-          allRaces.push(...multiMd);
-          persistRaces();
-          currentRaceIdx = allRaces.length - multiMd.length;
-          populateRaceSelector();
-          updateBatchStats();
-          renderCurrentRace();
-          refreshVerticalStockList();
-          showToast(`📄 MDファイルから ${multiMd.length}レースを一括読み込みしました！`);
-        } else if (multiMd.length === 1) {
-          showToast(`📄 MDファイル「${multiMd[0].id}」を読み込み即席診断しました！`);
-        } else {
-          showToast('📄 テキストを読み込みました！');
-        }
+        document.getElementById('applyInstantMdBtn').disabled = parsedCount === 0;
         ev.target.value = '';
       };
       reader.readAsText(file, 'UTF-8');
@@ -1618,10 +1638,10 @@
       initGravitySimulation(res);
 
       document.getElementById('dnaSequenceText').textContent = res.raceDna;
-      const clones = allRaces.filter((r, idx) => idx !== currentRaceIdx && analyzeRace(r).raceDna === res.raceDna);
+      const clones = allRaces.map((r, idx) => ({ race:r, idx })).filter(x => x.idx !== currentRaceIdx && analyzeRace(x.race).raceDna === res.raceDna);
       document.getElementById('cloneCountBadge').textContent = `双子レース: ${clones.length}件`;
       document.getElementById('dnaMatchList').innerHTML = clones.length > 0
-        ? clones.slice(0, 10).map(cl => `<div class="flex justify-between border-b border-slate-800 py-1"><span class="text-emerald-300 font-mono-code">🧬 ${cl.id}</span></div>`).join('')
+        ? clones.slice(0, 30).map(x => `<div class="flex items-center justify-between gap-2 border-b border-slate-800 py-1"><span class="text-emerald-300 font-mono-code truncate">🧬 ${x.race.id}</span><button type="button" data-dna-delete="${x.idx}" class="shrink-0 px-2 py-0.5 rounded bg-rose-500/15 border border-rose-400/30 text-rose-200 text-[10px]">削除</button></div>`).join('')
         : `<div class="text-slate-400">・現在のデータセット内に完全一致する双子DNAはありません（固有種レース）</div>`;
 
       document.getElementById('coupAlertBadge').textContent = `下剋上:${res.coupScore} / ちぎれ:${res.abandonScore}`;
