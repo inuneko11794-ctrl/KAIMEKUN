@@ -790,18 +790,15 @@
         const claimedUnmarked = new Set();
         const baseIndices = rawMarks.map((mark, idx) => convertedFor[mark] ? idx : -1).filter(idx => idx >= 0);
 
-        // 変換印は基準印の左隣を最優先。左が無印なら左を変換し、右側など残りは☆。
-        // 左隣で変換できなかった基準印だけ、右隣の無印を変換する。
+        // 基準印1つにつき隣接する無印は1人だけ変換する。左隣を優先し、
+        // 左が使えない場合に限って右隣を変換する（無印◎無印→⑳◎☆）。
         baseIndices.forEach(idx => {
           const leftIdx = idx - 1;
+          const rightIdx = idx + 1;
           if (leftIdx >= 0 && rawMarks[leftIdx] === '無' && !claimedUnmarked.has(leftIdx)) {
             convMarks[leftIdx] = convertedFor[rawMarks[idx]];
             claimedUnmarked.add(leftIdx);
-          }
-        });
-        baseIndices.forEach(idx => {
-          const rightIdx = idx + 1;
-          if (rightIdx < rawMarks.length && rawMarks[rightIdx] === '無' && !claimedUnmarked.has(rightIdx)) {
+          } else if (rightIdx < rawMarks.length && rawMarks[rightIdx] === '無' && !claimedUnmarked.has(rightIdx)) {
             convMarks[rightIdx] = convertedFor[rawMarks[idx]];
             claimedUnmarked.add(rightIdx);
           }
@@ -1761,6 +1758,20 @@
     function renderCurrentRace() {
       const race = allRaces[currentRaceIdx];
       const res = analyzeRace(race);
+      // 解析結果を先に表示し、後続の描画処理で例外が起きても「解析中」のまま残さない。
+      const vectorMagnitude = Math.hypot(Number(res.gx) || 0, Number(res.gy) || 0);
+      const vectorAngleNow = (Math.atan2(Number(res.gy) || 0, Number(res.gx) || 0) * 180 / Math.PI + 360) % 360;
+      const vectorDirectionNow = vectorMagnitude < 0.0005 ? '中心（方向なし）' :
+        vectorAngleNow < 22.5 || vectorAngleNow >= 337.5 ? '右' :
+        vectorAngleNow < 67.5 ? '右下' : vectorAngleNow < 112.5 ? '下' :
+        vectorAngleNow < 157.5 ? '左下' : vectorAngleNow < 202.5 ? '左' :
+        vectorAngleNow < 247.5 ? '左上' : vectorAngleNow < 292.5 ? '上' : '右上';
+      const polygonDiagnosisEarly = document.getElementById('polygonDiagnosis');
+      if (polygonDiagnosisEarly) polygonDiagnosisEarly.textContent =
+        `重心偏り ${res.gravityBias} ／ 基準 ${activeBaseline.biasMean}：${res.gravityBias < activeBaseline.biasMean ? '均衡寄り' : '偏重寄り'}`;
+      const vectorReadoutEarly = document.getElementById('gravityVectorReadout');
+      if (vectorReadoutEarly) vectorReadoutEarly.textContent =
+        `ベクトル X: ${Number(res.gx).toFixed(3)} / Y: ${Number(res.gy).toFixed(3)} / 方向: ${vectorDirectionNow}（${vectorAngleNow.toFixed(1)}°）`;
       document.getElementById('rawFormationDisplay').textContent = `並び予想: ${race.rawFormation || res.lines.map(g => `[${g.join(' ')}]`).join(' ')}`;
 
       const rakushoNow=evaluateRakushoRules(res);
