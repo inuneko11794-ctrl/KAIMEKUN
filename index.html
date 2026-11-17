@@ -563,6 +563,16 @@
           </div>
         </div>
         <div id="dnaMatchList" class="mt-4 text-xs text-slate-300 space-y-1.5 max-h-24 overflow-y-auto bg-slate-900/50 p-2.5 rounded-xl border border-slate-800"></div>
+
+        <div class="mt-4 rounded-xl border border-amber-400/30 bg-slate-950/70 p-3 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="text-xs font-bold text-amber-200">車番差分比率 // LINE GAP RATIO</div>
+            <span class="text-[10px] text-slate-400">分析・記録専用 / 予測点には未反映</span>
+          </div>
+          <div id="lineGapCurrent" class="text-xs text-slate-200">ライン内の隣接車番差を計算します。</div>
+          <div id="lineGapSignal" class="text-xs text-amber-200">注目条件：差分3が25〜50％、差分5が0〜25％</div>
+          <div id="lineGapHistory" class="text-[11px] text-slate-300">過去の該当レースを集計します。</div>
+        </div>
       </article>
 
       <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
@@ -850,6 +860,55 @@
     }
     let allRaces = loadSavedRaces() || defaultRaces;
     let currentRaceIdx = 0, gravityParticles = [], gravityAnimId = null;
+
+    // ライン初期並びの車番差分比率。ライン内の隣接車番のみを対象にする。
+    function calculateLineGapRatio(race) {
+      const groups = Array.isArray(race?.lines) ? race.lines : [];
+      const counts = Array(7).fill(0);
+      let total = 0;
+      groups.forEach(group => {
+        const cars = (Array.isArray(group) ? group : []).map(v => Number(v)).filter(n => Number.isInteger(n) && n >= 1 && n <= 9);
+        for (let i = 0; i < cars.length - 1; i++) {
+          const gap = Math.abs(cars[i + 1] - cars[i]);
+          if (gap >= 1 && gap <= 6) { counts[gap]++; total++; }
+        }
+      });
+      const ratios = counts.map((n, gap) => gap === 0 ? 0 : (total ? n / total * 100 : 0));
+      return { counts: counts.slice(1), ratios: ratios.slice(1), total, isSevenCarThreeLine: (race?.entries || []).length === 7 && groups.length === 3 };
+    }
+    function lineGapHistoryStats() {
+      const matched = allRaces.filter(r => {
+        const x = calculateLineGapRatio(r);
+        return x.isSevenCarThreeLine && x.total > 0 && x.ratios[2] >= 25 && x.ratios[2] <= 50 && x.ratios[4] >= 0 && x.ratios[4] <= 25;
+      });
+      const exacta = matched.filter(r => Number(r.exactaPayout) >= 2001);
+      const trifecta = matched.filter(r => Number(r.payout) >= 10001);
+      return { n: matched.length, exactaN: matched.filter(r => Number.isFinite(Number(r.exactaPayout)) && Number(r.exactaPayout) > 0).length,
+        exactaRate: matched.filter(r => Number(r.exactaPayout) >= 2001).length,
+        exactaDenom: matched.filter(r => Number.isFinite(Number(r.exactaPayout)) && Number(r.exactaPayout) > 0).length,
+        triN: matched.filter(r => Number.isFinite(Number(r.payout)) && Number(r.payout) > 0).length,
+        triRate: matched.filter(r => Number(r.payout) >= 10001).length };
+    }
+    function renderLineGapAnalysis(race) {
+      const el = document.getElementById('lineGapCurrent');
+      const signal = document.getElementById('lineGapSignal');
+      const history = document.getElementById('lineGapHistory');
+      if (!el || !signal || !history) return;
+      const x = calculateLineGapRatio(race);
+      if (!x.total) {
+        el.textContent = 'ライン内の隣接車番差を算出できません。';
+        signal.textContent = '並び予想を入力すると差分1〜6の割合を表示します。';
+        history.textContent = '—';
+        return;
+      }
+      el.innerHTML = x.ratios.map((pct,i) => '<span class="inline-block mr-2 mb-1">差分'+(i+1)+'：'+pct.toFixed(1)+'% ('+x.counts[i]+'件)</span>').join('');
+      const isSignal = x.isSevenCarThreeLine && x.ratios[2] >= 25 && x.ratios[2] <= 50 && x.ratios[4] >= 0 && x.ratios[4] <= 25;
+      signal.textContent = isSignal ? '注目条件に該当：差分3＝25〜50％ ＋ 差分5＝0〜25％' : '注目条件には非該当（7車・三分戦で判定）';
+      const h = lineGapHistoryStats();
+      const exRate = h.exactaDenom ? (h.exactaRate / h.exactaDenom * 100).toFixed(2) : '—';
+      const triRate = h.triN ? (h.triRate / h.triN * 100).toFixed(2) : '—';
+      history.textContent = '保存済み該当レース：'+h.n+'R ／ 2車単2,001円以上：'+exRate+'%（'+h.exactaRate+'/'+h.exactaDenom+'R） ／ 3連単1万円以上：'+triRate+'%（'+h.triRate+'/'+h.triN+'R）。結果登録分のみ集計。';
+    }
 
     function analyzeRace(race) {
       const { carMetaMap, lineSummaryList, isGirlsRace } = applyLineAndMarkRules(race);
@@ -1682,6 +1741,7 @@
       initGravitySimulation(res);
 
       document.getElementById('dnaSequenceText').textContent = res.raceDna;
+      renderLineGapAnalysis(race);
       const clones = allRaces.map((r, idx) => ({ race:r, idx })).filter(x => x.idx !== currentRaceIdx && analyzeRace(x.race).raceDna === res.raceDna);
       document.getElementById('cloneCountBadge').textContent = `双子レース: ${clones.length}件`;
       document.getElementById('dnaMatchList').innerHTML = clones.length > 0
@@ -2299,8 +2359,8 @@
       renderBetStats();
     });
 
-    const APP_RELEASE_VERSION = '2.6-20261117';
-    const APP_RELEASE_LABEL = '更新版 v2.6 · 2026/11/17';
+    const APP_RELEASE_VERSION = '2.7-20261117';
+    const APP_RELEASE_LABEL = '更新版 v2.7 · 2026/11/17';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
