@@ -1552,25 +1552,36 @@
     function calculateCarPointScores(res,options={}) {
       const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints;
       const byCar=new Map(res.entries.map(entry=>{
-        const markLearned=disabled==='mark'?0:Number(adaptive.mark||0);
-        return [Number(entry.car),{...entry,basePoints:getEmpiricalMarkPoints(entry.mark),adjustment:0,reasons:[],
-          featureContributions:{mark:markLearned,lineRole:0,markRelation:0}}];
+        const markBase=getEmpiricalMarkPoints(entry.mark);
+        const basePoints=disabled==='mark'?0:markBase;
+        const markLearned=disabled==='mark'?0:markBase*Number(adaptive.mark||0)*0.1;
+        return [Number(entry.car),{...entry,basePoints,adjustment:0,reasons:[],
+          featureContributions:{mark:basePoints+markLearned,lineRole:0,markRelation:0},
+          learnedAdjustments:{mark:markLearned,lineRole:0,markRelation:0}}];
       }));
       res.lineSummaryList.forEach(line=>{
         line.members.forEach((member,index)=>{
           const row=byCar.get(Number(member.car));if(!row)return;
           const roleValue=line.isTanki?-0.02:index===0?0.02:index===1?0.04:-0.02;
-          row.featureContributions.lineRole=disabled==='lineRole'?0:roleValue+Number(adaptive.lineRole||0);
+          const roleSignal=line.isTanki?-0.5:index===0?0.25:index===1?0.5:-0.25;
+          const roleLearned=disabled==='lineRole'?0:roleSignal*Number(adaptive.lineRole||0);
+          row.featureContributions.lineRole=disabled==='lineRole'?0:roleValue+roleLearned;
+          row.learnedAdjustments.lineRole=roleLearned;
           if(index>0||line.isTanki)row.reasons.push(line.isTanki?'単騎':'ライン内位置');
         });
         if(line.isTanki||line.members.length<2)return;
         const front=line.members[0],second=line.members[1],row=byCar.get(Number(second.car));if(!row)return;
         const relationBase=getScore(second.convertedMark)>getScore(front.convertedMark)?1.0:0;
-        row.featureContributions.markRelation=disabled==='markRelation'?0:relationBase+Number(adaptive.markRelation||0);
+        const relationLearned=disabled==='markRelation'?0:relationBase*Number(adaptive.markRelation||0)*0.5;
+        row.featureContributions.markRelation=disabled==='markRelation'?0:relationBase+relationLearned;
+        row.learnedAdjustments.markRelation=relationLearned;
         if(relationBase>0)row.reasons.push('番手の印関係');
       });
       return [...byCar.values()].map(row=>{
-        row.adjustment=+ADAPTIVE_FEATURES.reduce((sum,k)=>sum+Number(row.featureContributions[k]||0),0).toFixed(3);
+        row.adjustment=+Object.values(row.learnedAdjustments).reduce((sum,v)=>sum+Number(v||0),0)
+          + (disabled==='lineRole'?0:row.featureContributions.lineRole)
+          + (disabled==='markRelation'?0:row.featureContributions.markRelation)
+          - (disabled==='mark'?0:row.basePoints);
         row.totalPoints=+(row.basePoints+row.adjustment).toFixed(3);
         return row;
       }).sort((a,b)=>b.totalPoints-a.totalPoints||a.car-b.car);
@@ -2216,7 +2227,7 @@
         badge.title = '現在の更新を確認済みです';
       });
     }
-    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
