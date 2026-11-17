@@ -1663,6 +1663,41 @@
       return EMPIRICAL_MARK_POINTS[key] ?? 0.5;
     }
 
+    // ファノ平面：7点上の7本の直線（三点組）と、実際の3車ラインを照合する。
+    // 解析結果に対象ラインがない場合も、空の統計値を返して画面全体を停止させない。
+    function calculateFanoPlaneStats(res) {
+      const fanoBlocks = [
+        [1,2,3], [1,4,5], [1,6,7],
+        [2,4,6], [2,5,7], [3,4,7], [3,5,6]
+      ];
+      const blockKeys = new Set(fanoBlocks.map(block => block.join('-')));
+      const sourceLines = Array.isArray(res?.lineSummaryList) ? res.lineSummaryList : [];
+      const matches = [];
+      let lineSum = 0, squareSum = 0;
+      sourceLines.forEach((line, index) => {
+        if (!line || line.isTanki || !Array.isArray(line.members)) return;
+        const cars = line.members
+          .map(member => Number(member?.car))
+          .filter(car => Number.isInteger(car) && car >= 1 && car <= 7);
+        lineSum += cars.reduce((sum, car) => sum + car, 0);
+        squareSum += cars.reduce((sum, car) => sum + car * car, 0);
+        if (cars.length !== 3 || new Set(cars).size !== 3) return;
+        const triple = [...cars].sort((a,b) => a-b);
+        if (blockKeys.has(triple.join('-'))) {
+          matches.push({
+            line: line.label || ('ライン' + (index + 1)),
+            triple
+          });
+        }
+      });
+      return {
+        hasMatch: matches.length > 0,
+        matches,
+        lineSum,
+        squareSum
+      };
+    }
+
     function getBinnedFeaturePoint(value, config) {
       const thresholds = config.thresholds || [];
       let index = 0;
