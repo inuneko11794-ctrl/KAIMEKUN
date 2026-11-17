@@ -1304,7 +1304,7 @@
       allRaces.push(...importedRaces);
       if (!persistRaces()) { allRaces.splice(before); return; }
       currentRaceIdx = before;
-      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
+      populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       document.getElementById('instantReadStatus').textContent = `${importedRaces.length}レースを一覧へ反映・登録しました`;
       document.getElementById('applyInstantMdBtn').disabled = true;
       pendingInstantMdRaces = [];
@@ -1416,7 +1416,8 @@
       updateBatchStats();
       renderCurrentRace();
       refreshVerticalStockList();
-      showToast(`✅ 「${latestInstantParsedRace.id}」をリストに追加し、5大解析を表示しました！`);
+      renderBetLab();
+      showToast(`✅ 「${latestInstantParsedRace.id}」をリストに追加し、解析と自動買い目を表示しました！`);
       instantPasteInput.value = '';
       document.getElementById('instantMdFileInput').value = '';
       runInstantDiagnosisFromTextarea();
