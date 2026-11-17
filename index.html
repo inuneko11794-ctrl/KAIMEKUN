@@ -2418,7 +2418,7 @@
         const cars = lines.flat();
         if (cars.some(n => !Number.isInteger(n) || n < 1 || n > 7)) throw new Error('車番は1〜7で入力してください');
         if (new Set(cars).size !== cars.length) throw new Error('同じ車番が複数ラインにあります');
-        if (cars.length > 7) throw new Error('車番は合計7人以内にしてください');
+        if (cars.length !== 7) throw new Error('7車立てのため、ライン並びは合計7車で入力してください');
         return lines;
       }
       function transformMarks(lines, basic) {
