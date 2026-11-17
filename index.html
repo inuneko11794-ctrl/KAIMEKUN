@@ -109,10 +109,10 @@
         <button id="toggleManualBuilderBtn" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-sm font-bold transition w-full sm:w-auto">
           <span>✍️ 縦型1レース入力 / MD・テキスト診断</span>
         </button>
-        <label class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-sm font-semibold transition w-full sm:w-auto">
-          <span>📂 CSV / MD一括読込</span>
-          <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
-        </label>
+        <button id="chooseDataFileBtn" type="button" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-sm font-semibold transition w-full sm:w-auto">
+          📂 CSV / MDファイルを選択
+        </button>
+        <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
         <span id="dataFileReadStatus" class="text-[11px] text-slate-400 w-full sm:w-auto">ファイル未選択</span>
       </div>
     </header>
@@ -1992,14 +1992,25 @@
       reader.readAsText(file, 'UTF-8');
     });
 
+    document.getElementById('chooseDataFileBtn').addEventListener('click', () => document.getElementById('dataFileInput').click());
     document.getElementById('dataFileInput').addEventListener('change', (ev) => {
-      const file = ev.target.files[0]; if (!file) return;
+      const file = ev.target.files && ev.target.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target.result;
         if (file.name.endsWith('.md') || text.includes('並び予想')) {
           const parsedMd = parseMarkdownRaces(text);
-          if (parsedMd.length > 0) { allRaces = parsedMd; currentRaceIdx = 0; persistRaces(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${parsedMd.length}レース`; showToast(`✅ ${parsedMd.length}レース読込完了！`); return; }
+          if (parsedMd.length > 0) {
+            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate:'', dataEntryDate:todayForEntry(), exactaPayout:null, payout:null}));
+            document.getElementById('instantPasteInput').value = text;
+            document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${parsedMd.length}レース検出。下欄に日付・配当を入力してください`;
+            document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${parsedMd.length}レース読込・入力待ち`;
+            renderInstantResultEntryRows();
+            document.getElementById('applyInstantMdBtn').disabled = false;
+            document.getElementById('manualBuilderSection').scrollIntoView({behavior:'smooth',block:'start'});
+            showToast(`MD ${parsedMd.length}レースを読み込みました。日付・配当を入力してください`);
+            return;
+          }
         }
         Papa.parse(text, {
           header: true, skipEmptyLines: true,
@@ -2075,6 +2086,7 @@
         });
       };
       reader.readAsText(file, 'UTF-8');
+      ev.target.value = '';
     });
 
     document.getElementById('copyEmbedBtn').addEventListener('click', async () => {
