@@ -2411,14 +2411,14 @@
         return true;
       });
       const configs = [
-        {key:'win',label:'単勝',count:4,payout:'winPayout',hit:r=>r.autoTickets.win.includes(parseFinish(r)[0])},
-        {key:'exacta',label:'2車単',count:4,payout:'exactaPayout',hit:r=>r.autoTickets.exacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1])},
-        {key:'trifecta',label:'3連単',count:15,payout:'payout',hit:r=>r.autoTickets.trifecta.some(t=>t.join('-')===parseFinish(r).join('-'))}
+        {key:'win',label:'単勝',tickets:r=>4,payout:'winPayout',hit:r=>r.autoTickets.win.includes(parseFinish(r)[0])},
+        {key:'exacta',label:'2車単',tickets:r=>(r.autoTickets.exacta||[]).length,payout:'exactaPayout',hit:r=>r.autoTickets.exacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1])},
+        {key:'trifecta',label:'3連単',tickets:r=>(r.autoTickets.trifecta||[]).length,payout:'payout',hit:r=>r.autoTickets.trifecta.some(t=>t.join('-')===parseFinish(r).join('-'))}
       ];
       const rows = configs.map(c => {
         const data = eligible.filter(r => Number.isFinite(Number(r[c.payout])) && Number(r[c.payout]) > 0);
         const hits = data.filter(c.hit).length;
-        const investment = data.length*c.count*100;
+        const investment = data.reduce((sum,r)=>sum+Number(c.tickets(r)||0)*100,0);
         const returned = data.filter(c.hit).reduce((sum,r)=>sum+Number(r[c.payout]),0);
         return {label:c.label,n:data.length,hits,rate:data.length?hits/data.length*100:0,investment,roi:investment?returned/investment*100:0};
       });
