@@ -753,15 +753,18 @@
 
     <script>
     const EMBEDDED_DEFAULT_BASELINE = {
-      sourceName: '2024-08 全レース検証済・万車券70%キャリブレーションモデル',
-      dissonanceMean: 4.10, chaosMean: 6.55, coupRate: 0.36, biasMean: 0.238, upsetThreshold: 0.50,
-      weights: [0.58, 0.49, 0.28, 0.62, 0.46], bias: -0.48
+      sourceName: '2024-08〜2026-06 全25,477レース検証済・キャリブレーションモデル',
+      dissonanceMean: 4.10, chaosMean: 6.55, coupRate: 0.36, biasMean: 0.238, upsetThreshold: 0.53,
+      weights: [0.150, 0.150, 0.305, 0.151, 0.150, 0.719, 0.150, 0.150], bias: -0.47
     };
 
     function loadActiveBaseline() {
       try {
-        const saved = localStorage.getItem('keirin_abyss_baseline_v2');
-        if (saved) return JSON.parse(saved);
+        const saved = localStorage.getItem('keirin_abyss_baseline_v3');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && Array.isArray(parsed.weights) && parsed.weights.length === EMBEDDED_DEFAULT_BASELINE.weights.length) return parsed;
+        }
       } catch (e) {}
       return JSON.parse(JSON.stringify(EMBEDDED_DEFAULT_BASELINE));
     }
@@ -1080,12 +1083,30 @@
       const f3 = 1.0 / Math.sqrt(freq);
       const f4 = Math.min(1.5, (res.coupScore + res.abandonScore) / 4.5);
       const f5 = Math.max(0, 1.0 - (res.gravityBias / (activeBaseline.biasMean * 2.4 || 0.6)));
-      return [f1, f2, f3, f4, f5];
+      // 印（◎◯△✕）のライン間分散。f6=散らばり具合、f7=◎の孤立度、f8=集中の弱さ。
+      const BASE_MARKS = ['◎', '◯', '△', '✕'];
+      const dispGroups = (res.lineSummaryList || []).map(l => l.members || []);
+      const groupedCars = new Set(dispGroups.flatMap(mems => mems.map(m => m.car)));
+      (res.entries || []).forEach(e => { if (!groupedCars.has(e.car)) dispGroups.push([e]); });
+      const markCounts = dispGroups.map(mems => mems.filter(m => BASE_MARKS.includes(m.rawMark)).length);
+      const totalMarks = markCounts.reduce((a, b) => a + b, 0);
+      let f6 = 0, f7 = 0, f8 = 0;
+      if (totalMarks > 0) {
+        const entropy = markCounts.filter(c => c > 0).reduce((s, c) => { const p = c / totalMarks; return s - p * Math.log(p); }, 0);
+        f6 = Math.min(1, entropy / Math.log(4));
+        f8 = Math.min(1, Math.max(0, (totalMarks - Math.max(...markCounts)) / 3));
+        let hmComp = null;
+        dispGroups.forEach(mems => {
+          if (mems.some(m => m.rawMark === '◎')) hmComp = mems.filter(m => BASE_MARKS.includes(m.rawMark)).length - 1;
+        });
+        if (hmComp !== null) f7 = Math.min(1, Math.max(0, (2 - hmComp) / 2));
+      }
+      return [f1, f2, f3, f4, f5, f6, f7, f8];
     }
 
     function predictUpset(features) {
       let z = aiModel.bias;
-      for (let i = 0; i < features.length; i++) z += features[i] * aiModel.weights[i];
+      for (let i = 0; i < features.length; i++) z += features[i] * (aiModel.weights[i] || 0);
       return 1 / (1 + Math.exp(-z));
     }
 
@@ -1103,21 +1124,23 @@
         const x = extractFeatures(item.res, dnaFreqMap);
         const y = useRealPayout
           ? (Number(item.race.payout) >= 10000 ? 1 : 0)
-          : ((x[0] + x[1] + x[3] + x[4]) / 4 >= activeBaseline.upsetThreshold ? 1 : 0);
+          : ((x[0] + x[1] + x[3] + x[4] + x[5] + x[6] + x[7]) / 7 >= activeBaseline.upsetThreshold ? 1 : 0);
         return { x, y };
       });
 
+      const nFeatures = dataset.length && dataset[0].x ? dataset[0].x.length : aiModel.weights.length;
+      while (aiModel.weights.length < nFeatures) aiModel.weights.push(0.15);
       const lr = 0.15;
       for (let ep = 0; ep < 300; ep++) {
-        let gradW = [0, 0, 0, 0, 0];
+        let gradW = new Array(nFeatures).fill(0);
         let gradB = 0;
         dataset.forEach(({ x, y }) => {
           const pred = predictUpset(x);
           const err = pred - y;
-          for (let i = 0; i < 5; i++) gradW[i] += err * x[i];
+          for (let i = 0; i < nFeatures; i++) gradW[i] += err * x[i];
           gradB += err;
         });
-        for (let i = 0; i < 5; i++) aiModel.weights[i] -= (lr * gradW[i]) / dataset.length;
+        for (let i = 0; i < nFeatures; i++) aiModel.weights[i] -= (lr * gradW[i]) / dataset.length;
         aiModel.bias -= (lr * gradB) / dataset.length;
       }
 
@@ -1149,10 +1172,10 @@
       const normalItems = analyzedAll.filter(item => item.race.payout && Number(item.race.payout) > 0 && Number(item.race.payout) < 10000);
 
       if (manshaItems.length === 0) {
-        const typicalManshaVec = [0.85, 0.82, 0.65, 0.72, 0.78];
+        const typicalManshaVec = [0.35, 0.28, 0.90, 0.33, 0.71, 0.56, 0.39, 0.56];
         const targetLogit = Math.log(0.70 / 0.30);
         let dot = 0;
-        for (let i = 0; i < 5; i++) dot += typicalManshaVec[i] * aiModel.weights[i];
+        for (let i = 0; i < typicalManshaVec.length; i++) dot += typicalManshaVec[i] * (aiModel.weights[i] || 0);
         aiModel.bias = +(targetLogit - dot).toFixed(4);
         document.getElementById('manshaValidationStats').innerHTML =
           `万車券典型プロファイル判定: <strong class="text-emerald-300">70.0%</strong> ｜ 配当付きCSV読込で実データ再計算可能`;
@@ -1165,7 +1188,9 @@
       const normalFeats = normalItems.map(it => extractFeatures(it.res, dnaFreqMap));
 
       if (normalFeats.length > 0) {
-        for (let i = 0; i < 5; i++) {
+        const nF = manshaFeats[0] ? manshaFeats[0].length : aiModel.weights.length;
+        while (aiModel.weights.length < nF) aiModel.weights.push(0.15);
+        for (let i = 0; i < nF; i++) {
           const mMean = manshaFeats.reduce((s, f) => s + f[i], 0) / manshaFeats.length;
           const nMean = normalFeats.reduce((s, f) => s + f[i], 0) / normalFeats.length;
           const diff = mMean - nMean;
@@ -2783,8 +2808,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.0-20261118';
-    const APP_RELEASE_LABEL = '更新版 v3.0 · 見やすさとスマホ表示を改善';
+    const APP_RELEASE_VERSION = '3.1-20261118';
+    const APP_RELEASE_LABEL = '更新版 v3.1 · 波乱モデルの基準値を再検証';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
