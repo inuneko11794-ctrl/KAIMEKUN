@@ -85,7 +85,7 @@
     ::-webkit-scrollbar-thumb { background: #6b5b16; }
     ::-webkit-scrollbar-thumb:hover { background: #facc15; }
     /* 薄い補助文字を白へ引き上げ、色付き文字は白・太陽色に統一 */
-    .text-slate-400, .text-slate-500, .text-slate-300 { color: #d1d5db !important; }
+    .text-slate-400, .text-slate-400, .text-slate-300 { color: #d1d5db !important; }
     .text-cyan-100, .text-cyan-200, .text-cyan-300, .text-cyan-400,
     .text-purple-200, .text-purple-300, .text-emerald-200, .text-emerald-300,
     .text-rose-200, .text-rose-300, .text-amber-200, .text-amber-300 { color: #facc15 !important; }
@@ -98,6 +98,11 @@
   .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(148,163,184,.22);border-radius:.75rem;background:rgba(15,23,42,.88);color:#cbd5e1;font-size:.78rem;font-weight:700;transition:.18s}
   .workspace-tab[aria-selected="true"]{background:linear-gradient(120deg,rgba(8,145,178,.34),rgba(124,58,237,.24));border-color:rgba(103,232,249,.7);color:#fff;box-shadow:0 0 18px rgba(34,211,238,.12)}
   .workspace-panel{display:flex;flex-direction:column;gap:1.5rem;min-width:0}
+  html{scroll-padding-top:84px}
+  @media (max-width:767px){
+    button{min-height:40px}
+    select,textarea,input[type="text"],input[type="number"],input[type="date"],input[type="search"]{min-height:40px}
+  }
   .workspace-panel[hidden]{display:none!important}
   .workspace-data-card{background:rgba(2,6,23,.72);border:1px solid rgba(103,232,249,.25);border-radius:1rem;padding:1rem}
   @media(max-width:640px){.workspace-tabs{margin:0 -.15rem}.workspace-tab{padding:.65rem .8rem;font-size:.74rem}.workspace-panel{gap:1rem}}
@@ -128,7 +133,7 @@
           📂 CSV / MDファイルを選択
         </button>
         <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
-        <span id="dataFileReadStatus" class="text-[11px] text-slate-400 w-full sm:w-auto">ファイル未選択</span>
+        <span id="dataFileReadStatus" class="text-xs text-slate-400 w-full sm:w-auto">ファイル未選択</span>
       </div>
     </header>
 
@@ -141,11 +146,11 @@
           <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
         </div>
       </div>
-      <p id="patternBaselineNote" class="text-[11px] leading-relaxed text-slate-300">検証中...</p>
+      <p id="patternBaselineNote" class="text-xs leading-relaxed text-slate-300">検証中...</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 4点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-[11px] text-amber-200 mt-2">洛書発動: --</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-xs text-amber-200 mt-2">洛書発動: --</div></div>
       </div>
       <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-3">
         <div class="space-y-2"><div class="text-sm font-bold">期間指定成績</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><select id="betStatsDateBasis" class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm"><option value="event">開催日で検索</option><option value="entry" selected>データ入力日で検索</option></select><label class="text-xs text-slate-300">開始日<input id="betStatsFrom" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label><label class="text-xs text-slate-300">終了日<input id="betStatsTo" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label></div><div class="flex justify-end"><button id="clearBetStatsRangeBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs">期間をクリア</button></div></div>
@@ -153,7 +158,7 @@
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="betStatsRows"></tbody></table></div>
         <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">洛書フィルター別成績（各条件1点・100円）</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">条件</th><th>発動R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="rakushoStatsRows"></tbody></table></div>
-        <div id="rakushoStatsSummary" class="text-[11px] text-slate-400 mt-2">洛書条件の発動データを集計します。</div></div>
+        <div id="rakushoStatsSummary" class="text-xs text-slate-400 mt-2">洛書条件の発動データを集計します。</div></div>
       </div>
     </section>
 
@@ -177,7 +182,7 @@
         </label>
         <label class="text-xs text-slate-300 md:col-span-2">基本印（車番と印を入力）
           <input id="rakushoMarks" type="text" value="◎1 ◯3 △2 ✕4" placeholder="例：◎1 ◯3 △2 ✕4" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono-code">
-          <span class="block mt-1 text-[11px] text-slate-400">入力例：◎1 ◯3 △2 ✕4。基本印のない車番はライン配置に従って変換します。</span>
+          <span class="block mt-1 text-xs text-slate-400">入力例：◎1 ◯3 △2 ✕4。基本印のない車番はライン配置に従って変換します。</span>
         </label>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -216,7 +221,7 @@
           </button>
         </div>
       </div>
-      <div class="rounded-lg border border-amber-400/25 bg-amber-500/5 px-3 py-2 text-[11px] leading-relaxed text-slate-300">
+      <div class="rounded-lg border border-amber-400/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-slate-300">
         <span class="font-bold text-amber-200">コードの旧版復元：</span>
         「コード履歴・旧版確認」から過去の更新を選び、その時点の index.html を確認できます。
         コード変更はGitHubのコミット履歴に保存されます。旧版へ戻す場合はGitHub側で復元してください。
@@ -231,38 +236,38 @@
               📋 MDファイル読込 ＆ 出走表テキスト貼り付け
             </label>
             <div class="flex items-center gap-2">
-              <button id="chooseInstantMdFileBtn" type="button" class="px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-[11px] font-mono-code text-purple-200 font-bold transition">📄 MDファイルを選択</button>
+              <button id="chooseInstantMdFileBtn" type="button" class="px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-xs font-mono-code text-purple-200 font-bold transition">📄 MDファイルを選択</button>
               <input type="file" id="instantMdFileInput" accept=".md,.txt,.markdown" class="hidden" />
-              <button id="applyInstantMdBtn" type="button" disabled class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-[11px] text-emerald-200 font-bold disabled:opacity-40">反映・登録</button>
-              <button id="clearInstantPasteBtn" type="button" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-[11px] font-mono-code text-rose-200 font-bold transition">
+              <button id="applyInstantMdBtn" type="button" disabled class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-xs text-emerald-200 font-bold disabled:opacity-40">反映・登録</button>
+              <button id="clearInstantPasteBtn" type="button" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-xs font-mono-code text-rose-200 font-bold transition">
                 🗑️ 削除
               </button>
             </div>
           </div>
           <div class="flex flex-wrap gap-2">
-            <button id="checkInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-[11px] text-cyan-200">読込確認</button>
-            <button id="selectInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] text-slate-200">全選択</button>
-            <button id="copyInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] text-slate-200">コピー</button>
-            <span id="instantReadStatus" class="text-[11px] text-slate-400 self-center">テキスト未確認</span>
+            <button id="checkInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-xs text-cyan-200">読込確認</button>
+            <button id="selectInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200">全選択</button>
+            <button id="copyInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200">コピー</button>
+            <span id="instantReadStatus" class="text-xs text-slate-400 self-center">テキスト未確認</span>
           </div>
           <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
           <div id="instantResultEntryArea" class="hidden mt-3 rounded-xl border border-amber-400/30 bg-slate-900/80 p-3 space-y-3">
             <div class="text-xs font-bold text-amber-200">読み込みレースの結果・日付入力</div>
-            <p class="text-[11px] text-slate-300">各レースの確定着順・開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
+            <p class="text-xs text-slate-300">各レースの確定着順・開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
             <div id="instantResultEntryRows" class="space-y-3"></div>
           </div>
         </div>
         <div class="lg:col-span-5 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between">
-              <span class="text-[11px] font-mono-code text-slate-400">INSTANT UPSET RADAR // 即席判定</span>
-              <span id="instantParsedMeta" class="text-[11px] font-mono-code text-cyan-300">待機中</span>
+              <span class="text-xs font-mono-code text-slate-400">INSTANT UPSET RADAR // 即席判定</span>
+              <span id="instantParsedMeta" class="text-xs font-mono-code text-cyan-300">待機中</span>
             </div>
             <div class="mt-2 flex items-baseline gap-3">
-              <div id="instantRadarPercent" class="text-3xl font-extrabold font-mono-code text-slate-500">-- %</div>
+              <div id="instantRadarPercent" class="text-3xl font-extrabold font-mono-code text-slate-400">-- %</div>
               <div id="instantRadarHeadline" class="text-sm font-bold text-slate-400">MD読込 / テキスト入力で即判定</div>
             </div>
-            <p id="instantRadarDetail" class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+            <p id="instantRadarDetail" class="text-xs text-slate-400 mt-1.5 leading-relaxed">
               並び予想と印（◎◯▲△✕や本命/対抗など）を含むMDファイル・テキストを貼ると、5大奇抜指標を即時計算します。
             </p>
           </div>
@@ -278,26 +283,26 @@
             <div class="text-xs font-mono-code text-amber-300 font-bold">THIS RACE // INSTANT TICKETS</div>
             <h3 class="text-base font-bold text-amber-100">このレースの買い目</h3>
           </div>
-          <span id="instantTicketStatus" class="text-[11px] text-slate-400">出走表を読み込むと表示</span>
+          <span id="instantTicketStatus" class="text-xs text-slate-400">出走表を読み込むと表示</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">単勝</div><div id="instantWinPicks" class="text-sm font-mono-code">--</div></div>
           <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">2車単</div><div id="instantExactaPicks" class="text-sm font-mono-code">--</div></div>
           <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">3連単</div><div id="instantTrifectaPicks" class="text-sm font-mono-code">--</div></div>
         </div>
-        <div id="instantTicketReasons" class="text-[11px] text-cyan-200 space-y-1">買い目の根拠は出走表の認識後に表示します。</div>
+        <div id="instantTicketReasons" class="text-xs text-cyan-200 space-y-1">買い目の根拠は出走表の認識後に表示します。</div>
       </section>
       <section id="numberLorePanel" class="rounded-xl border border-violet-400/35 bg-slate-950/90 p-4 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2"><div><div class="text-xs font-mono-code text-violet-300 font-bold">TETRACTYS × ENNEAGRAM</div><h3 class="text-base font-bold text-violet-100">数理構造・15フィルター判定</h3></div><span id="numberLoreStatus" class="text-[11px] text-slate-400">7車立て出走表を認識すると判定</span></div>
+        <div class="flex flex-wrap items-center justify-between gap-2"><div><div class="text-xs font-mono-code text-violet-300 font-bold">TETRACTYS × ENNEAGRAM</div><h3 class="text-base font-bold text-violet-100">数理構造・15フィルター判定</h3></div><span id="numberLoreStatus" class="text-xs text-slate-400">7車立て出走表を認識すると判定</span></div>
         <div id="numberLoreDimension" class="text-sm text-slate-200">次元構造：--</div><div id="numberLoreConvertedLines" class="text-xs text-cyan-200 whitespace-pre-wrap">変換後ライン：--</div><div id="numberLoreFilters" class="space-y-2 text-xs text-slate-200">該当フィルター：--</div><div id="numberLoreResult" class="border-t border-slate-700 pt-3 text-xs text-amber-200 whitespace-pre-wrap">結果検証：結果入力時に表示</div>
-        <p class="text-[10px] text-slate-500">過去実測値は提示された集計値を表示。今回のコードで独立再集計した値ではありません。</p>
+        <p class="text-xs text-slate-400">過去実測値は提示された集計値を表示。今回のコードで独立再集計した値ではありません。</p>
       </section>
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <div class="xl:col-span-7 bg-slate-950/70 rounded-xl p-4 border border-slate-800 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <span class="text-xs font-mono-code text-cyan-300 font-bold">▼ STEP 1: 新規レースを縦に1レースずつ入力</span>
             <div class="flex items-center gap-2">
-              <span id="builderLiveRadarBadge" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-mono-code text-slate-300">
+              <span id="builderLiveRadarBadge" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono-code text-slate-300">
                 リアルタイム判定: -- %
               </span>
               <div class="flex items-center gap-1.5 text-xs">
@@ -314,14 +319,14 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">レース名 / 開催R</label>
+              <label class="block text-xs font-mono-code text-slate-400 mb-1">レース名 / 開催R</label>
               <div class="flex items-center gap-1">
                 <input id="builderRaceTitle" type="text" placeholder="例: 武雄8R A級特選" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none" />
                 <button type="button" data-clear-target="builderRaceTitle" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
               </div>
             </div>
             <div>
-              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">並び予想 (例: [1 4] [2 5] [3] [6 7])</label>
+              <label class="block text-xs font-mono-code text-slate-400 mb-1">並び予想 (例: [1 4] [2 5] [3] [6 7])</label>
               <div class="flex items-center gap-1">
                 <input id="builderLineInput" type="text" placeholder="例: [1 4] [2 5] [3 6 7]" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 font-mono-code focus:border-cyan-400 focus:outline-none" />
                 <button type="button" data-clear-target="builderLineInput" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
@@ -329,9 +334,9 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><div><label class="block text-[11px] font-mono-code text-slate-400 mb-1">開催日</label><input id="builderEventDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div><div><label class="block text-[11px] font-mono-code text-slate-400 mb-1">データ入力日</label><input id="builderEntryDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><div><label class="block text-xs font-mono-code text-slate-400 mb-1">開催日</label><input id="builderEventDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div><div><label class="block text-xs font-mono-code text-slate-400 mb-1">データ入力日</label><input id="builderEntryDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div></div>
           <div class="overflow-x-auto border border-slate-800 rounded-xl">
-            <table class="w-full text-left border-collapse text-xs font-mono-code">
+            <table class="w-full min-w-[560px] text-left border-collapse text-xs font-mono-code">
               <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
                 <tr>
                   <th class="py-2 px-2 w-12">車番</th>
@@ -346,14 +351,14 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             <div>
-              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">確定着順 (未確定なら空欄OK)</label>
+              <label class="block text-xs font-mono-code text-slate-400 mb-1">確定着順 (未確定なら空欄OK)</label>
               <div class="flex items-center gap-1">
                 <input id="builderResultOrder" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-code focus:border-cyan-400 focus:outline-none" />
                 <button type="button" data-clear-target="builderResultOrder" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
               </div>
             </div>
             <div>
-              <label class="block text-[11px] font-mono-code text-slate-400 mb-1">3連単配当 (円 / 未確定なら空欄OK)</label>
+              <label class="block text-xs font-mono-code text-slate-400 mb-1">3連単配当 (円 / 未確定なら空欄OK)</label>
               <div class="flex items-center gap-1">
                 <input id="builderPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono-code focus:border-cyan-400 focus:outline-none" />
                 <button type="button" data-clear-target="builderPayoutInput" class="clear-field-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
@@ -375,7 +380,7 @@
           <div class="space-y-2.5">
             <div class="flex items-center justify-between">
               <span class="text-xs font-mono-code text-amber-300 font-bold">▼ STEP 2: 選択中レースへ「あとから結果入力」</span>
-              <span id="pendingResultBadge" class="text-[11px] font-mono-code px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">
+              <span id="pendingResultBadge" class="text-xs font-mono-code px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">
                 結果未入力: 0件
               </span>
             </div>
@@ -383,31 +388,31 @@
             <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-2.5">
               <div class="flex items-center justify-between gap-2 text-xs text-slate-300">
                 <div class="truncate">対象: <strong id="editingTargetRaceName" class="text-cyan-300 font-mono-code">--</strong></div>
-                <button id="deleteSelectedRaceBtn" type="button" class="shrink-0 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/40 border border-rose-400/40 text-[11px] font-mono-code text-rose-200 font-bold">
+                <button id="deleteSelectedRaceBtn" type="button" class="shrink-0 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/40 border border-rose-400/40 text-xs font-mono-code text-rose-200 font-bold">
                   🗑️ このレース削除
                 </button>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">確定着順 (例: 1-4-5)</label>
+                  <label class="block text-xs font-mono-code text-slate-400 mb-1">確定着順 (例: 1-4-5)</label>
                   <div class="flex items-center gap-1">
                     <input id="lateResultOrderInput" type="text" placeholder="例: 1-4-5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono-code focus:border-amber-400 focus:outline-none" />
                     <button type="button" data-clear-target="lateResultOrderInput" class="clear-field-btn px-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
                   </div>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">3連単払戻金 (円)</label>
+                  <label class="block text-xs font-mono-code text-slate-400 mb-1">3連単払戻金 (円)</label>
                   <div class="flex items-center gap-1">
                     <input id="lateResultPayoutInput" type="number" placeholder="例: 12450" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code focus:border-amber-400 focus:outline-none" />
                     <button type="button" data-clear-target="lateResultPayoutInput" class="clear-field-btn px-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs font-mono-code" title="削除">✕</button>
                   </div>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">2車単配当 (円)</label>
+                  <label class="block text-xs font-mono-code text-slate-400 mb-1">2車単配当 (円)</label>
                   <input id="lateExactaPayoutInput" type="number" placeholder="例: 1850" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-mono-code text-slate-400 mb-1">単勝配当 (円)</label>
+                  <label class="block text-xs font-mono-code text-slate-400 mb-1">単勝配当 (円)</label>
                   <input id="lateWinPayoutInput" type="number" placeholder="例: 420" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code" />
                 </div>
               </div>
@@ -418,9 +423,9 @@
           </div>
 
           <div class="space-y-1.5">
-            <div class="text-[11px] font-mono-code text-slate-400 flex justify-between items-center">
+            <div class="text-xs font-mono-code text-slate-400 flex justify-between items-center">
               <span>登録レース一覧（各行から削除可能）</span>
-              <button id="clearNonSampleRacesBtn" type="button" class="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 border border-rose-400/40">
+              <button id="clearNonSampleRacesBtn" type="button" class="text-xs px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 border border-rose-400/40">
                 🗑️ 全リスト初期化
               </button>
             </div>
@@ -457,7 +462,7 @@
             <button type="button" data-clear-target="embedCodeInput" class="clear-field-btn text-xs px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/40" title="削除">✕</button>
           </div>
         </div>
-        <input id="embedCodeInput" value='<iframe src="https://あなたのID.github.io/keirin-abyss-lab/" width="100%" height="950" frameborder="0"></iframe>' class="mt-2 w-full bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono-code text-slate-300 focus:outline-none" />
+        <input id="embedCodeInput" value='<iframe src="https://あなたのID.github.io/keirin-abyss-lab/" width="100%" height="950" frameborder="0"></iframe>' onclick="this.select()" title="クリックで全選択できます" class="mt-2 w-full bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono-code text-slate-100 focus:outline-none" />
       </div>
     </section>
 
@@ -549,15 +554,15 @@
       <div class="mt-4 bg-slate-950/75 rounded-2xl p-4 border border-cyan-500/25 space-y-3">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[11px] font-mono-code font-bold">DEEP DIVE // PAYOUT TIER MATRIX</span>
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono-code font-bold">DEEP DIVE // PAYOUT TIER MATRIX</span>
             <h3 class="text-sm sm:text-base font-bold text-white mt-1">💰 配当レンジ別・5大奇抜指標 ＆ AI波乱度 比較検証テーブル</h3>
           </div>
-          <div id="alertFilterSummary" class="text-[11px] font-mono-code px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-200">
+          <div id="alertFilterSummary" class="text-xs font-mono-code px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-200">
             🎯 波乱度65%以上フィルター: CSV読込で実測万車券捕捉率を算出
           </div>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs font-mono-code">
+          <table class="w-full min-w-[560px] text-left border-collapse text-xs font-mono-code">
             <thead>
               <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/70">
                 <th class="py-2 px-2.5">配当レンジ (3連単)</th>
@@ -583,9 +588,9 @@
         <div class="bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2">
           <div class="text-xs font-mono-code text-emerald-300">AI UPSET PROBABILITY // 波乱度</div>
           <div id="aiUpsetProb" class="text-3xl sm:text-4xl font-extrabold font-mono-code text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-cyan-300 to-amber-300">-- %</div>
-          <div id="baselineDiffBadge" class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-slate-800 text-amber-300">基準値比: --</div>
+          <div id="baselineDiffBadge" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-slate-800 text-amber-300">基準値比: --</div>
           <div id="aiVerdictText" class="text-xs text-slate-300 leading-relaxed">解析待機中...</div>
-          <div id="aiTrainMetrics" class="text-[11px] font-mono-code text-slate-500 pt-1 border-t border-slate-800/80">教師データ件数: 0件 | 学習エポック: 0</div>
+          <div id="aiTrainMetrics" class="text-xs font-mono-code text-slate-400 pt-1 border-t border-slate-800/80">教師データ件数: 0件 | 学習エポック: 0</div>
         </div>
       </div>
     </section>
@@ -639,7 +644,7 @@
           <h3 class="text-lg font-bold text-white mt-3">🧬 レースDNA配列・進化系統樹</h3>
           <p class="text-xs text-slate-400 mt-1">車立て・ライン①②③④構成・変換後印配列を遺伝子コード化し、同型クローンレースを照合。</p>
           <div class="mt-4 p-3 rounded-xl bg-slate-950/90 border border-emerald-500/30 font-mono-code text-center">
-            <div class="text-[10px] text-slate-500 uppercase tracking-widest">ENCODED RACE DNA SEQUENCE</div>
+            <div class="text-xs text-slate-400 uppercase tracking-widest">ENCODED RACE DNA SEQUENCE</div>
             <div id="dnaSequenceText" class="text-sm sm:text-base font-bold text-emerald-300 mt-1 tracking-wider break-all">--</div>
           </div>
         </div>
@@ -648,11 +653,11 @@
         <div class="mt-4 rounded-xl border border-amber-400/30 bg-slate-950/70 p-3 space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="text-xs font-bold text-amber-200">車番差分比率 // LINE GAP RATIO</div>
-            <span class="text-[10px] text-slate-400">分析・記録専用 / 予測点には未反映</span>
+            <span class="text-xs text-slate-400">分析・記録専用 / 予測点には未反映</span>
           </div>
           <div id="lineGapCurrent" class="text-xs text-slate-200">ライン内の隣接車番差を計算します。</div>
           <div id="lineGapSignal" class="text-xs text-amber-200">注目条件：差分3が25〜50％、差分5が0〜25％</div>
-          <div id="lineGapHistory" class="text-[11px] text-slate-300">過去の該当レースを集計します。</div>
+          <div id="lineGapHistory" class="text-xs text-slate-300">過去の該当レースを集計します。</div>
         </div>
       </article>
 
@@ -680,7 +685,7 @@
           </div>
           <h3 class="text-lg font-bold text-white mt-3">🧭 車番ポリゴン・重心シフト ＆ 出走印変換テーブル</h3>
           <div class="mt-4 overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs font-mono-code">
+            <table class="w-full min-w-[560px] text-left border-collapse text-xs font-mono-code">
               <thead>
                 <tr class="border-b border-slate-700 text-slate-400">
                   <th class="py-2 px-2">車番</th><th class="py-2 px-2">選手名</th><th class="py-2 px-2">所属ライン</th>
@@ -695,7 +700,7 @@
           <div class="relative w-64 h-64 sm:w-72 sm:h-72 bg-slate-950/90 rounded-full border border-amber-500/30 shadow-inner flex items-center justify-center">
             <canvas id="polygonCanvas" class="w-full h-full block rounded-full"></canvas>
           </div>
-          <div id="polygonDiagnosis" class="mt-3 text-xs font-mono-code text-amber-300 text-center">重心ベクトル解析中...</div><div id="gravityVectorReadout" class="mt-1 text-[11px] font-mono-code text-cyan-200 text-center">ベクトル X: -- / Y: -- / 方向: --</div>
+          <div id="polygonDiagnosis" class="mt-3 text-xs font-mono-code text-amber-300 text-center">重心ベクトル解析中...</div><div id="gravityVectorReadout" class="mt-1 text-xs font-mono-code text-cyan-200 text-center">ベクトル X: -- / Y: -- / 方向: --</div>
         </div>
       </div>
     </section>
@@ -711,21 +716,21 @@
         <div id="carPointTopSummary" class="text-sm font-mono-code text-amber-200">評価待機中</div>
       </div>
       <div class="overflow-x-auto rounded-xl border border-slate-800">
-        <table class="w-full text-left text-xs font-mono-code">
+        <table class="w-full min-w-[620px] text-left text-xs font-mono-code">
           <thead class="bg-slate-900 text-slate-300">
             <tr><th class="p-2">順位</th><th class="p-2">車番</th><th class="p-2">変換印</th><th class="p-2">基礎点</th><th class="p-2">加減点</th><th class="p-2">合計</th><th class="p-2">根拠</th></tr>
           </thead>
           <tbody id="carPointTableBody" class="divide-y divide-slate-800"></tbody>
         </table>
       </div>
-      <div id="carPointContext" class="text-[11px] text-slate-300 leading-relaxed"></div>
-      <div id="carPointEvidence" class="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-[11px] leading-relaxed space-y-2"></div>
-      <div id="carMarkCalibration" class="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-3 text-[11px] leading-relaxed">
+      <div id="carPointContext" class="text-xs text-slate-300 leading-relaxed"></div>
+      <div id="carPointEvidence" class="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-xs leading-relaxed space-y-2"></div>
+      <div id="carMarkCalibration" class="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-3 text-xs leading-relaxed">
         <div class="font-bold text-cyan-200 mb-2">印別・実績基礎点（全25,477レース）</div>
         <div id="carMarkCalibrationGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 font-mono-code"></div>
         <div class="text-slate-400 mt-2">着順実績を1着3点・2着2点・3着1点で集計し、◎=5.00に正規化。直近20%でも大枠の順位を確認済み。既存の音楽・重力解析スコアとは独立。</div>
       </div>
-      <div id="fanoMathLab" class="rounded-xl border border-amber-400/35 bg-amber-950/20 p-3 text-[11px] leading-relaxed space-y-2">
+      <div id="fanoMathLab" class="rounded-xl border border-amber-400/35 bg-amber-950/20 p-3 text-xs leading-relaxed space-y-2">
         <div class="font-bold text-amber-200">MATHEMATICAL PATTERN LAB // 1〜7・ファノ平面検証</div>
         <div id="fanoMathCurrent" class="text-slate-100">現在レースのライン構造を照合します。</div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -743,7 +748,7 @@
         <div class="text-slate-400">全25,477レース（6〜9車立てを含む）で照合。該当あり n=6,283、該当なし n=19,194。ファノ平面の三つ組が同一ライン内にそろう条件。ライン本数・最大ライン長との重なりがあるため、独立した加点・減点ではなく波乱基準の参考値として表示。</div>
         <div class="text-slate-400">1〜7の総和28・二乗和140、7! = 5040、123−4+5+6+7 = 137は、通常の7車立てでは全車番がそろうと固定値になるため、単独ではレース間の波乱差を判別できません。</div>
       </div>
-      <p class="text-[11px] text-slate-400">※これは既存の印点とライン内の印配置から計算する説明可能な初期スコアです。過去結果から学習した車番別AI点数ではありません。実績検証を通すまでは買い目の自動決定に使いません。</p>
+      <p class="text-xs text-slate-400">※これは既存の印点とライン内の印配置から計算する説明可能な初期スコアです。過去結果から学習した車番別AI点数ではありません。実績検証を通すまでは買い目の自動決定に使いません。</p>
     </section>
 
     <script>
@@ -975,7 +980,7 @@
         history.textContent = '—';
         return;
       }
-      el.innerHTML = x.ratios.map((pct,i) => '<span class="inline-block mr-2 mb-1">差分'+(i+1)+'：'+pct.toFixed(1)+'% ('+x.counts[i]+'件)</span>').join('');
+      el.innerHTML = x.ratios.map((pct,i) => '<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">差分'+(i+1)+'：'+pct.toFixed(1)+'% ('+x.counts[i]+'件)</span>').join('');
       const isSignal = x.isSevenCarThreeLine && x.ratios[2] >= 25 && x.ratios[2] <= 50 && x.ratios[4] >= 0 && x.ratios[4] <= 25;
       signal.textContent = isSignal ? '注目条件に該当：差分3＝25〜50％ ＋ 差分5＝0〜25％' : '注目条件には非該当（7車・三分戦で判定）';
       const h = lineGapHistoryStats();
@@ -1229,7 +1234,7 @@
       const res = analyzeRace(tempRace);
       const prob = predictUpset(extractFeatures(res, null)) * 100;
       const meta = getUpsetJudgeMeta(prob);
-      badge.className = `px-2.5 py-1 rounded-lg border text-[11px] font-mono-code font-bold transition ${meta.badgeStyle}`;
+      badge.className = `px-2.5 py-1 rounded-lg border text-xs font-mono-code font-bold transition ${meta.badgeStyle}`;
       badge.textContent = `${prob.toFixed(1)}% ｜ ${meta.headline}`;
     }
 
@@ -1319,7 +1324,7 @@
 
       if (!parsed) {
         pctEl.textContent = '-- %';
-        pctEl.className = 'text-3xl font-extrabold font-mono-code text-slate-500';
+        pctEl.className = 'text-3xl font-extrabold font-mono-code text-slate-400';
         headEl.textContent = instantPasteInput.value.trim() ? '5車以上の車番・印を認識中...' : 'MD読込 / テキスト入力で即判定';
         headEl.className = 'text-sm font-bold text-slate-400';
         detailEl.textContent = '例: 「1 選手A ◎」「2 選手B ◯」またはMDファイルを読み込むと即計算します。';
@@ -1410,11 +1415,11 @@
         <div class="rounded-lg border border-slate-700 bg-slate-950/70 p-3 space-y-2">
           <div class="text-xs font-bold text-cyan-200">${idx + 1}. ${String(race.id || 'レース').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>
           <div class="grid grid-cols-2 gap-2">
-            <label class="text-[11px] text-slate-300 col-span-2">確定着順（1着-2着-3着）<input data-md-field="resultOrder" data-md-index="${idx}" type="text" inputmode="numeric" placeholder="例: 1-4-5" value="${race.resultOrder || ''}" class="block w-full mt-1 bg-slate-900 border border-amber-500/50 rounded-lg px-2 py-2 text-sm font-bold text-white"></label>
-            <label class="text-[11px] text-slate-300">開催日<input data-md-field="eventDate" data-md-index="${idx}" type="date" value="${race.eventDate || ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
-            <label class="text-[11px] text-slate-300">データ入力日<input data-md-field="dataEntryDate" data-md-index="${idx}" type="date" value="${race.dataEntryDate || todayForEntry()}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
-            <label class="text-[11px] text-slate-300">2車単配当（円）<input data-md-field="exactaPayout" data-md-index="${idx}" type="number" min="0" placeholder="例: 1850" value="${race.exactaPayout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
-            <label class="text-[11px] text-slate-300">3連単配当（円）<input data-md-field="payout" data-md-index="${idx}" type="number" min="0" placeholder="例: 12450" value="${race.payout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
+            <label class="text-xs text-slate-300 col-span-2">確定着順（1着-2着-3着）<input data-md-field="resultOrder" data-md-index="${idx}" type="text" inputmode="numeric" placeholder="例: 1-4-5" value="${race.resultOrder || ''}" class="block w-full mt-1 bg-slate-900 border border-amber-500/50 rounded-lg px-2 py-2 text-sm font-bold text-white"></label>
+            <label class="text-xs text-slate-300">開催日<input data-md-field="eventDate" data-md-index="${idx}" type="date" value="${race.eventDate || ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
+            <label class="text-xs text-slate-300">データ入力日<input data-md-field="dataEntryDate" data-md-index="${idx}" type="date" value="${race.dataEntryDate || todayForEntry()}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white"></label>
+            <label class="text-xs text-slate-300">2車単配当（円）<input data-md-field="exactaPayout" data-md-index="${idx}" type="number" min="0" placeholder="例: 1850" value="${race.exactaPayout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
+            <label class="text-xs text-slate-300">3連単配当（円）<input data-md-field="payout" data-md-index="${idx}" type="number" min="0" placeholder="例: 12450" value="${race.payout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
           </div>
         </div>`).join('');
       rows.querySelectorAll('[data-md-field]').forEach(input => input.addEventListener('input', () => {
@@ -1510,14 +1515,14 @@
             <td class="py-1.5 px-1.5">
               <div class="flex items-center gap-1">
                 <input id="bName_${c}" type="text" data-car="${c}" class="b-name w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-white focus:border-cyan-400 focus:outline-none" placeholder="選手${c}" />
-                <button type="button" data-clear-target="bName_${c}" class="clear-field-btn px-1.5 py-1 rounded bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-[10px]" title="選手名削除">✕</button>
+                <button type="button" data-clear-target="bName_${c}" class="clear-field-btn px-1.5 py-1 rounded bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs" title="選手名削除">✕</button>
               </div>
             </td>
             <td class="py-1.5 px-1.5"><select data-car="${c}" class="b-mark w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-amber-200 focus:border-cyan-400 focus:outline-none">${markOptions.map(m => `<option value="${m.split('(')[0]}">${m}</option>`).join('')}</select></td>
             <td class="py-1.5 px-1.5">
               <div class="flex items-center gap-1">
                 <input id="bMemo_${c}" type="text" data-car="${c}" class="b-memo w-full bg-slate-900/90 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:border-cyan-400 focus:outline-none" placeholder="70.00" />
-                <button type="button" data-clear-target="bMemo_${c}" class="clear-field-btn px-1.5 py-1 rounded bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-[10px]" title="メモ削除">✕</button>
+                <button type="button" data-clear-target="bMemo_${c}" class="clear-field-btn px-1.5 py-1 rounded bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-200 text-xs" title="メモ削除">✕</button>
               </div>
             </td>
           </tr>`;
@@ -1558,9 +1563,9 @@
       for (let i = start; i < end; i++) {
         const r = allRaces[i], isSelected = i === currentRaceIdx, hasResult = Boolean(r.payout || r.resultOrder);
         const statusBadge = hasResult
-          ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono-code">済 ${r.resultOrder || ''} ${r.payout ? Number(r.payout).toLocaleString() + '円' : ''}</span>`
-          : `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono-code">未確定</span>`;
-        html += `<div class="flex items-center gap-1.5"><div data-idx="${i}" class="stock-race-item flex-1 min-w-0 cursor-pointer flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-500 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div><button type="button" data-del-idx="${i}" class="del-stock-race-btn shrink-0 px-2 py-2 rounded-lg bg-slate-900 hover:bg-rose-500/30 border border-slate-800 hover:border-rose-400/50 text-slate-400 hover:text-rose-200 text-xs" title="このレースを削除">🗑️</button></div>`;
+          ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono-code">済 ${r.resultOrder || ''} ${r.payout ? Number(r.payout).toLocaleString() + '円' : ''}</span>`
+          : `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono-code">未確定</span>`;
+        html += `<div class="flex items-center gap-1.5"><div data-idx="${i}" class="stock-race-item flex-1 min-w-0 cursor-pointer flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-400 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div><button type="button" data-del-idx="${i}" class="del-stock-race-btn shrink-0 px-2 py-2 rounded-lg bg-slate-900 hover:bg-rose-500/30 border border-slate-800 hover:border-rose-400/50 text-slate-400 hover:text-rose-200 text-xs" title="このレースを削除">🗑️</button></div>`;
       }
       listEl.innerHTML = html;
       document.querySelectorAll('.stock-race-item').forEach(el => {
@@ -1598,7 +1603,7 @@
           { label: '③ 万車券 (10,000〜49,999円)', countStr: '基準 24%', dis: '4.45', chaos: '7.15', coup: '46%', bias: '0.205', prob: '68.5%', badge: 'text-amber-300 font-bold' },
           { label: '④ 大穴ゾーン (50,000円〜)', countStr: '基準 8%', dis: '5.10', chaos: '8.30', coup: '58%', bias: '0.165', prob: '74.8%', badge: 'text-rose-300 font-bold' }
         ];
-        tbody.innerHTML = presetTiers.map(t => `<tr class="hover:bg-slate-900/50"><td class="py-2 px-2.5 text-slate-200">${t.label}</td><td class="py-2 px-2.5 text-right text-slate-400">${t.countStr}</td><td class="py-2 px-2.5 text-right text-cyan-300">${t.dis}</td><td class="py-2 px-2.5 text-right text-purple-300">${t.chaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${t.coup}</td><td class="py-2 px-2.5 text-right text-amber-300">${t.bias}</td><td class="py-2 px-2.5 text-right ${t.badge}">${t.prob}</td><td class="py-2 px-2.5 text-center text-slate-500">CSV読込で実レース表示</td></tr>`).join('');
+        tbody.innerHTML = presetTiers.map(t => `<tr class="hover:bg-slate-900/50"><td class="py-2 px-2.5 text-slate-200">${t.label}</td><td class="py-2 px-2.5 text-right text-slate-400">${t.countStr}</td><td class="py-2 px-2.5 text-right text-cyan-300">${t.dis}</td><td class="py-2 px-2.5 text-right text-purple-300">${t.chaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${t.coup}</td><td class="py-2 px-2.5 text-right text-amber-300">${t.bias}</td><td class="py-2 px-2.5 text-right ${t.badge}">${t.prob}</td><td class="py-2 px-2.5 text-center text-slate-400">CSV読込で実レース表示</td></tr>`).join('');
         alertSummaryEl.innerHTML = `🎯 波乱度65%以上フィルター（基準モデル）: 万車券平均 <strong class="text-emerald-300">70.0%</strong> に最適化済`;
         return;
       }
@@ -1610,7 +1615,7 @@
       ];
       tbody.innerHTML = tiers.map(t => {
         const n = t.items.length;
-        if (n === 0) return `<tr><td class="py-2 px-2.5 text-slate-400">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-500">0件 (0%)</td><td colspan="6" class="py-2 px-2.5 text-center text-slate-600">該当データなし</td></tr>`;
+        if (n === 0) return `<tr><td class="py-2 px-2.5 text-slate-400">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-400">0件 (0%)</td><td colspan="6" class="py-2 px-2.5 text-center text-slate-600">該当データなし</td></tr>`;
         const share = ((n / withPayout.length) * 100).toFixed(1);
         const avgDis = (t.items.reduce((s, it) => s + it.res.dissonance, 0) / n).toFixed(2);
         const avgChaos = (t.items.reduce((s, it) => s + it.res.chaosIndex, 0) / n).toFixed(2);
@@ -1618,7 +1623,7 @@
         const avgBias = (t.items.reduce((s, it) => s + it.res.gravityBias, 0) / n).toFixed(3);
         const avgProb = (t.items.reduce((s, it) => s + it.prob, 0) / n).toFixed(1);
         const topItem = [...t.items].sort((a, b) => b.payNum - a.payNum)[0];
-        return `<tr class="hover:bg-slate-900/60 transition"><td class="py-2 px-2.5 text-slate-200 font-semibold">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-300">${n.toLocaleString()}件 (${share}%)</td><td class="py-2 px-2.5 text-right text-cyan-300">${avgDis}</td><td class="py-2 px-2.5 text-right text-purple-300">${avgChaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${coupRate}%</td><td class="py-2 px-2.5 text-right text-amber-300">${avgBias}</td><td class="py-2 px-2.5 text-right ${t.probClass}">${avgProb}%</td><td class="py-2 px-2.5 text-center"><button data-jump-idx="${topItem.idx}" class="jump-tier-race-btn px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-400/40 text-[11px]">🔍 ${topItem.payNum.toLocaleString()}円を表示</button></td></tr>`;
+        return `<tr class="hover:bg-slate-900/60 transition"><td class="py-2 px-2.5 text-slate-200 font-semibold">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-300">${n.toLocaleString()}件 (${share}%)</td><td class="py-2 px-2.5 text-right text-cyan-300">${avgDis}</td><td class="py-2 px-2.5 text-right text-purple-300">${avgChaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${coupRate}%</td><td class="py-2 px-2.5 text-right text-amber-300">${avgBias}</td><td class="py-2 px-2.5 text-right ${t.probClass}">${avgProb}%</td><td class="py-2 px-2.5 text-center"><button data-jump-idx="${topItem.idx}" class="jump-tier-race-btn px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-400/40 text-xs">🔍 ${topItem.payNum.toLocaleString()}円を表示</button></td></tr>`;
       }).join('');
       const alerted = withPayout.filter(it => it.prob >= 65.0), alertedMansha = alerted.filter(it => it.payNum >= 10000);
       const alertRate = ((alerted.length / withPayout.length) * 100).toFixed(1);
@@ -1666,7 +1671,7 @@
       document.getElementById('aiWeightsContainer').innerHTML = labels.map((lbl, idx) => {
         const w = aiModel.weights[idx];
         const pct = Math.min(100, Math.round((Math.abs(w) / maxAbs) * 100));
-        return `<div><div class="flex justify-between text-[11px] mb-0.5"><span class="text-slate-300">${lbl.name}</span><span class="${w >= 0 ? 'text-emerald-300' : 'text-slate-400'} font-bold">重み: ${w >= 0 ? '+' : ''}${w.toFixed(3)}</span></div><div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div class="h-full ${lbl.color} transition-all duration-500" style="width: ${pct}%"></div></div></div>`;
+        return `<div><div class="flex justify-between text-xs mb-0.5"><span class="text-slate-300">${lbl.name}</span><span class="${w >= 0 ? 'text-emerald-300' : 'text-slate-400'} font-bold">重み: ${w >= 0 ? '+' : ''}${w.toFixed(3)}</span></div><div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div class="h-full ${lbl.color} transition-all duration-500" style="width: ${pct}%"></div></div></div>`;
       }).join('');
 
       const dnaFreqMap = {};
@@ -1676,7 +1681,7 @@
       document.getElementById('aiUpsetProb').textContent = `${prob.toFixed(1)} %`;
       const diffBadge = document.getElementById('baselineDiffBadge');
       diffBadge.textContent = diffFromBase >= 0 ? `基準ライン比: +${diffFromBase.toFixed(1)}pt (波乱寄り)` : `基準ライン比: ${diffFromBase.toFixed(1)}pt (堅実寄り)`;
-      diffBadge.className = diffFromBase >= 12 ? 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-rose-500/20 text-rose-300 border border-rose-400/40' : diffFromBase <= -10 ? 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono-code bg-amber-500/20 text-amber-300 border border-amber-400/40';
+      diffBadge.className = diffFromBase >= 12 ? 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-rose-500/20 text-rose-300 border border-rose-400/40' : diffFromBase <= -10 ? 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-amber-500/20 text-amber-300 border border-amber-400/40';
       document.getElementById('aiVerdictText').textContent = prob >= 65 ? '🔥 基準値大幅超過：高配当・万車券アラート発火中！' : prob >= 45 ? '⚡ 基準値付近〜やや波乱：ラインのほつれ・単騎(T)の突っ込みに警戒' : '🛡️ 基準値以下（安定）：重力場と和音が調和しており本命サイド濃厚';
       document.getElementById('aiTrainMetrics').textContent = `基準: ${activeBaseline.sourceName} | 学習エポック: ${aiModel.epochs}`;
     }
@@ -1851,9 +1856,9 @@
         const badgeStyle = lObj.isTanki ? 'bg-purple-500/20 text-purple-300 border-purple-400/40' : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40';
         const membersHtml = lObj.members.map(m => {
           const bgCol = CAR_COLORS[(m.car - 1) % 9], txtCol = [1, 5].includes(m.car) ? '#0f172a' : '#ffffff';
-          return `<div class="flex items-center justify-between bg-slate-950/70 px-2.5 py-1.5 rounded-lg border border-slate-800"><div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold ${rakushoCars.has(Number(m.car))?'rakusho-selected-car':''}" style="background:${bgCol}; color:${txtCol}">${m.car}</span><span class="text-xs text-slate-200 truncate max-w-[85px]">${m.name}</span></div><div class="flex items-center gap-1.5 font-mono-code"><span class="text-[11px] text-slate-500">${m.rawMark}</span><span class="text-slate-600">→</span><span class="text-sm font-extrabold text-amber-300">${m.convertedMark}</span></div></div>`;
+          return `<div class="flex items-center justify-between bg-slate-950/70 px-2.5 py-1.5 rounded-lg border border-slate-800"><div class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold ${rakushoCars.has(Number(m.car))?'rakusho-selected-car':''}" style="background:${bgCol}; color:${txtCol}">${m.car}</span><span class="text-xs text-slate-200 truncate max-w-[85px]">${m.name}</span></div><div class="flex items-center gap-1.5 font-mono-code"><span class="text-xs text-slate-400">${m.rawMark}</span><span class="text-slate-600">→</span><span class="text-sm font-extrabold text-amber-300">${m.convertedMark}</span></div></div>`;
         }).join('');
-        return `<div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 space-y-2"><div class="flex items-center justify-between"><span class="px-2 py-0.5 rounded text-xs font-mono-code font-bold border ${badgeStyle}">${lObj.label}</span><span class="text-[11px] font-mono-code text-amber-200 font-bold">[${lObj.members.map(m => m.convertedMark).join(' ')}]</span></div><div class="space-y-1.5">${membersHtml}</div></div>`;
+        return `<div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 space-y-2"><div class="flex items-center justify-between"><span class="px-2 py-0.5 rounded text-xs font-mono-code font-bold border ${badgeStyle}">${lObj.label}</span><span class="text-xs font-mono-code text-amber-200 font-bold">[${lObj.members.map(m => m.convertedMark).join(' ')}]</span></div><div class="space-y-1.5">${membersHtml}</div></div>`;
       }).join('');
 
       document.getElementById('dissonanceBadge').textContent = `不協和度: ${res.dissonance} (基準:${activeBaseline.dissonanceMean})`;
@@ -1866,7 +1871,7 @@
         const entry = res.entries.find(e => e.car === c), sc = entry ? getScore(entry.mark) : 0;
         const heightPct = entry ? Math.max(18, (sc / 5.0) * 100) : 8;
         const barColor = sc >= 4 ? 'bg-cyan-400' : sc >= 2 ? 'bg-purple-400' : entry ? 'bg-slate-600' : 'bg-slate-900';
-        noteBars.innerHTML += `<div class="flex flex-col items-center justify-end h-full"><div class="w-full rounded-t-md ${barColor} transition-all duration-300" style="height: ${heightPct}%"></div><span class="text-[10px] font-mono-code text-slate-400 mt-1">${c}:${scaleNames[c-1]}</span></div>`;
+        noteBars.innerHTML += `<div class="flex flex-col items-center justify-end h-full"><div class="w-full rounded-t-md ${barColor} transition-all duration-300" style="height: ${heightPct}%"></div><span class="text-xs font-mono-code font-bold text-slate-200 mt-1">${c}:${scaleNames[c-1]}</span></div>`;
       }
 
       document.getElementById('chaosBadge').textContent = `カオス指数: ${res.chaosIndex} (基準:${activeBaseline.chaosMean})`;
@@ -1878,7 +1883,7 @@
       const clones = allRaces.map((r, idx) => ({ race:r, idx })).filter(x => x.idx !== currentRaceIdx && analyzeRace(x.race).raceDna === res.raceDna);
       document.getElementById('cloneCountBadge').textContent = `双子レース: ${clones.length}件`;
       document.getElementById('dnaMatchList').innerHTML = clones.length > 0
-        ? clones.slice(0, 30).map(x => `<div class="flex items-center justify-between gap-2 border-b border-slate-800 py-1"><span class="text-emerald-300 font-mono-code truncate">🧬 ${x.race.id}</span><button type="button" data-dna-delete="${x.idx}" class="shrink-0 px-2 py-0.5 rounded bg-rose-500/15 border border-rose-400/30 text-rose-200 text-[10px]">削除</button></div>`).join('')
+        ? clones.slice(0, 30).map(x => `<div class="flex items-center justify-between gap-2 border-b border-slate-800 py-1"><span class="text-emerald-300 font-mono-code truncate">🧬 ${x.race.id}</span><button type="button" data-dna-delete="${x.idx}" class="shrink-0 px-2 py-0.5 rounded bg-rose-500/15 border border-rose-400/30 text-rose-200 text-xs">削除</button></div>`).join('')
         : `<div class="text-slate-400">・現在のデータセット内に完全一致する双子DNAはありません（固有種レース）</div>`;
 
       document.getElementById('coupAlertBadge').textContent = `下剋上:${res.coupScore} / ちぎれ:${res.abandonScore}`;
@@ -1890,7 +1895,7 @@
       document.getElementById('biasLevelBadge').textContent = `重心偏り: ${res.gravityBias} (基準:${activeBaseline.biasMean})`;
       document.getElementById('raceTableBody').innerHTML = res.entries.map((e, idx) => {
         const bgCol = CAR_COLORS[(e.car - 1) % 9], txtCol = [1, 5].includes(e.car) ? '#0f172a' : '#ffffff';
-        const lineBadge = e.isTanki ? `<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[11px]">単騎</span>` : `<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[11px]">${e.lineLabel}</span>`;
+        const lineBadge = e.isTanki ? `<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-xs">単騎</span>` : `<span class="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-xs">${e.lineLabel}</span>`;
         return `<tr class="${rakushoCars.has(Number(e.car))?'bg-amber-400/10':''}"><td class="py-1.5 px-2"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md font-bold shadow ${rakushoCars.has(Number(e.car))?'rakusho-selected-car':''}" style="background:${bgCol}; color:${txtCol}">${e.car}</span></td><td class="py-1.5 px-2 text-slate-200">${e.name || '選手'}</td><td class="py-1.5 px-2">${lineBadge}</td><td class="py-1.5 px-2 text-slate-400">${e.rawMark}</td><td class="py-1.5 px-2 font-extrabold text-amber-300 text-sm">${e.mark}</td><td class="py-1.5 px-2 text-cyan-300">${res.scores[idx].toFixed(1)} pt</td></tr>`;
       }).join('');
 
@@ -2627,8 +2632,8 @@
       const selectedCars=new Set((tickets.rakushoPicks||[]).flatMap(p=>p.ticket.map(Number)));
       const glowTicket=raw=>String(raw).split(/([1-7])/).map(part=>/^[1-7]$/.test(part)&&selectedCars.has(Number(part))?'<span class="inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-amber-300 text-slate-950 font-extrabold rakusho-selected-car">'+part+'</span>':part).join('');
       const show = (arr, n) => arr.map(t => glowTicket(Array.isArray(t) ? t.join('-') : String(t))).join('　') || '--';
-      const renderReasons=(rows,fallback)=>rows?.length?rows.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-[10px] text-cyan-300">理由: '+x.reason+'</div></div>').join(''):fallback;
-      document.getElementById('autoWinPicks').innerHTML=tickets.winReasons?.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-[10px] text-cyan-300">理由: '+x.reason+'</div></div>').join('')||show(tickets.win,4);
+      const renderReasons=(rows,fallback)=>rows?.length?rows.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-xs text-cyan-300">理由: '+x.reason+'</div></div>').join(''):fallback;
+      document.getElementById('autoWinPicks').innerHTML=tickets.winReasons?.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-xs text-cyan-300">理由: '+x.reason+'</div></div>').join('')||show(tickets.win,4);
       document.getElementById('autoExactaPicks').innerHTML=renderReasons(tickets.exactaReasons,show(tickets.exacta,4));
       document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
@@ -2738,7 +2743,7 @@
           const match = car === palaceNo;
           const selected = car && selectedCars.has(Number(car));
           out += '<div class="min-h-16 rounded-lg border p-2 ' + (selected?'rakusho-selected-car border-amber-200 bg-amber-300/20':match?'border-amber-300 bg-amber-300/10':'border-slate-700 bg-slate-900/70') + '">';
-          out += '<div class="text-[10px] text-slate-400">宮' + palaceNo + (match?' · 一致':'') + '</div>';
+          out += '<div class="text-xs text-slate-400">宮' + palaceNo + (match?' · 一致':'') + '</div>';
           out += '<div class="text-lg font-bold font-mono-code">' + (car ? car + '番' : '—') + '</div>';
           out += '<div class="text-sm text-amber-200">' + (car ? (marks[car] || '無') : ' ') + '</div></div>';
         }
@@ -2762,7 +2767,7 @@
           const picks = evaluateRakushoRules({ entries: raceLike.entries, lineSummaryList })
             .map(p => ({ name: p.label, ticket: p.ticket.join('→'), reason: p.reason }));
           const marksText = lines.map((line,i)=>'第'+(i+1)+'ライン：'+line.map(car=>car+'番['+carMark(car)+']').join(' - ')).join('<br>');
-          $('rakushoGridOutput').innerHTML = '<div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs font-bold text-amber-200 mb-2">変換後のライン配置</div><div class="text-sm leading-7">'+marksText+'</div><div class="text-[11px] text-slate-400 mt-2">変換された車番：'+([...derived].sort((a,b)=>a-b).map(c=>c+'番='+carMark(c)).join(' / ')||'なし')+'</div></div>' + gridHtml(lines,marks,palace,'洛書・正位',new Set(picks.flatMap(p=>String(p.ticket).match(/[1-7]/g)||[]).map(Number))) + gridHtml(lines,marks,rotated,'洛書・左90度回転',new Set(picks.flatMap(p=>String(p.ticket).match(/[1-7]/g)||[]).map(Number)));
+          $('rakushoGridOutput').innerHTML = '<div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs font-bold text-amber-200 mb-2">変換後のライン配置</div><div class="text-sm leading-7">'+marksText+'</div><div class="text-xs text-slate-400 mt-2">変換された車番：'+([...derived].sort((a,b)=>a-b).map(c=>c+'番='+carMark(c)).join(' / ')||'なし')+'</div></div>' + gridHtml(lines,marks,palace,'洛書・正位',new Set(picks.flatMap(p=>String(p.ticket).match(/[1-7]/g)||[]).map(Number))) + gridHtml(lines,marks,rotated,'洛書・左90度回転',new Set(picks.flatMap(p=>String(p.ticket).match(/[1-7]/g)||[]).map(Number)));
           $('rakushoPickOutput').innerHTML = '<div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div>' + (picks.length ? picks.map(p=>'<div class="rounded-lg border border-amber-300/30 bg-amber-300/5 p-3"><div class="text-xs font-bold text-amber-200">'+p.name+'</div><div class="text-lg font-mono-code font-bold mt-1">'+p.ticket+'</div><div class="text-xs text-slate-300 mt-1">根拠：'+p.reason+'</div></div>').join('') : '<div class="text-sm text-slate-200">見送り（該当なし）</div>');
         } catch (e) {
           $('rakushoError').textContent = e.message || '入力を確認してください';
@@ -2778,15 +2783,16 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '2.9-20261118';
-    const APP_RELEASE_LABEL = '更新版 v2.9 · 印変換と洛書判定を本体と統一';
+    const APP_RELEASE_VERSION = '3.0-20261118';
+    const APP_RELEASE_LABEL = '更新版 v3.0 · 見やすさとスマホ表示を改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
       const seen = localStorage.getItem('kaimekun_seen_release');
       if (seen !== APP_RELEASE_VERSION) {
         badge.textContent = '🆕 新しい更新あり';
-        badge.classList.add('bg-amber-500/25', 'text-amber-100', 'animate-pulse');
+        badge.classList.remove('bg-amber-500/15', 'text-amber-200');
+        badge.classList.add('bg-amber-400', 'text-slate-950', 'font-bold', 'animate-pulse');
         badge.title = APP_RELEASE_LABEL + '。押すと確認済みにします';
       } else {
         badge.textContent = APP_RELEASE_LABEL + ' · 確認済';
@@ -2795,12 +2801,12 @@
       badge.addEventListener('click', () => {
         localStorage.setItem('kaimekun_seen_release', APP_RELEASE_VERSION);
         badge.textContent = APP_RELEASE_LABEL + ' · 確認済';
-        badge.classList.remove('animate-pulse');
-        badge.classList.remove('bg-amber-500/25');
+        badge.classList.remove('animate-pulse', 'bg-amber-400', 'text-slate-950', 'font-bold');
+        badge.classList.add('bg-amber-500/15', 'text-amber-200');
         badge.title = '現在の更新を確認済みです';
       });
     }
-    let activeWorkspaceTab = 'analysis';
+    let activeWorkspaceTab = 'predict';
     function switchWorkspaceTab(tab) {
       const allowed = ['predict','analysis','input','learning','data'];
       if (!allowed.includes(tab)) return;
