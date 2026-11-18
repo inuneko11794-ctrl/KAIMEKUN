@@ -783,7 +783,7 @@
     }
 
     const CONVERTED_SCORES = {
-      '◎': 5.0, '⑳': 4.5, '◯': 4.0, '●': 4.0, '▲': 3.0, '△': 2.5,
+      '◎': 5.0, '⑳': 4.5, '◯': 4.0, '●': 4.0, '▲': 3.0, '△': 2.5, '✕': 1.8,
       '✖': 1.8, 'T': 2.0, '☆': 1.2, '★': 0.9, '星': 0.6, '無': 0.2
     };
     function getScore(convertedMark) { return CONVERTED_SCORES[String(convertedMark).trim()] ?? 0.5; }
@@ -2657,7 +2657,7 @@
       const baseNote=document.getElementById('patternBaselineNote');
       if(baseNote)baseNote.textContent=`基準値 ${PATTERN_BASELINE.verifiedRaces.toLocaleString()}R照合済: ◎1着${PATTERN_BASELINE.marks['◎'].win}%・スジ${PATTERN_BASELINE.marks['◎'].suji}% ／ 二分戦スジ${PATTERN_BASELINE.lineSuji['二分戦']}% ／ 2-2-2-1は${PATTERN_BASELINE.lineSuji['2-2-2-1']}% ／ この買い目は2連単 的中${PATTERN_BASELINE.formation.exactaHit}%・回収${PATTERN_BASELINE.formation.exactaRoi}%、3連単 的中${PATTERN_BASELINE.formation.trifectaHit}%・回収${PATTERN_BASELINE.formation.trifectaRoi}%（見立て: ${tickets.patternMode||'--'}）`;
       const rakushoLine=document.getElementById('rakushoAutoStatus');
-      if(rakushoLine)rakushoLine.textContent='洛書発動: '+(tickets.rakushoPicks||[]).map(p=>p.label+' '+p.ticket.join('-')+'（0点）').join(' / ') || '該当なし';
+      if(rakushoLine)rakushoLine.textContent=(tickets.rakushoPicks&&tickets.rakushoPicks.length)?'洛書発動: '+tickets.rakushoPicks.map(p=>p.label+' '+p.ticket.join('-')+'（0点）').join(' / '):'洛書発動: 該当なし';
       renderBetStats();
     }
     function renderBetStats() {
