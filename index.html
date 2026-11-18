@@ -2559,7 +2559,8 @@
       classRole: { 'A級先頭': 60.3, 'S級先頭': 50.2, 'S級番手': 46.9 },
       formation: { exactaHit: 33.87, exactaRoi: 69.0, exactaAvg: 3.16, trifectaHit: 22.75, trifectaRoi: 70.5, trifectaAvg: 7.01 }
     };
-    function buildPatternTickets(race, res) {
+    const PATTERN_LEARN_WEIGHT = 0.05;
+    function buildPatternTickets(race, res, pointByCar) {
       const marks = {};
       res.entries.forEach(e => { marks[e.car] = e.mark; });
       const groups = (res.lineSummaryList || []).map(l => l.members.map(m => m.car)).filter(g => g.length);
@@ -2586,7 +2587,8 @@
         else if (n === 9) score += [1, 2, 5, 7, 9].includes(head) ? 0.8 : [4, 6, 8].includes(head) ? -1.2 : 0;
         if (sclass && locate(head)[1] === 1) score += 0.8;
         if (challenge && head === hon && locate(head)[1] === 0) score += 0.4;
-        bucket.push({ key, ticket: ticket.slice(), reason, score });
+        const bonus = pointByCar ? ticket.reduce((s, c) => s + (Number(pointByCar[Number(c)]) || 0), 0) : 0;
+        bucket.push({ key, ticket: ticket.slice(), reason, score, bonus });
       };
       const thirds = (...prefer) => { const out = []; prefer.forEach(m => of(m).forEach(c => { if (!out.includes(c)) out.push(c); })); return out; };
       if (hon && tai && same) {
@@ -2646,7 +2648,7 @@
         if (hon && tai) push(outside, [h, hon, tai], lane + ': 単騎T-◎-◯', splitMain ? 1.4 : 0.9);
         if (hon && tan) push(outside, [h, hon, tan], '単騎T-◎-△', 1.1);
       });
-      const take = (bucket, len, limit) => bucket.filter(t => t.ticket.length === len).sort((a, b) => b.score - a.score).filter((t, i, arr) => arr.findIndex(x => x.key === t.key) === i).slice(0, limit);
+      const take = (bucket, len, limit) => bucket.filter(t => t.ticket.length === len).sort((a, b) => (b.score + PATTERN_LEARN_WEIGHT * (b.bonus || 0)) - (a.score + PATTERN_LEARN_WEIGHT * (a.bonus || 0))).filter((t, i, arr) => arr.findIndex(x => x.key === t.key) === i).slice(0, limit);
       let mainEx = take(main, 2, 3), mainTri = take(main, 3, 6), holeEx = take(hole, 2, 2), holeTri = take(hole, 3, 4);
       if (!mainTri.length) { mainTri = holeTri.slice(0, 6); holeTri = []; mainEx = holeEx.slice(0, 3); holeEx = holeEx.slice(3); }
       const exacta = mainEx.concat(holeEx), trifecta = mainTri.concat(holeTri);
@@ -2668,7 +2670,12 @@
         const top=ADAPTIVE_FEATURES.filter(k=>sums[k]>0.001).sort((a,b)=>sums[b]-sums[a]).slice(0,2);
         return top.length?top.map(k=>ADAPTIVE_REASON_LABELS[k]).join('・'):'印配置・ライン構成';
       };
-      const pattern=buildPatternTickets(race,res);
+      const refScored=calculateCarPointScores(res,{adaptiveSnapshot:{mark:0,lineRole:0,markRelation:0}});
+      const refByCar={};
+      refScored.forEach(x=>{refByCar[Number(x.car)]=Number(x.totalPoints)||0;});
+      const pointByCar={};
+      scored.forEach(x=>{pointByCar[Number(x.car)]=(Number(x.totalPoints)||0)-(refByCar[Number(x.car)]||0);});
+      const pattern=buildPatternTickets(race,res,pointByCar);
       if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
       const win=pattern.win.length?pattern.win:cars.slice(0,4);
       const exacta=pattern.exacta.map(x=>x.ticket);
@@ -2873,8 +2880,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.6-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.6 · 記録機能を追加';
+    const APP_RELEASE_VERSION = '3.7-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.7 · 学習機能を改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
