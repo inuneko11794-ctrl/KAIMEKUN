@@ -1808,7 +1808,7 @@
           const roleBase=FEATURE_POINT_BASELINE.rider.lineRole;
           const roleValue=res.entries.length!==7?0:line.isTanki?roleBase.tanki:index===0?roleBase.front:index===1?roleBase.second:roleBase.rear;
           const roleSignal=line.isTanki?-0.5:index===0?0.25:index===1?0.5:-0.25;
-          const roleLearned=disabled==='lineRole'?0:roleSignal*Number(adaptive.lineRole||0);
+          const roleLearned=disabled==='lineRole'||res.entries.length!==7?0:roleSignal*Number(adaptive.lineRole||0);
           row.featureContributions.lineRole=disabled==='lineRole'?0:roleValue+roleLearned;
           row.learnedAdjustments.lineRole=roleLearned;
           if(index>0||line.isTanki)row.reasons.push(line.isTanki?'単騎':'ライン内位置');
