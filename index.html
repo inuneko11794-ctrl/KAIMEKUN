@@ -1794,9 +1794,10 @@
     function calculateCarPointScores(res,options={}) {
       const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints;
       const byCar=new Map(res.entries.map(entry=>{
-        const markBase=getEmpiricalMarkPoints(entry.mark);
+        const empiricalSevenCar=res.entries.length===7;
+        const markBase=empiricalSevenCar?getEmpiricalMarkPoints(entry.mark):0.5;
         const basePoints=disabled==='mark'?0:markBase;
-        const markLearned=disabled==='mark'?0:markBase*Number(adaptive.mark||0)*0.1;
+        const markLearned=disabled==='mark'||!empiricalSevenCar?0:markBase*Number(adaptive.mark||0)*0.1;
         return [Number(entry.car),{...entry,basePoints,adjustment:0,reasons:[],
           featureContributions:{mark:basePoints+markLearned,lineRole:0,markRelation:0},
           learnedAdjustments:{mark:markLearned,lineRole:0,markRelation:0}}];
@@ -1805,7 +1806,7 @@
         line.members.forEach((member,index)=>{
           const row=byCar.get(Number(member.car));if(!row)return;
           const roleBase=FEATURE_POINT_BASELINE.rider.lineRole;
-          const roleValue=line.isTanki?roleBase.tanki:index===0?roleBase.front:index===1?roleBase.second:roleBase.rear;
+          const roleValue=res.entries.length!==7?0:line.isTanki?roleBase.tanki:index===0?roleBase.front:index===1?roleBase.second:roleBase.rear;
           const roleSignal=line.isTanki?-0.5:index===0?0.25:index===1?0.5:-0.25;
           const roleLearned=disabled==='lineRole'?0:roleSignal*Number(adaptive.lineRole||0);
           row.featureContributions.lineRole=disabled==='lineRole'?0:roleValue+roleLearned;
@@ -1815,7 +1816,7 @@
         if(line.isTanki||line.members.length<2)return;
         const front=line.members[0],second=line.members[1],row=byCar.get(Number(second.car));if(!row)return;
         const secondMarkHigher=getEmpiricalMarkPoints(second.convertedMark)>getEmpiricalMarkPoints(front.convertedMark);
-        const relationBase=secondMarkHigher?FEATURE_POINT_BASELINE.rider.markRelation.secondMarkHigher:FEATURE_POINT_BASELINE.rider.markRelation.normal;
+        const relationBase=res.entries.length!==7?0:secondMarkHigher?FEATURE_POINT_BASELINE.rider.markRelation.secondMarkHigher:FEATURE_POINT_BASELINE.rider.markRelation.normal;
         const relationLearned=disabled==='markRelation'?0:relationBase*Number(adaptive.markRelation||0)*0.5;
         row.featureContributions.markRelation=disabled==='markRelation'?0:relationBase+relationLearned;
         row.learnedAdjustments.markRelation=relationLearned;
