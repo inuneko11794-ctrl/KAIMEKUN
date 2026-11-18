@@ -271,6 +271,21 @@
         </div>
       </div>
 
+      <section id="instantTicketPreview" class="rounded-xl border border-amber-400/35 bg-slate-950/85 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="text-xs font-mono-code text-amber-300 font-bold">THIS RACE // INSTANT TICKETS</div>
+            <h3 class="text-base font-bold text-amber-100">このレースの買い目</h3>
+          </div>
+          <span id="instantTicketStatus" class="text-[11px] text-slate-400">出走表を読み込むと表示</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">単勝</div><div id="instantWinPicks" class="text-sm font-mono-code">--</div></div>
+          <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">2車単</div><div id="instantExactaPicks" class="text-sm font-mono-code">--</div></div>
+          <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">3連単</div><div id="instantTrifectaPicks" class="text-sm font-mono-code">--</div></div>
+        </div>
+        <div id="instantTicketReasons" class="text-[11px] text-cyan-200 space-y-1">買い目の根拠は出走表の認識後に表示します。</div>
+      </section>
 
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <div class="xl:col-span-7 bg-slate-950/70 rounded-xl p-4 border border-slate-800 space-y-3">
@@ -1287,10 +1302,26 @@
         detailEl.textContent = '例: 「1 選手A ◎」「2 選手B ◯」またはMDファイルを読み込むと即計算します。';
         metaEl.textContent = '待機中';
         importBtn.disabled = true;
+        ['instantWinPicks','instantExactaPicks','instantTrifectaPicks'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='--'; });
+        const ticketStatus=document.getElementById('instantTicketStatus'); if(ticketStatus) ticketStatus.textContent='出走表を読み込むと表示';
+        const ticketReasons=document.getElementById('instantTicketReasons'); if(ticketReasons) ticketReasons.textContent='買い目の根拠は出走表の認識後に表示します。';
         return;
       }
 
       const res = analyzeRace(parsed);
+      try {
+        const previewTickets = buildAutoTickets(parsed);
+        const showPreview = list => (list || []).map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　') || '--';
+        document.getElementById('instantWinPicks').textContent = showPreview(previewTickets.win);
+        document.getElementById('instantExactaPicks').textContent = showPreview(previewTickets.exacta);
+        document.getElementById('instantTrifectaPicks').textContent = showPreview(previewTickets.trifecta);
+        document.getElementById('instantTicketStatus').textContent = parsed.entries.length + '車立・仮予想';
+        const reasons = (previewTickets.exactaReasons || []).slice(0,4).map(x => x.ticket + '：' + x.reason);
+        document.getElementById('instantTicketReasons').textContent = reasons.length ? '2車単の主な根拠：' + reasons.join(' ／ ') : '印配置・ライン構成をもとに算出';
+      } catch (ticketError) {
+        document.getElementById('instantTicketStatus').textContent = '買い目の算出エラー';
+        document.getElementById('instantTicketReasons').textContent = String(ticketError.message || ticketError);
+      }
       const prob = predictUpset(extractFeatures(res, null)) * 100;
       const meta = getUpsetJudgeMeta(prob);
 
