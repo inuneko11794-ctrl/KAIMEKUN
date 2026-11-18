@@ -1711,49 +1711,6 @@
       };
     }
 
-    function getBinnedFeaturePoint(value, config) {
-      const thresholds = config.thresholds || [];
-      let index = 0;
-      while (index < thresholds.length && Number(value) >= thresholds[index]) index++;
-      return Number(config.points[index] || 0);
-    }
-
-    function calculateRaceFeaturePoints(res) {
-      const multiLineCount = (res.lineSummaryList || []).filter(line => !line.isTanki).length;
-      const lineType = multiLineCount >= 4 ? '四分戦' : multiLineCount === 3 ? '三分戦' : multiLineCount === 2 ? '二分戦' : 'その他';
-      const carCount = String((res.entries || []).length);
-      const fanoStats = calculateFanoPlaneStats(res);
-      const fanoCount = fanoStats.matches.length;
-      const tankiCount = (res.lineSummaryList || []).filter(line => line.isTanki).length;
-      const cfg = FEATURE_POINT_BASELINE.race;
-      const featurePoints = {
-        carCount: Number(cfg.carCount[carCount] || 0),
-        lineType: Number(cfg.lineType[lineType] || 0),
-        dissonance: getBinnedFeaturePoint(res.dissonance, cfg.dissonance),
-        chaosIndex: getBinnedFeaturePoint(res.chaosIndex, cfg.chaosIndex),
-        coupAbandon: getBinnedFeaturePoint(Number(res.coupScore || 0) + Number(res.abandonScore || 0), cfg.coupAbandon),
-        gravityBias: getBinnedFeaturePoint(res.gravityBias, cfg.gravityBias),
-        fanoPattern: Number(cfg.fanoCount[String(Math.min(2, fanoCount))] || 0),
-        tankiCount: Number(cfg.tankiCount[String(Math.min(3, tankiCount))] || 0),
-        raceDnaFrequency: Number(cfg.raceDnaFrequency || 0),
-        girlsRace: Number(res.isGirlsRace ? cfg.girlsRace || 0 : 0),
-        gravityDirectionX: Number(cfg.gravityDirectionX || 0),
-        gravityDirectionY: Number(cfg.gravityDirectionY || 0),
-        fanoLineSum: Number(cfg.fanoLineSum || 0),
-        fanoSquareSum: Number(cfg.fanoSquareSum || 0),
-        markConversionExtra: Number(cfg.markConversionExtra || 0)
-      };
-      return {
-        version: FEATURE_POINT_BASELINE.version,
-        featurePoints,
-        totalPoints: +Object.values(featurePoints).reduce((sum, value) => sum + value, 0).toFixed(3),
-        lineType,
-        carCount: Number(carCount),
-        fanoCount,
-        tankiCount
-      };
-    }
-
     const ADAPTIVE_POINT_KEY = 'kaimekun_reason_points_v1';
     const ADAPTIVE_FEATURES = ['mark','lineRole','markRelation'];
     const ADAPTIVE_REASON_LABELS = {mark:'印配置',lineRole:'ライン内位置',markRelation:'番手の印関係'};
