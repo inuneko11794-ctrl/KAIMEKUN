@@ -114,7 +114,7 @@
         <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
           <span>ATLANTIS VELODROME ARCHIVE // V7.2</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
-          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.8 · 2026/11/16</button>
+          <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.9 · 2026/11/18</button>
         </div>
         <h1 class="font-ancient text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-purple-300 mt-1">
           KEIRIN 5大奇抜解析ラボ
@@ -141,10 +141,11 @@
           <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
         </div>
       </div>
+      <p id="patternBaselineNote" class="text-[11px] leading-relaxed text-slate-300">検証中...</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 4点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 基本4点＋洛書該当分</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 基本15点＋洛書該当分</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-[11px] text-amber-200 mt-2">洛書発動: --</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-[11px] text-amber-200 mt-2">洛書発動: --</div></div>
       </div>
       <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-3">
         <div class="space-y-2"><div class="text-sm font-bold">期間指定成績</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><select id="betStatsDateBasis" class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm"><option value="event">開催日で検索</option><option value="entry" selected>データ入力日で検索</option></select><label class="text-xs text-slate-300">開始日<input id="betStatsFrom" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label><label class="text-xs text-slate-300">終了日<input id="betStatsTo" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label></div><div class="flex justify-end"><button id="clearBetStatsRangeBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs">期間をクリア</button></div></div>
@@ -1695,7 +1696,7 @@
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     // レース全体の特徴は3連単配当10,000円以上の発生率で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261118-v3-7CAR-RESULT-POSITION',
+      version: 'CSV-BASELINE-20261118-v4-PATTERN-FORMATION',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2462,7 +2463,126 @@
       }
       return picks;
     }
-    // AUTO BET MATRIX: 洛書買い目を既存AI買い目へ統合。洛書ポイントは全て0点で開始。
+    const PATTERN_BASELINE = {
+      verifiedRaces: 25477,
+      source: 'brain races 2024-08 all_印配置変換.csv',
+      marks: {
+        '◎': { win: 44.0, suji: 63.3, front: 61.5, secondMark: '◯ 50.7%' },
+        '◯': { win: 22.6, suji: 64.3, second: 48.4, secondMark: '◎ 53.6%' },
+        '●': { win: 3.3, suji: 60.9, secondMark: '◯ 53.6%' },
+        '⑳': { win: 3.1, suji: 59.5, secondMark: '◎ 49.7%' },
+        '▲': { win: 4.1, suji: 54.2, secondMark: '△ 48.1%' },
+        '✖': { win: 4.0, suji: 51.8, secondMark: '✕ 46.8%' },
+        '△': { win: 12.2, suji: 48.3 },
+        '✕': { win: 9.1, suji: 45.4 },
+        '☆': { win: 4.7, outside: 66.1, front: 88.3 },
+        '★': { win: 3.7, outside: 64.6, second: 100 },
+        'T': { win: 4.5, outside: 100 }
+      },
+      cars7: { '1': { win: 25.0, place: 44.4 }, '6': { win: 4.2, place: 10.3 } },
+      cars9strong: [1, 2, 5, 7, 9],
+      cars9weak: [4, 6, 8],
+      lineSuji: { '二分戦': 61.5, '4車ライン': [72.3, 74.4], '2-2-2-1': 40.9 },
+      classRole: { 'A級先頭': 60.3, 'S級先頭': 50.2, 'S級番手': 46.9 },
+      formation: { exactaHit: 33.87, exactaRoi: 69.0, exactaAvg: 3.16, trifectaHit: 22.75, trifectaRoi: 70.5, trifectaAvg: 7.01 }
+    };
+    function buildPatternTickets(race, res) {
+      const marks = {};
+      res.entries.forEach(e => { marks[e.car] = e.mark; });
+      const groups = (res.lineSummaryList || []).map(l => l.members.map(m => m.car)).filter(g => g.length);
+      const n = res.entries.length;
+      const title = `${race.id || ''} ${race.seg || ''} ${race.raceClass || ''}`;
+      const challenge = /チャレンジ|A級|チ/.test(title);
+      const sclass = /S級/.test(title);
+      const numbered = groups.filter(g => g.length >= 2);
+      const shape = groups.slice().sort((a, b) => b.length - a.length).map(g => g.length).join('-');
+      const of = m => Object.keys(marks).map(Number).filter(c => marks[c] === m);
+      const locate = car => { for (const g of groups) if (g.includes(car)) return [g, g.indexOf(car)]; return [[car], 0]; };
+      const hon = of('◎')[0], tai = of('◯')[0];
+      const same = !!(hon && tai && locate(hon)[0].includes(tai));
+      const sujiMain = (numbered.length <= 2 || numbered.some(g => g.length >= 4)) && same && !shape.startsWith('2-2-2');
+      const splitMain = shape.startsWith('2-2-2') || (!!hon && !!tai && !same) || numbered.length >= 4;
+      const main = [], hole = [];
+      const push = (bucket, ticket, reason, score) => {
+        if (ticket.length < 2 || new Set(ticket).size !== ticket.length) return;
+        if (ticket.some(c => marks[c] == null)) return;
+        const key = ticket.join('-');
+        if (bucket.some(t => t.key === key)) return;
+        const head = ticket[0];
+        if (n === 7) score += head === 1 ? 1.2 : head === 6 ? -1.6 : 0;
+        else if (n === 9) score += [1, 2, 5, 7, 9].includes(head) ? 0.8 : [4, 6, 8].includes(head) ? -1.2 : 0;
+        if (sclass && locate(head)[1] === 1) score += 0.8;
+        if (challenge && head === hon && locate(head)[1] === 0) score += 0.4;
+        bucket.push({ key, ticket: ticket.slice(), reason, score });
+      };
+      const thirds = (...prefer) => { const out = []; prefer.forEach(m => of(m).forEach(c => { if (!out.includes(c)) out.push(c); })); return out; };
+      if (hon && tai && same) {
+        const g = locate(hon)[0];
+        const fold = g.indexOf(tai) < g.indexOf(hon);
+        const bkt = sujiMain ? main : hole;
+        if (fold) { push(bkt, [tai, hon], '先頭◯-番手◎の逃げ残り', 3); push(bkt, [hon, tai], '◎◯の折り返し', 2); }
+        else { push(bkt, [hon, tai], '◎-◯スジ王道', 3); push(bkt, [tai, hon], '◯-◎の番手差し', 2.2); }
+        thirds('△', '✕', '●', '▲').slice(0, 2).forEach(c => push(bkt, [hon, tai, c], '◎-◯-ヒモ', 2.4));
+        thirds('△', '✕').slice(0, 1).forEach(c => push(bkt, [hon, c, tai], '◎-ヒモ-◯', 2));
+        thirds('△', '✕').slice(0, 2).forEach(c => push(bkt, [tai, hon, c], '◯-◎-ヒモ', 2.1));
+      }
+      const partnerPat = (headMark, mateMark, thirdMarks, label, base) => {
+        of(headMark).forEach(h => {
+          const g = locate(h)[0];
+          const mates = g.filter(c => marks[c] === mateMark);
+          if (!mates.length) return;
+          push(hole, [h, mates[0]], label + 'のスジ', base);
+          thirds(...thirdMarks).slice(0, 2).forEach(c => { if (c !== h && c !== mates[0]) push(hole, [h, mates[0], c], label + '-ヒモ', base - 0.3); });
+        });
+      };
+      partnerPat('●', '◯', ['◎', '△'], '●-◯', 1.5);
+      partnerPat('⑳', '◎', ['◯', '✕', '△'], '⑳-◎', 1.5);
+      partnerPat('▲', '△', ['◎', '◯'], '▲-△', 1.3);
+      partnerPat('✖', '✕', ['◎', '◯'], '✖-✕', 1.3);
+      const outside = splitMain ? main : hole;
+      const lane = splitMain ? '本線' : '狙い';
+      [['△', '▲', '△'], ['✕', '✖', '✕']].forEach(([mk, mate, label]) => {
+        of(mk).forEach(h => {
+          const [g, idx] = locate(h);
+          if (idx >= 2) return;
+          if (hon && tai) {
+            push(outside, [h, hon], lane + ': 別線' + label + '-◎', splitMain ? 1.6 : 1.1);
+            push(outside, [h, hon, tai], lane + ': 別線' + label + '-◎-◯', splitMain ? 1.7 : 1);
+          }
+          const mates = g.filter(c => marks[c] === mate);
+          if (mates.length && hon) push(splitMain ? hole : outside, [h, mates[0], hon], 'スジ連れ' + label, 1.2);
+        });
+      });
+      of('☆').forEach(h => {
+        const [g, idx] = locate(h);
+        if (idx !== 0) return;
+        const star = g.filter(c => marks[c] === '★');
+        if (hon && tai) push(outside, [h, hon, tai], lane + ': ☆の別線先頭', splitMain ? 1.8 : 1.1);
+        if (star.length && hon) push(outside, [h, star[0], hon], '☆-★が残る', 1.3);
+      });
+      of('★').forEach(h => {
+        const [g, idx] = locate(h);
+        if (idx !== 1) return;
+        const star = g.filter(c => marks[c] === '☆');
+        const tan = of('△')[0];
+        if (star.length && tan) push(outside, [h, star[0], tan], '★-☆-△', 1.2);
+        if (hon && star.length) push(outside, [h, hon, star[0]], '★-◎-☆', 1.15);
+      });
+      of('T').forEach(h => {
+        const tan = of('△')[0];
+        if (hon && tai) push(outside, [h, hon, tai], lane + ': 単騎T-◎-◯', splitMain ? 1.4 : 0.9);
+        if (hon && tan) push(outside, [h, hon, tan], '単騎T-◎-△', 1.1);
+      });
+      const take = (bucket, len, limit) => bucket.filter(t => t.ticket.length === len).sort((a, b) => b.score - a.score).filter((t, i, arr) => arr.findIndex(x => x.key === t.key) === i).slice(0, limit);
+      let mainEx = take(main, 2, 3), mainTri = take(main, 3, 6), holeEx = take(hole, 2, 2), holeTri = take(hole, 3, 4);
+      if (!mainTri.length) { mainTri = holeTri.slice(0, 6); holeTri = []; mainEx = holeEx.slice(0, 3); holeEx = holeEx.slice(3); }
+      const exacta = mainEx.concat(holeEx), trifecta = mainTri.concat(holeTri);
+      const heads = [];
+      trifecta.concat(exacta).forEach(t => { if (!heads.includes(t.ticket[0])) heads.push(t.ticket[0]); });
+      ['◎', '◯', '△', '✕'].forEach(m => of(m).forEach(c => { if (!heads.includes(c)) heads.push(c); }));
+      return { win: heads.slice(0, 4), exacta, trifecta, mode: sujiMain ? 'スジ王道' : splitMain ? '別線・細切れ' : '混合' };
+    }
+    // AUTO BET MATRIX: 印の1着決着パターンで本線と狙いを作り、洛書は追加する。
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints};
       const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
@@ -2475,17 +2595,16 @@
         const top=ADAPTIVE_FEATURES.filter(k=>sums[k]>0.001).sort((a,b)=>sums[b]-sums[a]).slice(0,2);
         return top.length?top.map(k=>ADAPTIVE_REASON_LABELS[k]).join('・'):'印配置・ライン構成';
       };
-      if(cars.length<3)return {win:[],exacta:[],trifecta:[],rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
-      const win=cars.slice(0,4),exacta=[];
-      for(const first of cars.slice(0,2))cars.filter(second=>second!==first).slice(0,2).forEach(second=>exacta.push([first,second]));
-      const firsts=cars.slice(0,2),allTrifecta=[];
-      firsts.forEach(first=>{const others=cars.filter(c=>c!==first);for(let i=0;i<others.length;i++)for(let j=0;j<others.length;j++)if(i!==j)allTrifecta.push([first,others[i],others[j]]);});
-      const selected=[],a=allTrifecta.filter(t=>t[0]===firsts[0]),b=allTrifecta.filter(t=>t[0]===firsts[1]);
-      while(selected.length<15&&(a.length||b.length)){if(a.length&&selected.length<15)selected.push(a.shift());if(b.length&&selected.length<15)selected.push(b.shift());}
+      const pattern=buildPatternTickets(race,res);
+      if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
+      const win=pattern.win.length?pattern.win:cars.slice(0,4);
+      const exacta=pattern.exacta.map(x=>x.ticket);
+      const selected=pattern.trifecta.map(x=>x.ticket);
+      const reasonByKey=new Map(pattern.exacta.concat(pattern.trifecta).map(x=>[x.key,x.reason]));
       rakushoPicks.filter(p=>p.type==='exacta').forEach(p=>{if(!exacta.some(t=>t.join('-')===p.ticket.join('-')))exacta.push(p.ticket);});
       rakushoPicks.filter(p=>p.type==='trifecta').forEach(p=>{if(!selected.some(t=>t.join('-')===p.ticket.join('-')))selected.push(p.ticket);});
-      const withReasons=arr=>arr.map(ticket=>({ticket:Array.isArray(ticket)?ticket.join('-'):String(ticket),reason:reasonFor(Array.isArray(ticket)?ticket:[ticket])}));
-      return {win,exacta,trifecta:selected,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
+      const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
+      return {win,exacta,trifecta:selected,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
         predictionSnapshot:scored.map(x=>({car:x.car,mark:x.mark,basePoints:x.basePoints,adjustment:x.adjustment,featureContributions:x.featureContributions,reasons:x.reasons,totalPoints:x.totalPoints}))};
     }
@@ -2535,6 +2654,8 @@
       document.getElementById('autoExactaPicks').innerHTML=renderReasons(tickets.exactaReasons,show(tickets.exacta,4));
       document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
+      const baseNote=document.getElementById('patternBaselineNote');
+      if(baseNote)baseNote.textContent=`基準値 ${PATTERN_BASELINE.verifiedRaces.toLocaleString()}R照合済: ◎1着${PATTERN_BASELINE.marks['◎'].win}%・スジ${PATTERN_BASELINE.marks['◎'].suji}% ／ 二分戦スジ${PATTERN_BASELINE.lineSuji['二分戦']}% ／ 2-2-2-1は${PATTERN_BASELINE.lineSuji['2-2-2-1']}% ／ この買い目は2連単 的中${PATTERN_BASELINE.formation.exactaHit}%・回収${PATTERN_BASELINE.formation.exactaRoi}%、3連単 的中${PATTERN_BASELINE.formation.trifectaHit}%・回収${PATTERN_BASELINE.formation.trifectaRoi}%（見立て: ${tickets.patternMode||'--'}）`;
       const rakushoLine=document.getElementById('rakushoAutoStatus');
       if(rakushoLine)rakushoLine.textContent='洛書発動: '+(tickets.rakushoPicks||[]).map(p=>p.label+' '+p.ticket.join('-')+'（0点）').join(' / ') || '該当なし';
       renderBetStats();
