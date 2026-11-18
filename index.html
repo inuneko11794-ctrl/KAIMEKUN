@@ -722,11 +722,7 @@
       <div id="carPointEvidence" class="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-[11px] leading-relaxed space-y-2"></div>
       <div id="carMarkCalibration" class="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-3 text-[11px] leading-relaxed">
         <div class="font-bold text-cyan-200 mb-2">印別・実績基礎点（全25,477レース）</div>
-        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 font-mono-code">
-          <span>◎ 5.00</span><span>◯ 3.75</span><span>△ 2.44</span><span>✕ 1.86</span>
-          <span>⑳ 1.16</span><span>● 1.11</span><span>▲ 1.05</span><span>✖ 1.00</span>
-          <span>☆ 0.89</span><span>T 0.84</span><span>★ 0.83</span><span>星 0.44</span>
-        </div>
+        <div id="carMarkCalibrationGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 font-mono-code"></div>
         <div class="text-slate-400 mt-2">着順実績を1着3点・2着2点・3着1点で集計し、◎=5.00に正規化。直近20%でも大枠の順位を確認済み。既存の音楽・重力解析スコアとは独立。</div>
       </div>
       <div id="fanoMathLab" class="rounded-xl border border-amber-400/35 bg-amber-950/20 p-3 text-[11px] leading-relaxed space-y-2">
@@ -1694,7 +1690,6 @@
 
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
-    // レース全体の特徴は3連単配当10,000円以上の発生率で集計。
     const FEATURE_POINT_BASELINE = {
       version: 'CSV-BASELINE-20261118-v4-PATTERN-FORMATION',
       source: 'brain races 2024-08 all_印配置変換.csv',
@@ -1711,31 +1706,12 @@
       },
       rider: {
         lineRole: { front: 0.101, second: 0.050, rear: -0.213, tanki: -0.201 },
-        lineLength: { '2': -0.213, '3': 0.226, '4+': 0.391, tanki: -0.866, scale: 0.05 },
         markRelation: { normal: -0.278, secondMarkHigher: 0.278, scale: 1.0,
           trainHigherWeighted: 1.3027, trainNotHigherWeighted: 0.7460,
           validationHigherWeighted: 1.2483, validationNotHigherWeighted: 0.7606 }
       },
-      race: {
-        carCount: { '5': 0, '6': -0.478, '7': -0.071, '8': 0, '9': 0.617 },
-        lineType: { '二分戦': -0.235, '三分戦': 0.086, '四分戦': 0.647 },
-        dissonance: { thresholds: [2, 3], points: [0.033, -0.023, 0.002] },
-        chaosIndex: { thresholds: [2.0108, 3.0430, 3.9423], points: [-0.122, 0.044, -0.095, 0.153] },
-        coupAbandon: { thresholds: [1, 2, 3], points: [-0.106, -0.072, 0.043, 0.097] },
-        gravityBias: { thresholds: [0.1297, 0.2003, 0.2783], points: [0, 0, 0, 0] },
-        fanoCount: { '0': 0.063, '1': -0.209, '2': 0 },
-        tankiCount: { '0': -0.010, '1': -0.048, '2': 0.143, '3': 0 },
-        raceDnaFrequency: 0,
-        girlsRace: 0,
-        gravityDirectionX: 0,
-        gravityDirectionY: 0,
-        fanoLineSum: 0,
-        fanoSquareSum: 0,
-        markConversionExtra: 0
-      },
       notes: {
         markTarget: '的中した2車・3車の組合せへの出現率。1着/2着/3着別の加点ではない',
-        raceTarget: '3連単配当10,000円以上の発生率',
         unsupported: '5車立てはデータなし。8車立てと少数カテゴリは保守的に0点扱い'
       }
     };
@@ -1935,6 +1911,8 @@
           <td class="p-2 text-slate-300">${r.reasons.length ? r.reasons.join(' / ') : '印基礎点のみ'}</td>
         </tr>`;
       }).join('');
+      const calibGrid = document.getElementById('carMarkCalibrationGrid');
+      if (calibGrid) calibGrid.innerHTML = ['◎','◯','△','✕','⑳','●','▲','✖','☆','T','★','星'].map(m => `<span>${m} ${(EMPIRICAL_MARK_POINTS[m] ?? 0).toFixed(2)}</span>`).join('');
       document.getElementById('carPointContext').textContent =
         `レース全体の参考指標：不協和度 ${res.dissonance} ／ カオス指数 ${res.chaosIndex} ／ 重心偏り ${res.gravityBias} ／ 下剋上 ${res.coupScore} ／ ちぎれ懸念 ${res.abandonScore}。これらは現段階では車番別の根拠に分解できないため、ランキング点には加算していません。`;
       const fanoStats = calculateFanoPlaneStats(res);
@@ -2728,7 +2706,7 @@
     // RAKUSHO JUDGE: independent manual evaluator; does not alter existing AI scores or tickets.
     (() => {
       const $ = id => document.getElementById(id);
-      const normMark = m => ({'〇':'◯','○':'◯','×':'✕','✖':'✖','▲':'▲'}[m] || m);
+      const normMark = m => ({'〇':'◯','○':'◯','×':'✕','✖':'✕','▲':'▲'}[m] || m);
       function parseMarkMap(raw) {
         const map = {};
         const re = /(◎|◯|〇|○|△|▲|✕|×|✖)\s*([1-7])/g;
@@ -2749,33 +2727,6 @@
         if (new Set(cars).size !== cars.length) throw new Error('同じ車番が複数ラインにあります');
         if (cars.length !== 7) throw new Error('7車立てのため、ライン並びは合計7車で入力してください');
         return lines;
-      }
-      function transformMarks(lines, basic) {
-        const marks = {...basic};
-        const derived = new Set();
-        const map = {'◎':'⑳','◯':'●','△':'▲','✕':'✖'};
-        // Adjacent unmarked riders: prefer the left-side rider when both sides are available.
-        lines.forEach(line => line.forEach((car, i) => {
-          const base = marks[car];
-          if (!map[base]) return;
-          const candidates = [i-1, i+1];
-          for (const j of candidates) {
-            if (j < 0 || j >= line.length) continue;
-            const target = line[j];
-            if (!marks[target] && !derived.has(target)) {
-              marks[target] = map[base]; derived.add(target); break;
-            }
-          }
-        }));
-        lines.forEach(line => {
-          if (line.length === 1 && !marks[line[0]]) { marks[line[0]] = 'T'; derived.add(line[0]); return; }
-          const remaining = line.filter(car => !marks[car]);
-          remaining.forEach((car, i) => {
-            marks[car] = ['☆','★','星'][Math.min(i,2)];
-            derived.add(car);
-          });
-        });
-        return {marks, derived};
       }
       const palace = [[4,9,2],[3,5,7],[8,1,6]];
       const rotated = [[2,7,6],[9,5,1],[4,3,8]];
@@ -2801,38 +2752,15 @@
           if (type === 3 && lines.length !== 3) throw new Error('三分戦を選択した場合はラインを3本入力してください');
           if (type === 2 && lines.length !== 2) throw new Error('二分戦を選択した場合はラインを2本入力してください');
           const basic = parseMarkMap($('rakushoMarks').value);
-          const {marks, derived} = transformMarks(lines, basic);
+          // 印変換と洛書ルール判定は本体（applyLineAndMarkRules / evaluateRakushoRules）と共通化。
+          const raceLike = { entries: lines.flat().map(car => ({ car, name: '', rawMark: basic[car] || '無' })), lines };
+          const { carMetaMap, lineSummaryList } = applyLineAndMarkRules(raceLike);
+          const marks = {};
+          lines.flat().forEach(car => { marks[car] = carMetaMap[car]?.convertedMark || '無'; });
+          const derived = new Set(lines.flat().filter(car => !basic[car]));
           const carMark = car => marks[car] || '';
-          const head = lines.map(x => x[0]);
-          const second = lines.map(x => x[1]);
-          const picks = [];
-          const add = (name, ticket, reason) => picks.push({name,ticket,reason});
-          // A. Horizontal / within-line rules
-          lines.forEach((line, i) => {
-            if (line.length >= 2) {
-              const [a,b,c] = line, m1=carMark(a), m2=carMark(b);
-              const headPalace = (i===0 && a===4) || (i===1 && a===3);
-              if (headPalace && m1==='◯' && m2==='△') add('洛書L1',a+'→'+b,'対象先頭の宮一致＋◯-△');
-              if (headPalace && m1==='△' && m2==='◎') add('洛書L2',a+'→'+b,'対象先頭の宮一致＋△-◎');
-              if (headPalace && m1==='▲' && m2==='△') add('洛書L3',a+'→'+b,'対象先頭の宮一致＋▲-△');
-              if (((i===1 && b===5)||(i===2 && b===1)) && m1==='☆' && m2==='★') add('洛書L4',a+'→'+b,'番手の宮一致＋☆-★');
-            }
-            if (line.length === 3) {
-              const key = [...line].sort((a,b)=>a-b).join('-');
-              const valid = ['2-6-7','3-5-7','4-5-6'].includes(key);
-              if (valid && carMark(line[0])==='◎' && carMark(line[1])==='◯' && carMark(line[2])==='●') add('洛書L5',line.join('→'),'車番合計15の指定組＋◎-◯-●');
-              if (valid && carMark(line[0])==='◯' && carMark(line[1])==='◎' && carMark(line[2])==='⑳') add('洛書L6',line.join('→'),'車番合計15の指定組＋◯-◎-⑳');
-            }
-          });
-          if (lines[0]?.[0]===2 && lines[0].length>=2 && carMark(lines[0][0])==='△' && carMark(lines[0][1])==='✕') add('左90度回転R1',lines[0][0]+'→'+lines[0][1],'第1ライン先頭が宮2＋△-✕');
-          // B. Vertical rules only for three-line formations
-          if (type===3 && lines.length===3) {
-            if (carMark(head[1])==='◯' && carMark(head[2])==='✕') add('縦1',head[1]+'→'+head[2],'H2=◯、H3=✕');
-            if (carMark(head[0])==='◯' && carMark(head[1])==='☆') add('縦2',head[1]+'→'+head[0],'H1=◯、H2=☆');
-            if (carMark(head[0])==='▲' && carMark(head[1])==='◎') add('縦3',head[0]+'→'+head[1],'H1=▲、H2=◎');
-            if (carMark(head[0])==='☆' && carMark(head[2])==='◯') add('縦4',head[0]+'→'+head[2],'H1=☆、H3=◯');
-            if (second[0] && second[2] && carMark(second[0])==='★' && carMark(second[2])==='✕') add('縦5',second[2]+'→'+second[0],'S1=★、S3=✕');
-          }
+          const picks = evaluateRakushoRules({ entries: raceLike.entries, lineSummaryList })
+            .map(p => ({ name: p.label, ticket: p.ticket.join('→'), reason: p.reason }));
           const marksText = lines.map((line,i)=>'第'+(i+1)+'ライン：'+line.map(car=>car+'番['+carMark(car)+']').join(' - ')).join('<br>');
           $('rakushoGridOutput').innerHTML = '<div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs font-bold text-amber-200 mb-2">変換後のライン配置</div><div class="text-sm leading-7">'+marksText+'</div><div class="text-[11px] text-slate-400 mt-2">変換された車番：'+([...derived].sort((a,b)=>a-b).map(c=>c+'番='+carMark(c)).join(' / ')||'なし')+'</div></div>' + gridHtml(lines,marks,palace,'洛書・正位',new Set(picks.flatMap(p=>String(p.ticket).match(/[1-7]/g)||[]).map(Number))) + gridHtml(lines,marks,rotated,'洛書・左90度回転',new Set(picks.flatMap(p=>String(p.ticket).match(/[1-7]/g)||[]).map(Number)));
           $('rakushoPickOutput').innerHTML = '<div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div>' + (picks.length ? picks.map(p=>'<div class="rounded-lg border border-amber-300/30 bg-amber-300/5 p-3"><div class="text-xs font-bold text-amber-200">'+p.name+'</div><div class="text-lg font-mono-code font-bold mt-1">'+p.ticket+'</div><div class="text-xs text-slate-300 mt-1">根拠：'+p.reason+'</div></div>').join('') : '<div class="text-sm text-slate-200">見送り（該当なし）</div>');
@@ -2850,8 +2778,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '2.8-20261117';
-    const APP_RELEASE_LABEL = '更新版 v2.8 · 洛書判定追加';
+    const APP_RELEASE_VERSION = '2.9-20261118';
+    const APP_RELEASE_LABEL = '更新版 v2.9 · 印変換と洛書判定を本体と統一';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
