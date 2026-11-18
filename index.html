@@ -94,6 +94,13 @@
     button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
       outline: 2px solid #facc15; outline-offset: 3px;
     }
+  .workspace-tabs{position:sticky;top:0;z-index:40;display:flex;gap:.45rem;overflow-x:auto;padding:.65rem;background:rgba(5,12,28,.94);backdrop-filter:blur(14px);border:1px solid rgba(103,232,249,.22);border-radius:1rem;scrollbar-width:thin}
+  .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(148,163,184,.22);border-radius:.75rem;background:rgba(15,23,42,.88);color:#cbd5e1;font-size:.78rem;font-weight:700;transition:.18s}
+  .workspace-tab[aria-selected="true"]{background:linear-gradient(120deg,rgba(8,145,178,.34),rgba(124,58,237,.24));border-color:rgba(103,232,249,.7);color:#fff;box-shadow:0 0 18px rgba(34,211,238,.12)}
+  .workspace-panel{display:flex;flex-direction:column;gap:1.5rem;min-width:0}
+  .workspace-panel[hidden]{display:none!important}
+  .workspace-data-card{background:rgba(2,6,23,.72);border:1px solid rgba(103,232,249,.25);border-radius:1rem;padding:1rem}
+  @media(max-width:640px){.workspace-tabs{margin:0 -.15rem}.workspace-tab{padding:.65rem .8rem;font-size:.74rem}.workspace-panel{gap:1rem}}
   </style>
 </head>
 <body class="p-3 sm:p-6">
@@ -2057,8 +2064,8 @@
 
     document.getElementById('builderCarCount').addEventListener('change', renderBuilderRows);
     document.getElementById('builderLineInput').addEventListener('input', updateBuilderLiveRadar);
-    document.getElementById('toggleManualBuilderBtn').addEventListener('click', () => document.getElementById('manualBuilderSection').classList.toggle('hidden'));
-    document.getElementById('closeManualBuilderBtn').addEventListener('click', () => document.getElementById('manualBuilderSection').classList.add('hidden'));
+    document.getElementById('toggleManualBuilderBtn').addEventListener('click', () => switchWorkspaceTab('input'));
+    document.getElementById('closeManualBuilderBtn').addEventListener('click', () => switchWorkspaceTab('analysis'));
     document.getElementById('clearBuilderFormBtn').addEventListener('click', () => {
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
       renderBuilderRows();
@@ -2678,6 +2685,79 @@
         badge.title = '現在の更新を確認済みです';
       });
     }
+    let activeWorkspaceTab = 'analysis';
+    function switchWorkspaceTab(tab) {
+      const allowed = ['predict','analysis','input','learning','data'];
+      if (!allowed.includes(tab)) return;
+      activeWorkspaceTab = tab;
+      document.querySelectorAll('[data-workspace-panel]').forEach(panel => {
+        panel.hidden = panel.dataset.workspacePanel !== tab;
+      });
+      document.querySelectorAll('[data-workspace-tab]').forEach(button => {
+        button.setAttribute('aria-selected', button.dataset.workspaceTab === tab ? 'true' : 'false');
+      });
+      if (tab === 'analysis' && typeof renderCurrentRace === 'function') renderCurrentRace();
+      if ((tab === 'predict' || tab === 'learning') && typeof renderBetLab === 'function') renderBetLab();
+      if (tab === 'input') {
+        if (typeof renderBuilderRows === 'function') renderBuilderRows();
+        if (typeof refreshVerticalStockList === 'function') refreshVerticalStockList();
+      }
+      if (tab === 'learning' && typeof updateBatchStats === 'function') updateBatchStats();
+    }
+    function initWorkspaceTabs() {
+      const root = document.querySelector('.max-w-7xl.mx-auto.space-y-6');
+      const header = root && root.querySelector(':scope > header');
+      if (!root || !header || document.getElementById('workspaceTabs')) return;
+      const originalNodes = [...root.children].filter(node => node !== header);
+      const nav = document.createElement('nav');
+      nav.id = 'workspaceTabs';
+      nav.className = 'workspace-tabs';
+      nav.setAttribute('aria-label','作業画面切替');
+      const tabs = [['predict','予想'],['analysis','レース解析'],['input','データ入力'],['learning','検証・学習'],['data','データ管理']];
+      tabs.forEach(([key,label]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'workspace-tab';
+        button.dataset.workspaceTab = key;
+        button.textContent = label;
+        button.setAttribute('aria-selected', key === activeWorkspaceTab ? 'true' : 'false');
+        button.addEventListener('click', () => switchWorkspaceTab(key));
+        nav.appendChild(button);
+      });
+      const workspace = document.createElement('div');
+      workspace.id = 'workspacePanels';
+      const panels = {};
+      tabs.forEach(([key]) => {
+        const panel = document.createElement('div');
+        panel.className = 'workspace-panel';
+        panel.dataset.workspacePanel = key;
+        panel.hidden = key !== activeWorkspaceTab;
+        panels[key] = panel;
+        workspace.appendChild(panel);
+      });
+      root.insertBefore(nav, header.nextSibling);
+      root.insertBefore(workspace, nav.nextSibling);
+      originalNodes.forEach(node => {
+        if (node.id === 'kaimekunBetLab' || node.id === 'rakushoJudgeLab') { panels.predict.appendChild(node); return; }
+        if (node.id === 'manualBuilderSection') { panels.input.appendChild(node); return; }
+        const content = (node.textContent || '').toUpperCase();
+        if (/CORPUS BATCH|THEORY 06|CAR POINT MATRIX|基準値キャリブレーション|全読み込み統計/.test(content)) panels.learning.appendChild(node);
+        else panels.analysis.appendChild(node);
+      });
+      const dataCard = document.createElement('section');
+      dataCard.className = 'workspace-data-card space-y-3';
+      dataCard.innerHTML = '<div class="text-sm font-bold text-cyan-200">保存・書き出し・旧版確認</div><p class="text-xs text-slate-300 leading-relaxed">レース記録のバックアップとCSV書き出し、コードの更新履歴をここにまとめています。コードの復元とレース記録の復元は別操作です。</p><div id="workspaceDataActions" class="flex flex-wrap gap-2"></div>';
+      panels.data.appendChild(dataCard);
+      const actionBox = dataCard.querySelector('#workspaceDataActions');
+      ['saveRecordsNowBtn','exportBackupJsonBtn','importBackupJsonBtn','jsonBackupInput','exportCustomCsvBtn','codeVersionHistoryLink'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) actionBox.appendChild(element);
+      });
+      const hiddenFile = document.getElementById('jsonBackupInput');
+      if (hiddenFile) hiddenFile.classList.add('hidden');
+      switchWorkspaceTab(activeWorkspaceTab);
+    }
+    initWorkspaceTabs();
     window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
