@@ -286,7 +286,11 @@
         </div>
         <div id="instantTicketReasons" class="text-[11px] text-cyan-200 space-y-1">買い目の根拠は出走表の認識後に表示します。</div>
       </section>
-
+      <section id="numberLorePanel" class="rounded-xl border border-violet-400/35 bg-slate-950/90 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2"><div><div class="text-xs font-mono-code text-violet-300 font-bold">TETRACTYS × ENNEAGRAM</div><h3 class="text-base font-bold text-violet-100">数理構造・15フィルター判定</h3></div><span id="numberLoreStatus" class="text-[11px] text-slate-400">7車立て出走表を認識すると判定</span></div>
+        <div id="numberLoreDimension" class="text-sm text-slate-200">次元構造：--</div><div id="numberLoreConvertedLines" class="text-xs text-cyan-200 whitespace-pre-wrap">変換後ライン：--</div><div id="numberLoreFilters" class="space-y-2 text-xs text-slate-200">該当フィルター：--</div><div id="numberLoreResult" class="border-t border-slate-700 pt-3 text-xs text-amber-200 whitespace-pre-wrap">結果検証：結果入力時に表示</div>
+        <p class="text-[10px] text-slate-500">過去実測値は提示された集計値を表示。今回のコードで独立再集計した値ではありません。</p>
+      </section>
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <div class="xl:col-span-7 bg-slate-950/70 rounded-xl p-4 border border-slate-800 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -1282,6 +1286,28 @@
       if (parsedLines.length === 0) parsedLines = entries.map(e => [String(e.car)]);
       return { id: title, rawFormation: rawFormation || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder: '', payout: null, entries };
     }
+    const NUMBER_LORE_BENCHMARKS = [
+      ['TET-1','次元上昇 ▲-△','exacta',68,4,'5.9','150.0',2550],['TET-2','次元上昇 ☆-★','exacta',198,5,'2.5','124.8',4944],['TET-3','次元下降 △-✕','exacta',149,18,'12.1','128.8',1066],['TET-4','次元下降 ✕-◯','exacta',102,9,'8.8','127.3',1442],
+      ['TET-5','聖数10 ◎-△-▲','trifecta',62,3,'4.8','178.1',3680],['TET-6','聖数10 ✕-△-▲','trifecta',98,3,'3.1','170.4',5567],
+      ['ENN-1','統合2矢印 ●-◯','exacta',166,12,'7.2','149.9',2074],['ENN-2','分裂2矢印 △-✕','exacta',367,32,'8.7','127.8',1465],['ENN-3','正三角形 ✖-✕','exacta',339,8,'2.4','131.6',5578],
+      ['ENN-4','統合3連鎖 ◯-◎-⑳','trifecta',50,9,'18.0','257.8',1432],['ENN-5','統合3連鎖 ✖-✕-☆','trifecta',34,2,'5.9','717.1',12190],['ENN-6','統合3連鎖 △-✕-✖','trifecta',20,2,'10.0','396.5',3965],['ENN-7','統合3連鎖 ◎-◯-●','trifecta',61,4,'6.6','146.9',2240],
+      ['ENN-8','分裂3連鎖 ◎-△-▲','trifecta',18,5,'27.8','183.9',662],['ENN-9','分裂3連鎖 ◯-◎-△','trifecta',121,20,'16.5','127.2',770]
+    ];
+    const TETRA_SHAPES={'4-2-1':[993,1830,'17.9','立体(4)具現化型'],'4-3':[1359,2100,'19.6','立体(4)具現化型'],'3-3-1':[4223,3110,'23.0','面(3)標準均衡型'],'3-2-2':[10069,3900,'26.7','面(3)標準均衡型'],'3-2-1-1':[2635,4070,'28.4','面(3)標準均衡型'],'2-2-2-1':[2448,5645,'32.6','次元分散カオス型'],'2-2-1-1-1':[293,6610,'34.8','次元分散カオス型']};
+    const ENN_F=[[1,4],[4,2],[2,5],[5,7],[7,1]],ENN_R=[[4,1],[2,4],[5,2],[7,5],[1,7]],ENN_T=[[1,4,2],[4,2,5],[2,5,7],[5,7,1],[7,1,4]],ENN_RT=[[1,7,5],[7,5,2],[5,2,4],[2,4,1],[4,1,7]],TEN=[[1,2,7],[1,3,6],[1,4,5],[2,3,5]];
+    function numberLoreAnalyze(race,raw){
+      const res=analyzeRace(race),groups=res.lineSummaryList.filter(x=>!x.isTanki).map(x=>x.members),shape=groups.map(g=>g.length).sort((a,b)=>b-a).join('-'),converted=res.lineSummaryList.map(g=>g.members.map(m=>m.car+'('+m.convertedMark+')').join('-')).join(' / '),rules=[];
+      const mark=(g,i)=>g&&g[i]?g[i].convertedMark:'',add=(id,ticket)=>{const b=NUMBER_LORE_BENCHMARKS.find(x=>x[0]===id);if(b)rules.push({id:b[0],name:b[1],type:b[2],n:b[3],hits:b[4],rate:b[5],roi:b[6],avg:b[7],ticket:ticket.join('-')});};
+      groups.forEach(g=>{const A=g[0],B=g[1],C=g[2],pair=A&&B?A.car+'-'+B.car:'';if(A&&B&&['1-2','2-3','3-4'].includes(pair)&&mark(g,0)==='▲'&&mark(g,1)==='△')add('TET-1',[A.car,B.car]);if(A&&B&&['1-2','2-3','3-4'].includes(pair)&&mark(g,0)==='☆'&&mark(g,1)==='★')add('TET-2',[A.car,B.car]);if(A&&B&&['2-1','3-2','4-3'].includes(pair)&&mark(g,0)==='△'&&mark(g,1)==='✕')add('TET-3',[A.car,B.car]);if(A&&B&&['2-1','3-2','4-3'].includes(pair)&&mark(g,0)==='✕'&&mark(g,1)==='◯')add('TET-4',[A.car,B.car]);
+        if(A&&B&&C){const sorted=[A.car,B.car,C.car].sort((a,b)=>a-b).join('-'),ten=TEN.some(t=>t.slice().sort((a,b)=>a-b).join('-')===sorted);if(ten&&mark(g,0)==='◎'&&mark(g,1)==='△'&&mark(g,2)==='▲')add('TET-5',[B.car,A.car,C.car]);if(ten&&mark(g,0)==='✕'&&mark(g,1)==='△'&&mark(g,2)==='▲')add('TET-6',[A.car,B.car,C.car]);
+          if(ENN_F.some(p=>p[0]===A.car&&p[1]===B.car)&&mark(g,0)==='●'&&mark(g,1)==='◯')add('ENN-1',[A.car,B.car]);if(ENN_R.some(p=>p[0]===A.car&&p[1]===B.car)&&mark(g,0)==='△'&&mark(g,1)==='✕')add('ENN-2',[A.car,B.car]);if([A.car,B.car].includes(3)&&[A.car,B.car].includes(6)&&A.car!==B.car&&mark(g,0)==='✖'&&mark(g,1)==='✕')add('ENN-3',[A.car,B.car]);
+          const tri=[A.car,B.car,C.car].join('-');if(ENN_T.some(t=>t.join('-')===tri)){if(mark(g,0)==='◯'&&mark(g,1)==='◎'&&mark(g,2)==='⑳')add('ENN-4',[A.car,B.car,C.car]);if(mark(g,0)==='✖'&&mark(g,1)==='✕'&&mark(g,2)==='☆')add('ENN-5',[A.car,B.car,C.car]);if(mark(g,0)==='△'&&mark(g,1)==='✕'&&mark(g,2)==='✖')add('ENN-6',[A.car,B.car,C.car]);if(mark(g,0)==='◎'&&mark(g,1)==='◯'&&mark(g,2)==='●')add('ENN-7',[B.car,A.car,C.car]);}if(ENN_RT.some(t=>t.join('-')===tri)){if(mark(g,0)==='◎'&&mark(g,1)==='△'&&mark(g,2)==='▲')add('ENN-8',[A.car,B.car,C.car]);if(mark(g,0)==='◯'&&mark(g,1)==='◎'&&mark(g,2)==='△')add('ENN-9',[A.car,B.car,C.car]);}}
+      });
+      const rm=String(raw||'').match(/(?:結果|着順)\s*[：:]?\s*([1-7])\s*[-ー－]\s*([1-7])\s*[-ー－]\s*([1-7])/),finish=rm?rm.slice(1,4).map(Number):((race.resultOrder||'').match(/[1-7]/g)||[]).slice(0,3),p2m=String(raw||'').match(/2車単\s*[：:]?\s*([\d,]+)\s*円?/),p3m=String(raw||'').match(/3連単\s*[：:]?\s*([\d,]+)\s*円?/),p2=p2m?Number(p2m[1].replace(/,/g,'')):Number(race.exactaPayout||race.exa_yen||0),p3=p3m?Number(p3m[1].replace(/,/g,'')):Number(race.payout||race.tri_yen||0),paths=[];
+      if(finish.length===3){if(ENN_F.some(p=>p[0]===finish[0]&&p[1]===finish[1])&&ENN_F.some(p=>p[0]===finish[1]&&p[1]===finish[2]))paths.push('エニアグラム統合軌道（順行）');if(ENN_R.some(p=>p[0]===finish[0]&&p[1]===finish[1])&&ENN_R.some(p=>p[0]===finish[1]&&p[1]===finish[2]))paths.push('エニアグラム分裂軌道（逆行）');if(finish.includes(3)&&finish.includes(6))paths.push('正三角形トライン（3・6）');if(Math.abs(finish[0]-finish[1])===1||Math.abs(finish[1]-finish[2])===1)paths.push('テトラクシス次元ステップ（隣接車番）');if(TEN.some(t=>t.slice().sort((a,b)=>a-b).join('-')===finish.slice().sort((a,b)=>a-b).join('-')))paths.push('聖数10（3車合計10）');}
+      return {shape:shape,shapeInfo:TETRA_SHAPES[shape],converted:converted,rules:rules,finish:finish,p2:p2,p3:p3,paths:paths};
+    }
+    function renderNumberLore(race,raw){const status=document.getElementById('numberLoreStatus'),dim=document.getElementById('numberLoreDimension'),lines=document.getElementById('numberLoreConvertedLines'),filters=document.getElementById('numberLoreFilters'),result=document.getElementById('numberLoreResult');if(!race||race.entries.length!==7){status.textContent='7車立て以外は対象外';dim.textContent='次元構造：7車立てが必要';lines.textContent='変換後ライン：--';filters.textContent='見送り（対象外）';result.textContent='結果検証：--';return;}const x=numberLoreAnalyze(race,raw),d=x.shapeInfo;status.textContent='7車立て・判定完了';dim.textContent=d?'次元型：'+d[3]+'｜構成 '+x.shape+'｜過去 '+d[0].toLocaleString()+'R｜3連単中央値 '+d[1].toLocaleString()+'円｜万車券率 '+d[2]+'%':'次元型：実測基準外（'+x.shape+'）';lines.textContent='変換後ライン：'+x.converted;filters.innerHTML=x.rules.length?x.rules.map(r=>'<div class="rounded-lg border border-violet-400/25 bg-slate-900/80 p-3"><b class="text-violet-200">'+r.id+'｜'+r.name+'</b><div class="mt-1 text-amber-200 font-mono-code">'+r.ticket+'（1点100円）</div><div class="mt-1">過去実測：対象'+r.n+'R／的中'+r.hits+'回（'+r.rate+'%）／回収率'+r.roi+'%／平均的中配当'+r.avg.toLocaleString()+'円</div></div>').join(''):'見送り（該当なし）';if(x.finish.length===3){const bets=x.rules.map(r=>{const t=r.ticket.split('-').map(Number),hit=t.every((v,i)=>v===x.finish[i]),pay=r.type==='exacta'?x.p2:x.p3;return r.id+' '+r.ticket+'：'+(hit?'的中':'不的中')+'／払戻 '+(hit?pay.toLocaleString():0)+'円／収支 '+(hit?(pay-100).toLocaleString():'-100')+'円';});result.textContent='確定着順 '+x.finish.join('-')+'\n'+(bets.join('\n')||'該当買い目なし')+'\n決着軌道：'+(x.paths.join('／')||'該当軌道なし')+(x.p2?'\n2車単払戻 '+x.p2.toLocaleString()+'円':'')+(x.p3?'\n3連単払戻 '+x.p3.toLocaleString()+'円':'');}else result.textContent='結果検証：着順未入力';}
     let latestInstantParsedRace = null;
     const instantPasteInput = document.getElementById('instantPasteInput');
 
@@ -1309,6 +1335,7 @@
       }
 
       const res = analyzeRace(parsed);
+      try { renderNumberLore(parsed, instantPasteInput.value || ''); } catch (e) { document.getElementById('numberLoreStatus').textContent='数理判定エラー'; document.getElementById('numberLoreFilters').textContent=String(e.message||e); }
       try {
         const previewTickets = buildAutoTickets(parsed);
         const showPreview = list => (list || []).map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　') || '--';
