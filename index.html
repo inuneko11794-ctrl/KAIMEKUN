@@ -535,12 +535,12 @@
           </div>
           <h2 class="text-lg font-bold text-white mt-2">🧠 5大解析・自己学習ニューラルエンジン（荒れる／荒れない基準値判定）</h2>
           <p class="text-xs text-slate-400 mt-0.5">
-            過去CSVの万車券（10,000円以上）発生ケースが「波乱度 約70%」になるよう基準キャリブレーション済み。手元のCSV読込後も即座に再調整可能です。
+            波乱度は過去CSVの万車券（10,000円以上）実績発生率と一致するよう基準キャリブレーション済み。手元のCSV読込後も即座に再調整可能です。
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <button id="calibrate70Btn" class="px-3.5 py-2.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition flex-1 md:flex-initial">
-            🎯 万車券＝70%基準に自動調整
+            🎯 実績率に合わせて自動調整
           </button>
           <button id="trainAiBtn" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition flex-1 md:flex-initial">
             ⚡ 全データでAI学習を実行
@@ -554,7 +554,7 @@
       <div id="manshaValidationBanner" class="mt-3 px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2 text-xs font-mono-code">
         <span class="text-amber-300 font-bold">📊 万車券（10,000円以上）キャリブレーション検証:</span>
         <span id="manshaValidationStats" class="text-slate-300">
-          万車券ターゲット平均波乱度: <strong class="text-emerald-300">70.0%</strong> ｜ 1万円未満平均波乱度: <strong class="text-cyan-300">34.2%</strong>（CSV読込で実測値を自動再検証）
+          万車券ターゲット平均波乱度: <strong class="text-emerald-300">28.2%</strong> ｜ 1万円未満平均波乱度: <strong class="text-cyan-300">27.2%</strong>（CSV読込で実測値を自動再検証）
         </span>
       </div>
 
@@ -565,7 +565,7 @@
             <h3 class="text-sm sm:text-base font-bold text-white mt-1">💰 配当レンジ別・5大奇抜指標 ＆ AI波乱度 比較検証テーブル</h3>
           </div>
           <div id="alertFilterSummary" class="text-xs font-mono-code px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-200">
-            🎯 波乱度65%以上フィルター: CSV読込で実測万車券捕捉率を算出
+            🎯 波乱度35%以上フィルター: CSV読込で実測万車券捕捉率を算出
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -599,9 +599,9 @@
             <div class="relative h-3.5 rounded-full bg-slate-900 border border-slate-700/70">
               <div class="absolute inset-0 rounded-full opacity-25" style="background: linear-gradient(90deg, #34d399, #22d3ee, #fbbf24, #fb7185)"></div>
               <div id="aiUpsetGauge" class="absolute left-0 top-0 h-full rounded-full bg-emerald-400" style="width: 0%"></div>
-              <div class="absolute w-0.5 bg-rose-200/90 rounded" style="left: 65%; top: -3px; bottom: -3px"></div>
+              <div class="absolute w-0.5 bg-rose-200/90 rounded" style="left: 70%; top: -3px; bottom: -3px"></div>
             </div>
-            <div class="flex justify-between text-xs font-mono-code text-slate-400 mt-1"><span>堅実</span><span class="text-rose-300/90">65% アラートライン</span><span>波乱</span></div>
+            <div class="flex justify-between text-xs font-mono-code text-slate-400 mt-1"><span>0% 堅実</span><span class="text-rose-300/90">35% アラートライン</span><span>50% 波乱</span></div>
           </div>
           <div id="baselineDiffBadge" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-slate-800 text-amber-300">基準値比: --</div>
           <div id="aiVerdictText" class="text-xs text-slate-300 leading-relaxed">解析待機中...</div>
@@ -770,7 +770,7 @@
     const EMBEDDED_DEFAULT_BASELINE = {
       sourceName: '2024-08〜2026-06 全25,477レース検証済・キャリブレーションモデル',
       dissonanceMean: 4.10, chaosMean: 6.55, coupRate: 0.36, biasMean: 0.238, upsetThreshold: 0.53,
-      weights: [0.150, 0.150, 0.305, 0.151, 0.150, 0.719, 0.150, 0.150], bias: -0.47
+      weights: [0.150, 0.150, 0.305, 0.151, 0.150, 0.719, 0.150, 0.150], bias: -2.02
     };
 
     function loadActiveBaseline() {
@@ -1161,7 +1161,7 @@
 
       let correct = 0;
       dataset.forEach(({ x, y }) => {
-        if ((predictUpset(x) >= 0.5 ? 1 : 0) === y) correct++;
+        if ((predictUpset(x) >= 0.275 ? 1 : 0) === y) correct++;
       });
 
       aiModel.epochs += 300;
@@ -1188,13 +1188,13 @@
 
       if (manshaItems.length === 0) {
         const typicalManshaVec = [0.35, 0.28, 0.90, 0.33, 0.71, 0.56, 0.39, 0.56];
-        const targetLogit = Math.log(0.70 / 0.30);
+        const targetLogit = Math.log(0.28 / 0.72);
         let dot = 0;
         for (let i = 0; i < typicalManshaVec.length; i++) dot += typicalManshaVec[i] * (aiModel.weights[i] || 0);
         aiModel.bias = +(targetLogit - dot).toFixed(4);
         document.getElementById('manshaValidationStats').innerHTML =
-          `万車券典型プロファイル判定: <strong class="text-emerald-300">70.0%</strong> ｜ 配当付きCSV読込で実データ再計算可能`;
-        if (!silent) showToast('🎯 万車券典型パターンの波乱度を 70.0% にキャリブレーションしました！');
+          `万車券典型プロファイル判定: <strong class="text-emerald-300">28.0%</strong> ｜ 配当付きCSV読込で実データ再計算可能`;
+        if (!silent) showToast('🎯 波乱度を実績発生率にキャリブレーションしました！');
         renderCurrentRace();
         return;
       }
@@ -1213,12 +1213,14 @@
         }
       }
 
-      let low = -5.0, high = 5.0;
+      const allFeats = manshaFeats.concat(normalFeats);
+      const observedRate = allFeats.length > 0 ? manshaFeats.length / allFeats.length : 0.275;
+      let low = -8.0, high = 5.0;
       for (let iter = 0; iter < 40; iter++) {
         const mid = (low + high) / 2;
         aiModel.bias = mid;
-        const avgProb = manshaFeats.reduce((s, f) => s + predictUpset(f), 0) / manshaFeats.length;
-        if (avgProb < 0.70) low = mid;
+        const avgProb = allFeats.reduce((s, f) => s + predictUpset(f), 0) / allFeats.length;
+        if (avgProb < observedRate) low = mid;
         else high = mid;
       }
       aiModel.bias = +aiModel.bias.toFixed(4);
@@ -1229,13 +1231,13 @@
         : 0;
 
       document.getElementById('aiModelStatus').textContent =
-        `状態: 万車券70%基準キャリブレーション済 (万車券 ${manshaItems.length}R)`;
+        `状態: 実績率キャリブレーション済 (万車券 ${manshaItems.length}R)`;
       document.getElementById('manshaValidationStats').innerHTML =
         `万車券(${manshaItems.length}R)平均波乱度: <strong class="text-emerald-300">${finalManshaAvg.toFixed(1)}%</strong> ｜ 1万円未満(${normalItems.length}R)平均波乱度: <strong class="text-cyan-300">${finalNormalAvg.toFixed(1)}%</strong>`;
 
       renderCurrentRace();
       if (!silent) {
-        showToast(`🎯 万車券 ${manshaItems.length}レースの平均波乱度を ${finalManshaAvg.toFixed(1)}% に設定しました！`);
+        showToast(`🎯 実績キャリブレーション完了！万車券の平均波乱度は ${finalManshaAvg.toFixed(1)}% です`);
       }
     }
 
@@ -1243,13 +1245,13 @@
     // 5. リアルタイム即席診断 ＆ MD読込 ＆ 縦型入力
     // ==========================================
     function getUpsetJudgeMeta(prob) {
-      if (prob >= 72) {
+      if (prob >= 35) {
         return { headline: '🌋 激波乱シグナル！（大荒れ警報）', colorClass: 'text-rose-400', badgeStyle: 'bg-rose-500/30 border-rose-400/70 text-rose-100', gradientClass: 'from-rose-400 via-red-400 to-amber-300', gaugeClass: 'bg-rose-500', glowClass: 'upset-glow-rose', cardBorder: 'border-rose-400/60' };
-      } else if (prob >= 65) {
+      } else if (prob >= 30) {
         return { headline: '🔥 かなり荒れそう！（万車券ゾーン突入）', colorClass: 'text-rose-400', badgeStyle: 'bg-rose-500/20 border-rose-400/60 text-rose-200', gradientClass: 'from-rose-300 via-rose-400 to-amber-300', gaugeClass: 'bg-rose-400', glowClass: 'upset-glow-rose', cardBorder: 'border-rose-400/40' };
-      } else if (prob >= 52) {
-        return { headline: '⚡ やや波乱気配（中穴〜万車券警戒）', colorClass: 'text-amber-300', badgeStyle: 'bg-amber-500/20 border-amber-400/60 text-amber-200', gradientClass: 'from-amber-200 via-amber-300 to-orange-300', gaugeClass: 'bg-amber-400', glowClass: 'upset-glow-amber', cardBorder: 'border-amber-400/40' };
-      } else if (prob >= 40) {
+      } else if (prob >= 25) {
+        return { headline: '⚡ 標準〜波乱寄り（警戒域）', colorClass: 'text-amber-300', badgeStyle: 'bg-amber-500/20 border-amber-400/60 text-amber-200', gradientClass: 'from-amber-200 via-amber-300 to-orange-300', gaugeClass: 'bg-amber-400', glowClass: 'upset-glow-amber', cardBorder: 'border-amber-400/40' };
+      } else if (prob >= 20) {
         return { headline: '⚖️ 互角・標準ペース（ヒモ荒れ注意）', colorClass: 'text-cyan-300', badgeStyle: 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200', gradientClass: 'from-cyan-200 via-cyan-300 to-sky-300', gaugeClass: 'bg-cyan-400', glowClass: 'upset-glow-cyan', cardBorder: 'border-cyan-400/40' };
       }
       return { headline: '🛡️ 堅実・荒れにくそう（本命サイド濃厚）', colorClass: 'text-emerald-300', badgeStyle: 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200', gradientClass: 'from-emerald-200 via-emerald-300 to-teal-300', gaugeClass: 'bg-emerald-400', glowClass: 'upset-glow-emerald', cardBorder: 'border-emerald-400/40' };
@@ -1397,7 +1399,7 @@
       const meta = getUpsetJudgeMeta(prob);
 
       pctEl.textContent = `${prob.toFixed(1)}%`;
-      pctEl.className = `text-4xl font-extrabold font-mono-code ${meta.colorClass} ${meta.glowClass}${prob >= 72 ? ' upset-pulse inline-block' : ''}`;
+      pctEl.className = `text-4xl font-extrabold font-mono-code ${meta.colorClass} ${meta.glowClass}${prob >= 35 ? ' upset-pulse inline-block' : ''}`;
       headEl.textContent = meta.headline;
       headEl.className = `text-sm font-bold ${meta.colorClass}`;
       metaEl.textContent = `${parsed.entries.length}車立 / 認識OK`;
@@ -1640,13 +1642,13 @@
       const withPayout = analyzedAll.filter(it => it.payNum !== null && !isNaN(it.payNum) && it.payNum > 0);
       if (withPayout.length === 0) {
         const presetTiers = [
-          { label: '① 本命・堅実 (〜2,999円)', countStr: '基準 42%', dis: '3.35', chaos: '5.45', coup: '21%', bias: '0.295', prob: '29.8%', badge: 'text-cyan-300' },
-          { label: '② 中穴ゾーン (3,000〜9,999円)', countStr: '基準 26%', dis: '3.88', chaos: '6.35', coup: '34%', bias: '0.242', prob: '41.4%', badge: 'text-slate-200' },
-          { label: '③ 万車券 (10,000〜49,999円)', countStr: '基準 24%', dis: '4.45', chaos: '7.15', coup: '46%', bias: '0.205', prob: '68.5%', badge: 'text-amber-300 font-bold' },
-          { label: '④ 大穴ゾーン (50,000円〜)', countStr: '基準 8%', dis: '5.10', chaos: '8.30', coup: '58%', bias: '0.165', prob: '74.8%', badge: 'text-rose-300 font-bold' }
+          { label: '① 本命・堅実 (〜2,999円)', countStr: '基準 42%', dis: '3.35', chaos: '5.45', coup: '21%', bias: '0.295', prob: '26.5%', badge: 'text-cyan-300' },
+          { label: '② 中穴ゾーン (3,000〜9,999円)', countStr: '基準 26%', dis: '3.88', chaos: '6.35', coup: '34%', bias: '0.242', prob: '28.3%', badge: 'text-slate-200' },
+          { label: '③ 万車券 (10,000〜49,999円)', countStr: '基準 24%', dis: '4.45', chaos: '7.15', coup: '46%', bias: '0.205', prob: '28.3%', badge: 'text-amber-300 font-bold' },
+          { label: '④ 大穴ゾーン (50,000円〜)', countStr: '基準 8%', dis: '5.10', chaos: '8.30', coup: '58%', bias: '0.165', prob: '27.5%', badge: 'text-rose-300 font-bold' }
         ];
         tbody.innerHTML = presetTiers.map(t => `<tr class="hover:bg-slate-900/50"><td class="py-2 px-2.5 text-slate-200">${t.label}</td><td class="py-2 px-2.5 text-right text-slate-400">${t.countStr}</td><td class="py-2 px-2.5 text-right text-cyan-300">${t.dis}</td><td class="py-2 px-2.5 text-right text-purple-300">${t.chaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${t.coup}</td><td class="py-2 px-2.5 text-right text-amber-300">${t.bias}</td><td class="py-2 px-2.5 text-right ${t.badge}">${t.prob}</td><td class="py-2 px-2.5 text-center text-slate-400">CSV読込で実レース表示</td></tr>`).join('');
-        alertSummaryEl.innerHTML = `🎯 波乱度65%以上フィルター（基準モデル）: 万車券平均 <strong class="text-emerald-300">70.0%</strong> に最適化済`;
+        alertSummaryEl.innerHTML = `🎯 波乱度35%以上フィルター（基準モデル）: 実績較正済み（上位帯の万車券率 約40%）`;
         return;
       }
       const tiers = [
@@ -1667,11 +1669,11 @@
         const topItem = [...t.items].sort((a, b) => b.payNum - a.payNum)[0];
         return `<tr class="hover:bg-slate-900/60 transition"><td class="py-2 px-2.5 text-slate-200 font-semibold">${t.name}</td><td class="py-2 px-2.5 text-right text-slate-300">${n.toLocaleString()}件 (${share}%)</td><td class="py-2 px-2.5 text-right text-cyan-300">${avgDis}</td><td class="py-2 px-2.5 text-right text-purple-300">${avgChaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${coupRate}%</td><td class="py-2 px-2.5 text-right text-amber-300">${avgBias}</td><td class="py-2 px-2.5 text-right ${t.probClass}">${avgProb}%</td><td class="py-2 px-2.5 text-center"><button data-jump-idx="${topItem.idx}" class="jump-tier-race-btn px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-400/40 text-xs">🔍 ${topItem.payNum.toLocaleString()}円を表示</button></td></tr>`;
       }).join('');
-      const alerted = withPayout.filter(it => it.prob >= 65.0), alertedMansha = alerted.filter(it => it.payNum >= 10000);
+      const alerted = withPayout.filter(it => it.prob >= 35.0), alertedMansha = alerted.filter(it => it.payNum >= 10000);
       const alertRate = ((alerted.length / withPayout.length) * 100).toFixed(1);
       const hitManshaRate = alerted.length > 0 ? ((alertedMansha.length / alerted.length) * 100).toFixed(1) : '0.0';
       const avgAlertPay = alerted.length > 0 ? Math.round(alerted.reduce((s, it) => s + it.payNum, 0) / alerted.length).toLocaleString() : '0';
-      alertSummaryEl.innerHTML = `🎯 波乱度65%以上抽出: <strong>${alerted.length}件</strong> (全体${alertRate}%) ｜ 万車券率: <strong class="text-emerald-300">${hitManshaRate}%</strong> ｜ 平均配当: <strong class="text-amber-300">${avgAlertPay}円</strong>`;
+      alertSummaryEl.innerHTML = `🎯 波乱度35%以上抽出: <strong>${alerted.length}件</strong> (全体${alertRate}%) ｜ 万車券率: <strong class="text-emerald-300">${hitManshaRate}%</strong> ｜ 平均配当: <strong class="text-amber-300">${avgAlertPay}円</strong>`;
       document.querySelectorAll('.jump-tier-race-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           currentRaceIdx = parseInt(btn.dataset.jumpIdx, 10);
@@ -1719,18 +1721,18 @@
       const dnaFreqMap = {};
       allRaces.forEach(r => { const d = analyzeRace(r).raceDna; dnaFreqMap[d] = (dnaFreqMap[d] || 0) + 1; });
       const prob = predictUpset(extractFeatures(res, dnaFreqMap)) * 100;
-      const diffFromBase = prob - 50.0;
+      const diffFromBase = prob - 27.5;
       const judgeMeta = getUpsetJudgeMeta(prob);
       const probEl = document.getElementById('aiUpsetProb');
       probEl.textContent = `${prob.toFixed(1)} %`;
-      probEl.className = `text-5xl sm:text-6xl font-extrabold font-mono-code text-transparent bg-clip-text bg-gradient-to-r ${judgeMeta.gradientClass} ${judgeMeta.glowClass}${prob >= 72 ? ' upset-pulse inline-block' : ''}`;
+      probEl.className = `text-5xl sm:text-6xl font-extrabold font-mono-code text-transparent bg-clip-text bg-gradient-to-r ${judgeMeta.gradientClass} ${judgeMeta.glowClass}${prob >= 35 ? ' upset-pulse inline-block' : ''}`;
       const gaugeEl = document.getElementById('aiUpsetGauge');
-      if (gaugeEl) { gaugeEl.style.width = `${Math.min(100, Math.max(0, prob))}%`; gaugeEl.className = `absolute left-0 top-0 h-full rounded-full ${judgeMeta.gaugeClass}`; }
+      if (gaugeEl) { gaugeEl.style.width = `${Math.min(100, Math.max(0, prob / 50 * 100))}%`; gaugeEl.className = `absolute left-0 top-0 h-full rounded-full ${judgeMeta.gaugeClass}`; }
       const cardEl = document.getElementById('aiUpsetCard');
       if (cardEl) cardEl.className = `bg-slate-950/80 border ${judgeMeta.cardBorder} rounded-2xl p-4 text-center space-y-2 transition-colors duration-500`;
       const diffBadge = document.getElementById('baselineDiffBadge');
-      diffBadge.textContent = diffFromBase >= 0 ? `基準ライン比: +${diffFromBase.toFixed(1)}pt (波乱寄り)` : `基準ライン比: ${diffFromBase.toFixed(1)}pt (堅実寄り)`;
-      diffBadge.className = diffFromBase >= 12 ? 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-rose-500/20 text-rose-300 border border-rose-400/40' : diffFromBase <= -10 ? 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-amber-500/20 text-amber-300 border border-amber-400/40';
+      diffBadge.textContent = diffFromBase >= 0 ? `全体平均(27.5%)比: +${diffFromBase.toFixed(1)}pt (波乱寄り)` : `全体平均(27.5%)比: ${diffFromBase.toFixed(1)}pt (堅実寄り)`;
+      diffBadge.className = diffFromBase >= 5 ? 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-rose-500/20 text-rose-300 border border-rose-400/40' : diffFromBase <= -5 ? 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'inline-block px-2.5 py-0.5 rounded-full text-xs font-mono-code bg-amber-500/20 text-amber-300 border border-amber-400/40';
       const verdictEl = document.getElementById('aiVerdictText');
       verdictEl.textContent = judgeMeta.headline;
       verdictEl.className = `text-sm font-bold leading-relaxed ${judgeMeta.colorClass}`;
@@ -2356,7 +2358,7 @@
               cur.entries.push({ car, name: nameCol && row[nameCol] ? row[nameCol] : `選手${car}`, rawMark: row[markCol] || '無' });
             });
             if (cur && cur.entries.length >= 5) grouped.push(cur);
-            if (grouped.length > 0) { allRaces = grouped; currentRaceIdx = 0; persistRaces(); populateRaceSelector(); updateBatchStats(); calibrateToMansha70(true); renderCurrentRace(); refreshVerticalStockList(); document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${grouped.length}レース`; showToast(`✅ ${grouped.length.toLocaleString()}レース読込＆万車券70%基準設定完了！`); }
+            if (grouped.length > 0) { allRaces = grouped; currentRaceIdx = 0; persistRaces(); populateRaceSelector(); updateBatchStats(); calibrateToMansha70(true); renderCurrentRace(); refreshVerticalStockList(); document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / ${grouped.length}レース`; showToast(`✅ ${grouped.length.toLocaleString()}レース読込＆実績キャリブレーション完了！`); }
             else { document.getElementById('dataFileReadStatus').textContent = `${file.name} / 認識できるレースなし`; showToast('⚠️ CSVの車番・レース区切りを確認してください'); }
           }
         });
@@ -2834,8 +2836,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.2-20261118';
-    const APP_RELEASE_LABEL = '更新版 v3.2 · 波乱度の表示を強化';
+    const APP_RELEASE_VERSION = '3.3-20261118';
+    const APP_RELEASE_LABEL = '更新版 v3.3 · 波乱度を実確率に較正';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
