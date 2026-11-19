@@ -1921,7 +1921,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261120-v5-BANDCAP-WIN3',
+      version: 'CSV-BASELINE-20261120-v6-PAIR12',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2872,6 +2872,26 @@
         if (dispProb < 22) { exacta.splice(2); selected.splice(4); }
         else if (dispProb >= 60 && dispProb < 78) { selected.splice(4); }
       } catch (e) {}
+      // 隣接ペアの2車単（本印→その変換印、☆→★）を追加する。実測で単体回収75〜83%あり、従来の買い目にはほぼ含まれていなかった組み合わせ
+      try {
+        const convOf = { '◎': '⑳', '◯': '●', '△': '▲', '✕': '✖' };
+        const carByMark = {};
+        (res.lineSummaryList || []).forEach(line => (line.members || []).forEach(m => { if (m.convertedMark && !(m.convertedMark in carByMark)) carByMark[m.convertedMark] = Number(m.car); }));
+        Object.keys(convOf).forEach(base => {
+          const head = carByMark[base], partner = carByMark[convOf[base]];
+          if (head && partner) { const t = [head, partner]; if (!exacta.some(x => x.join('-') === t.join('-'))) exacta.push(t); }
+        });
+        (res.lineSummaryList || []).forEach(line => {
+          const mems = line.members || [];
+          for (let i = 0; i + 1 < mems.length; i++) {
+            const a = mems[i], b = mems[i + 1];
+            let t = null;
+            if (a.convertedMark === '☆' && b.convertedMark === '★') t = [Number(a.car), Number(b.car)];
+            else if (a.convertedMark === '★' && b.convertedMark === '☆') t = [Number(b.car), Number(a.car)];
+            if (t && !exacta.some(x => x.join('-') === t.join('-'))) exacta.push(t);
+          }
+        });
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -3108,7 +3128,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.25 · 自信度と買い目を直近実績に更新';
+    const APP_RELEASE_LABEL = '更新版 v3.26 · 隣接ペアの2車単を追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
