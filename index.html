@@ -289,7 +289,7 @@
           <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！レース表MDを貼ると並び・印を取り込んで『反映・登録』できます。" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
           <div id="instantResultEntryArea" class="hidden mt-3 rounded-xl border border-amber-400/30 bg-slate-900/80 p-3 space-y-3">
             <div class="text-xs font-bold text-amber-200">読み込みレースの結果・日付入力</div>
-            <p class="text-xs text-slate-300">各レースの確定着順・開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
+            <p class="text-xs text-slate-300">各レースの確定着順・開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。Y・Nも予想したレースはチェックを入れると一緒に保存されます。</p>
             <div id="instantResultEntryRows" class="space-y-3"></div>
           </div>
         </div>
@@ -1489,7 +1489,7 @@
       const signature = mdRaces.map(r => r.id + ':' + r.entries.length + ':' + JSON.stringify(r.lines)).join('|');
       if (signature === lastInstantMdSignature) return;
       lastInstantMdSignature = signature;
-      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: race.eventDate || '', dataEntryDate: todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null }));
+      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: race.eventDate || '', dataEntryDate: todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeY: !!race.agreeY, agreeN: !!race.agreeN }));
       renderInstantResultEntryRows();
       document.getElementById('applyInstantMdBtn').disabled = pendingInstantMdRaces.length === 0;
       if (mdRaces.length) document.getElementById('instantReadStatus').textContent = `MD形式 ${mdRaces.length}レース検出。下欄に日付・配当を入力してください`;
@@ -1522,6 +1522,8 @@
         dupCount++;
         const ex = allRaces[idx];
         if (!ex.eventDate && race.eventDate) ex.eventDate = race.eventDate;
+        if (race.agreeY) ex.agreeY = true;
+        if (race.agreeN) ex.agreeN = true;
         if (parseFinish(ex).length < 3 && parseFinish(race).length >= 3) {
           ex.resultOrder = race.resultOrder;
           ex.payout = race.payout;
@@ -1582,12 +1584,21 @@
             <label class="text-xs text-slate-300">2車単配当（円）<input data-md-field="exactaPayout" data-md-index="${idx}" type="number" min="0" placeholder="例: 1850" value="${race.exactaPayout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
             <label class="text-xs text-slate-300">3連単配当（円）<input data-md-field="payout" data-md-index="${idx}" type="number" min="0" placeholder="例: 12450" value="${race.payout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
           </div>
+          <div class="flex flex-wrap gap-2">
+            <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" data-md-check="agreeY" data-md-index="${idx}" ${race.agreeY ? 'checked' : ''} class="accent-cyan-400 w-4 h-4"> Yも予想</label>
+            <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" data-md-check="agreeN" data-md-index="${idx}" ${race.agreeN ? 'checked' : ''} class="accent-cyan-400 w-4 h-4"> Nも予想</label>
+          </div>
         </div>`).join('');
       rows.querySelectorAll('[data-md-field]').forEach(input => input.addEventListener('input', () => {
         const idx = Number(input.dataset.mdIndex), key = input.dataset.mdField;
         if (!pendingInstantMdRaces[idx]) return;
         pendingInstantMdRaces[idx][key] = key === 'exactaPayout' || key === 'payout' ? (input.value.trim() ? Number(input.value) : null) : input.value;
         if (key === 'resultOrder') pendingInstantMdRaces[idx].resultRecordedAt = input.value.trim() ? new Date().toISOString() : null;
+      }));
+      rows.querySelectorAll('[data-md-check]').forEach(input => input.addEventListener('change', () => {
+        const idx = Number(input.dataset.mdIndex), key = input.dataset.mdCheck;
+        if (!pendingInstantMdRaces[idx]) return;
+        pendingInstantMdRaces[idx][key] = !!input.checked;
       }));
     }
     document.getElementById('chooseInstantMdFileBtn').addEventListener('click', () => {
@@ -1600,7 +1611,7 @@
       reader.onload = (e) => {
         const text = String(e.target.result || '');
         instantPasteInput.value = text;
-        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null}));
+        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeY: !!race.agreeY, agreeN: !!race.agreeN}));
         document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${pendingInstantMdRaces.length}レース検出。下欄に日付・配当を入力してください`;
         runInstantDiagnosisFromTextarea();
         renderInstantResultEntryRows();
@@ -2440,7 +2451,7 @@
         if (file.name.endsWith('.md') || text.includes('並び予想')) {
           const parsedMd = parseMarkdownRaces(text);
           if (parsedMd.length > 0) {
-            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null}));
+            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeY: !!race.agreeY, agreeN: !!race.agreeN}));
             document.getElementById('instantPasteInput').value = text;
             document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${parsedMd.length}レース検出。下欄に日付・配当を入力してください`;
             document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${parsedMd.length}レース読込・入力待ち`;
@@ -3052,8 +3063,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.20-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.20 · 会場別成績を追加';
+    const APP_RELEASE_VERSION = '3.21-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.21 · 取り込みにサイトチェックを追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
