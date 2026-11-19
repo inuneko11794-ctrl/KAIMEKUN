@@ -151,11 +151,12 @@
         <div class="flex flex-wrap gap-2">
           <button id="resetAdaptivePointsBtn" type="button" class="px-3 py-2 rounded-lg bg-rose-500/15 border border-rose-400/30 text-rose-200 text-xs font-bold">学習ポイント削除</button>
           <button id="refreshBetMatrixBtn" class="px-3 py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 text-amber-100 text-xs font-bold">買い目を再計算</button>
+          <button id="predAnimBtn" type="button" class="px-3 py-2 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-100 text-xs font-bold">🎬 予想アニメ</button>
         </div>
       </div>
       <p id="patternBaselineNote" class="text-xs leading-relaxed text-slate-300">検証中...</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 4点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 2点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-xs text-amber-200 mt-2">洛書発動: --</div></div>
       </div>
@@ -168,6 +169,31 @@
         <div id="rakushoStatsSummary" class="text-xs text-slate-400 mt-2">洛書条件の発動データを集計します。</div></div>
       </div>
     </section>
+
+    <!-- 予想アニメ（予想時点のパターンを俯瞰で再生） -->
+    <div id="predAnimOverlay" class="hidden fixed inset-0 z-[80] bg-slate-950/95 overflow-y-auto">
+      <div class="max-w-[920px] mx-auto p-3 sm:p-4 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div id="paTitle" class="text-base sm:text-lg font-bold">🎬 予想アニメ</div>
+          <button id="paCloseBtn" type="button" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 text-sm font-bold" style="min-height:48px">✕ 閉じる</button>
+        </div>
+        <div class="text-xs text-slate-400">予想時点のパターンの模式再現です（実際の結果・映像ではありません）。並びと予想順位は保存済みの予想スナップショットを使います。</div>
+        <canvas id="paCv" width="900" height="570" class="w-full h-auto block rounded-xl" style="background:#175c2e"></canvas>
+        <div id="paTelop" class="flex items-center justify-center text-center rounded-lg font-extrabold px-3 py-2" style="min-height:46px;font-size:17px;background:linear-gradient(90deg,#7a1020,#c2273a,#7a1020)">▶ スタートボタンで発走</div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <button id="paPlayBtn" type="button" class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold" style="min-height:48px">▶ スタート</button>
+          <button id="paSpeedBtn" type="button" class="px-4 py-2 rounded-lg bg-slate-700 text-white font-bold" style="min-height:48px">速さ：通常 ×1</button>
+          <div class="flex-1 min-w-[120px] h-2.5 bg-slate-900 rounded-full overflow-hidden"><div id="paProg" class="h-full" style="width:0%;background:#ffd76a"></div></div>
+          <span id="paLap" class="text-xs text-slate-400">待機中</span>
+        </div>
+        <div id="paOrder" class="flex flex-wrap gap-1.5 text-xs"></div>
+        <div id="paEntries" class="flex flex-wrap gap-2"></div>
+        <div id="paResult" class="hidden rounded-xl border border-amber-400/40 bg-slate-900/80 p-3">
+          <div class="text-sm font-bold text-amber-200 mb-1">🏁 予想ゴール（予想時点のパターン）</div>
+          <div id="paResultBody" class="text-sm leading-relaxed"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- 洛書・九宮図 独立判定ラボ -->
     <section id="rakushoJudgeLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
@@ -2977,7 +3003,7 @@
 
 
     const APP_RELEASE_VERSION = '3.12-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.17 · 取り込みを改善';
+    const APP_RELEASE_LABEL = '更新版 v3.18 · 取り込みを改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -3072,6 +3098,209 @@
       switchWorkspaceTab(activeWorkspaceTab);
     }
     initWorkspaceTabs();
+    // ===== 予想アニメ（予想時点のパターンを俯瞰で再生） =====
+    const PA_COLORS = {1:['#f5f5f5','#111'],2:['#222222','#fff'],3:['#e53935','#fff'],4:['#1e5eff','#fff'],5:['#ffd600','#111'],6:['#2e9e4f','#fff'],7:['#ff8f00','#111'],8:['#ec407a','#fff'],9:['#8e24aa','#fff']};
+    const PA_KT = [0, 0.55, 0.75, 0.9, 1.0];
+    const PA_LEAD_T = [0, 0.08, 0.2, 0.55, 0.75, 0.9, 1.0];
+    const PA_LEAD_D = [0, 150, 650, 1950, 2650, 3400, 4150];
+    function paInterp(times, vals, t) {
+      if (t <= times[0]) return vals[0];
+      for (let i = 1; i < times.length; i++) {
+        if (t <= times[i]) {
+          const u = (t - times[i - 1]) / (times[i] - times[i - 1]);
+          const e = u * u * (3 - 2 * u);
+          return vals[i - 1] + (vals[i] - vals[i - 1]) * e;
+        }
+      }
+      return vals[vals.length - 1];
+    }
+    function buildPredAnimScript(race, tickets) {
+      const groups = (race.lines || []).map(g => (g || []).map(Number)).filter(g => g.length);
+      const queue = groups.flat();
+      const entryCars = (race.entries || []).map(e => Number(e.car));
+      entryCars.forEach(c => { if (!queue.includes(c)) queue.push(c); });
+      let ranked = (tickets && Array.isArray(tickets.ranked) && tickets.ranked.length) ? tickets.ranked.map(Number) : queue.slice();
+      entryCars.forEach(c => { if (!ranked.includes(c)) ranked.push(c); });
+      ranked = ranked.filter(c => queue.includes(c));
+      const qIdx = {}, rIdx = {};
+      queue.forEach((c, i) => { qIdx[c] = i; });
+      ranked.forEach((c, i) => { rIdx[c] = i; });
+      const markOf = {};
+      ((tickets && tickets.predictionSnapshot) || []).forEach(row => { markOf[Number(row.car)] = row.mark; });
+      if (!Object.keys(markOf).length) { try { analyzeRace(race).entries.forEach(e => { markOf[Number(e.car)] = e.convertedMark || e.mark || ''; }); } catch (err) {} }
+      const lineNameOf = {};
+      groups.forEach((g, gi) => g.forEach((c, pi) => { lineNameOf[c] = g.length === 1 ? '単騎' : `ライン${gi + 1}・${pi === 0 ? '先頭' : pi === 1 ? '番手' : (pi + 1) + '番手'}`; }));
+      entryCars.forEach(c => { if (!lineNameOf[c]) lineNameOf[c] = '単騎'; });
+      const gap = {}, lat = {};
+      queue.forEach(c => {
+        const q = qIdx[c], r = rIdx[c];
+        gap[c] = [q * 15, q * 13 + (r - q) * 2, q * 7 + r * 7, r * 13 + q * 1.5, r * 14];
+        const swing = (q - r) >= 2 ? 15 : (q - r) <= -2 ? -12 : (q % 2 ? 6 : -6);
+        lat[c] = [q % 2 ? 7 : -7, q % 2 ? 5 : -5, swing, r % 2 ? -5 : 5, r % 2 ? -4 : 4];
+      });
+      const formation = groups.map(g => g.join('-')).join('｜');
+      const top3 = ranked.slice(0, 3).join('-');
+      const telops = [
+        [0.00, 'スタート！'],
+        [0.12, `隊列は ${formation} に落ち着いた`],
+        [0.40, `${queue[0]}番の先行で周回中…`],
+        [0.55, '🔔 ジャン！残り1周'],
+        [0.78, `${ranked[0]}番が仕掛ける！`],
+        [0.90, '最終直線！'],
+        [1.00, `🏁 予想ゴール ${top3}（予想パターン）`]
+      ];
+      return { queue, ranked, gap, lat, telops, markOf, lineNameOf, formation, top3 };
+    }
+    const paCv = document.getElementById('paCv'), paCtx = paCv.getContext('2d');
+    const PA_CX = 450, PA_CY = 285, PA_L = 430, PA_R = 168;
+    const PA_SEG = [PA_L, Math.PI * PA_R, PA_L, Math.PI * PA_R];
+    const PA_PERI = PA_SEG[0] + PA_SEG[1] + PA_SEG[2] + PA_SEG[3];
+    const PA_START_OFF = 190, PA_FINISH_S = 310;
+    function paRawPoint(s) {
+      s = ((s % PA_PERI) + PA_PERI) % PA_PERI;
+      if (s < PA_SEG[0]) return [PA_CX - PA_L / 2 + s, PA_CY + PA_R];
+      s -= PA_SEG[0];
+      if (s < PA_SEG[1]) { const th = Math.PI / 2 - s / PA_R; return [PA_CX + PA_L / 2 + PA_R * Math.cos(th), PA_CY + PA_R * Math.sin(th)]; }
+      s -= PA_SEG[1];
+      if (s < PA_SEG[2]) return [PA_CX + PA_L / 2 - s, PA_CY - PA_R];
+      s -= PA_SEG[2];
+      const th = -Math.PI / 2 - s / PA_R; return [PA_CX - PA_L / 2 + PA_R * Math.cos(th), PA_CY + PA_R * Math.sin(th)];
+    }
+    function paPointAt(s, lat) {
+      const p = paRawPoint(s), q = paRawPoint(s + 2);
+      let tx = q[0] - p[0], ty = q[1] - p[1];
+      const m = Math.hypot(tx, ty) || 1; tx /= m; ty /= m;
+      let nx = -ty, ny = tx;
+      if (nx * (p[0] - PA_CX) + ny * (p[1] - PA_CY) < 0) { nx = -nx; ny = -ny; }
+      return [p[0] + nx * lat, p[1] + ny * lat, Math.atan2(ty, tx)];
+    }
+    function paDrawTrack() {
+      paCtx.clearRect(0, 0, paCv.width, paCv.height);
+      paCtx.fillStyle = '#175c2e'; paCtx.fillRect(0, 0, paCv.width, paCv.height);
+      paCtx.fillStyle = 'rgba(255,255,255,0.04)';
+      for (let i = 0; i < 8; i++) paCtx.fillRect(i * 120, 0, 60, paCv.height);
+      paCtx.beginPath();
+      for (let s = 0; s <= PA_PERI; s += 6) { const p = paRawPoint(s); s === 0 ? paCtx.moveTo(p[0], p[1]) : paCtx.lineTo(p[0], p[1]); }
+      paCtx.closePath();
+      paCtx.strokeStyle = '#8a5a3b'; paCtx.lineWidth = 56; paCtx.stroke();
+      paCtx.strokeStyle = '#a06a42'; paCtx.lineWidth = 48; paCtx.stroke();
+      paCtx.strokeStyle = 'rgba(255,255,255,0.35)'; paCtx.lineWidth = 1.5;
+      [-16, 0, 16].forEach(off => {
+        paCtx.beginPath();
+        for (let s = 0; s <= PA_PERI; s += 8) { const p = paPointAt(s, off); s === 0 ? paCtx.moveTo(p[0], p[1]) : paCtx.lineTo(p[0], p[1]); }
+        paCtx.closePath(); paCtx.stroke();
+      });
+      paCtx.beginPath();
+      paCtx.ellipse(PA_CX, PA_CY, PA_L / 2 + PA_R - 34, PA_R - 34, 0, 0, Math.PI * 2);
+      paCtx.fillStyle = '#1c6b35'; paCtx.fill();
+      const g1 = paPointAt(PA_FINISH_S, -27), g2 = paPointAt(PA_FINISH_S, 27);
+      paCtx.beginPath(); paCtx.moveTo(g1[0], g1[1]); paCtx.lineTo(g2[0], g2[1]);
+      paCtx.strokeStyle = '#ffffff'; paCtx.lineWidth = 5; paCtx.stroke();
+      paCtx.fillStyle = 'rgba(255,255,255,0.85)'; paCtx.font = 'bold 13px sans-serif'; paCtx.textAlign = 'center';
+      const gl = paPointAt(PA_FINISH_S, -44); paCtx.fillText('GOAL', gl[0], gl[1]);
+      paCtx.fillStyle = 'rgba(255,255,255,0.5)'; paCtx.font = 'bold 15px sans-serif';
+      paCtx.fillText('KEIRIN BANK（俯瞰・模式図）', PA_CX, PA_CY + 5);
+    }
+    function paDrawRider(car, x, y, isLeader, mark) {
+      const c = PA_COLORS[car] || ['#cccccc', '#111'];
+      paCtx.beginPath(); paCtx.arc(x, y + 3, 15, 0, Math.PI * 2); paCtx.fillStyle = 'rgba(0,0,0,0.3)'; paCtx.fill();
+      paCtx.beginPath(); paCtx.arc(x, y, 15, 0, Math.PI * 2); paCtx.fillStyle = c[0]; paCtx.fill();
+      paCtx.lineWidth = 2.5; paCtx.strokeStyle = '#fff'; paCtx.stroke();
+      paCtx.fillStyle = c[1]; paCtx.font = 'bold 16px sans-serif'; paCtx.textAlign = 'center'; paCtx.textBaseline = 'middle';
+      paCtx.fillText(String(car), x, y + 1);
+      if (mark && mark !== '無') {
+        paCtx.beginPath(); paCtx.arc(x + 12, y - 12, 8, 0, Math.PI * 2); paCtx.fillStyle = '#12233f'; paCtx.fill();
+        paCtx.lineWidth = 1.5; paCtx.strokeStyle = '#ffd76a'; paCtx.stroke();
+        paCtx.fillStyle = '#ffd76a'; paCtx.font = 'bold 10px sans-serif'; paCtx.fillText(mark, x + 12, y - 11);
+      }
+      if (isLeader) { paCtx.fillStyle = '#ffd76a'; paCtx.font = 'bold 12px sans-serif'; paCtx.fillText('▼', x, y - 26); }
+    }
+    const paState = { playing: false, speedIdx: 1, progT: 0, lastNow: 0, rafId: null, script: null, lastOrderMs: 0 };
+    const PA_SPEEDS = [0.5, 1, 2], PA_SPEED_LABELS = ['遅い ×0.5', '通常 ×1', '速い ×2'];
+    const PA_DURATION = 36000;
+    function paPositions(t) {
+      const sc = paState.script; if (!sc) return null;
+      const lead = paInterp(PA_LEAD_T, PA_LEAD_D, t);
+      const pos = {};
+      sc.queue.forEach(car => {
+        const dist = lead - paInterp(PA_KT, sc.gap[car], t);
+        pos[car] = { dist, p: paPointAt(PA_START_OFF + dist, paInterp(PA_KT, sc.lat[car], t)) };
+      });
+      const order = Object.keys(pos).map(Number).sort((a, b) => pos[b].dist - pos[a].dist);
+      return { pos, order, lead };
+    }
+    function paRender(t) {
+      const sc = paState.script; if (!sc) return;
+      const { pos, order, lead } = paPositions(t);
+      paDrawTrack();
+      [...order].reverse().forEach(car => paDrawRider(car, pos[car].p[0], pos[car].p[1], car === order[0] && t < 1, sc.markOf[car]));
+      document.getElementById('paProg').style.width = (t * 100).toFixed(1) + '%';
+      let telop = sc.telops[0][1];
+      sc.telops.forEach(([tt, txt]) => { if (t >= tt) telop = txt; });
+      document.getElementById('paTelop').textContent = telop;
+      const remain = Math.max(0, (PA_LEAD_D[PA_LEAD_D.length - 1] - lead) / PA_PERI);
+      document.getElementById('paLap').textContent = t >= 1 ? '確定' : ('残り 約' + remain.toFixed(1) + '周');
+      const now = performance.now();
+      if (now - paState.lastOrderMs > 120 || t >= 1) {
+        paState.lastOrderMs = now;
+        document.getElementById('paOrder').innerHTML = order.map((car, i) => `<span class="px-2 py-1 rounded-md bg-slate-900 border border-slate-700">${i + 1}位 ${car}番</span>`).join('');
+      }
+    }
+    function paFrame(now) {
+      if (!paState.playing) return;
+      paState.progT = Math.min(1, paState.progT + (now - paState.lastNow) / PA_DURATION * PA_SPEEDS[paState.speedIdx]);
+      paState.lastNow = now;
+      paRender(paState.progT);
+      if (paState.progT >= 1) {
+        paState.playing = false;
+        document.getElementById('paPlayBtn').textContent = '↺ もう一度';
+        document.getElementById('paResult').classList.remove('hidden');
+        return;
+      }
+      paState.rafId = requestAnimationFrame(paFrame);
+    }
+    function paStop() {
+      paState.playing = false;
+      if (paState.rafId) cancelAnimationFrame(paState.rafId);
+      paState.rafId = null;
+    }
+    document.getElementById('paPlayBtn').addEventListener('click', () => {
+      if (paState.playing || !paState.script) return;
+      document.getElementById('paResult').classList.add('hidden');
+      paState.playing = true;
+      document.getElementById('paPlayBtn').textContent = '🏁 レース中…';
+      paState.progT = 0; paState.lastNow = performance.now();
+      paState.rafId = requestAnimationFrame(paFrame);
+    });
+    document.getElementById('paSpeedBtn').addEventListener('click', () => {
+      paState.speedIdx = (paState.speedIdx + 1) % PA_SPEEDS.length;
+      document.getElementById('paSpeedBtn').textContent = '速さ：' + PA_SPEED_LABELS[paState.speedIdx];
+    });
+    document.getElementById('paCloseBtn').addEventListener('click', () => {
+      paStop();
+      document.getElementById('predAnimOverlay').classList.add('hidden');
+    });
+    document.getElementById('predAnimBtn').addEventListener('click', () => {
+      const race = allRaces[currentRaceIdx]; if (!race) return;
+      const tickets = ensureRaceTickets(race);
+      const sc = buildPredAnimScript(race, tickets);
+      paState.script = sc;
+      paStop(); paState.progT = 0;
+      document.getElementById('paTitle').textContent = '🎬 予想アニメ｜' + race.id;
+      document.getElementById('paPlayBtn').textContent = '▶ スタート';
+      document.getElementById('paResult').classList.add('hidden');
+      document.getElementById('paTelop').textContent = '▶ スタートボタンで発走';
+      document.getElementById('paEntries').innerHTML = sc.queue.map(car => {
+        const c = PA_COLORS[car] || ['#cccccc', '#111'];
+        const mark = sc.markOf[car] || '無';
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs"><span class="inline-flex items-center justify-center rounded-full font-extrabold" style="width:24px;height:24px;background:${c[0]};color:${c[1]};border:2px solid rgba(255,255,255,.75)">${car}</span><span class="font-bold" style="color:#ffd76a">${mark}</span><span class="text-slate-400">${sc.lineNameOf[car] || ''}</span></span>`;
+      }).join('');
+      document.getElementById('paResultBody').innerHTML = sc.ranked.slice(0, 3).map((car, i) => `${i + 1}着予想：${car}番（${sc.markOf[car] || '無'}・${sc.lineNameOf[car] || ''}）`).join('<br>') + `<br><span class="text-slate-400">予想の並び：${sc.formation}</span>`;
+      document.getElementById('predAnimOverlay').classList.remove('hidden');
+      document.getElementById('predAnimOverlay').scrollTop = 0;
+      paRender(0.02);
+    });
+
     window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>{ const t=r.autoTickets; if(t && Array.isArray(t.win) && t.win.length>2){ t.win=t.win.slice(0,2); if(Array.isArray(t.winReasons)) t.winReasons=t.winReasons.slice(0,2); } }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
