@@ -1457,7 +1457,7 @@
       const res = analyzeRace(parsed);
       try { renderNumberLore(parsed, instantPasteInput.value || ''); } catch (e) { document.getElementById('numberLoreStatus').textContent='数理判定エラー'; document.getElementById('numberLoreFilters').textContent=String(e.message||e); }
       try {
-        const previewTickets = buildAutoTickets(parsed);
+        const previewTickets = buildRaceTickets(parsed);
         const showPreview = list => (list || []).map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　') || '--';
         document.getElementById('instantWinPicks').textContent = showPreview(previewTickets.win);
         document.getElementById('instantExactaPicks').textContent = showPreview(previewTickets.exacta);
@@ -1987,19 +1987,23 @@
       };
     }
 
-    const ADAPTIVE_POINT_KEY = 'kaimekun_reason_points_v1';
+    const ADAPTIVE_POINT_KEY = 'kaimekun_reason_points_v2';
+    const ADAPTIVE_POINT_KEY_V1 = 'kaimekun_reason_points_v1';
     const ADAPTIVE_FEATURES = ['mark','lineRole','markRelation'];
     const ADAPTIVE_REASON_LABELS = {mark:'印配置',lineRole:'ライン内位置',markRelation:'番手の印関係'};
+    function clampAdaptiveSet(src){return Object.fromEntries(ADAPTIVE_FEATURES.map(k=>[k,Math.max(-1.5,Math.min(1.5,Number(src&&src[k])||0))]));}
     function loadAdaptivePoints() {
       try {
-        const saved=JSON.parse(localStorage.getItem(ADAPTIVE_POINT_KEY)||'{}');
-        return Object.fromEntries(ADAPTIVE_FEATURES.map(k=>[k,Math.max(-1.5,Math.min(1.5,Number(saved[k])||0))]));
-      } catch(e) { return {mark:0,lineRole:0,markRelation:0}; }
+        const saved=JSON.parse(localStorage.getItem(ADAPTIVE_POINT_KEY)||'null');
+        if (saved && (saved.exa || saved.tri)) return { exa: clampAdaptiveSet(saved.exa), tri: clampAdaptiveSet(saved.tri) };
+        const legacy=clampAdaptiveSet(JSON.parse(localStorage.getItem(ADAPTIVE_POINT_KEY_V1)||'{}'));
+        return { exa: {...legacy}, tri: {...legacy} };
+      } catch(e) { return { exa:{mark:0,lineRole:0,markRelation:0}, tri:{mark:0,lineRole:0,markRelation:0} }; }
     }
     let adaptiveReasonPoints=loadAdaptivePoints();
     function saveAdaptivePoints(){try{localStorage.setItem(ADAPTIVE_POINT_KEY,JSON.stringify(adaptiveReasonPoints));}catch(e){}}
     function calculateCarPointScores(res,options={}) {
-      const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints;
+      const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints.tri;
       const byCar=new Map(res.entries.map(entry=>{
         const empiricalSevenCar=res.entries.length===7;
         const markBase=empiricalSevenCar?getEmpiricalMarkPoints(entry.mark):0.5;
@@ -2321,8 +2325,8 @@
     });
     document.getElementById('resetAdaptivePointsBtn').addEventListener('click', () => {
       if (!confirm('蓄積した理由別の学習ポイントを初期化します。レース記録・CSV基準値は削除しません。よろしいですか？')) return;
-      adaptiveReasonPoints = { mark:0, lineRole:0, markRelation:0 };
-      try { localStorage.removeItem(ADAPTIVE_POINT_KEY); } catch(e) {}
+      adaptiveReasonPoints = { exa:{mark:0,lineRole:0,markRelation:0}, tri:{mark:0,lineRole:0,markRelation:0} };
+      try { localStorage.removeItem(ADAPTIVE_POINT_KEY); localStorage.removeItem(ADAPTIVE_POINT_KEY_V1); } catch(e) {}
       saveAdaptivePoints();
       renderCurrentRace();
       renderBetLab();
@@ -2431,7 +2435,9 @@
           if (!confirm(`${imported.length.toLocaleString()}レースを読み込みます。現在の記録は置き換わります。続行しますか？`)) return;
           allRaces = imported;
           if (parsed && parsed.adaptiveReasonPoints) {
-            adaptiveReasonPoints = Object.fromEntries(ADAPTIVE_FEATURES.map(k=>[k,Math.max(-1.5,Math.min(1.5,Number(parsed.adaptiveReasonPoints[k])||0))]));
+            const ap = parsed.adaptiveReasonPoints;
+            if (ap.exa || ap.tri) adaptiveReasonPoints = { exa: clampAdaptiveSet(ap.exa), tri: clampAdaptiveSet(ap.tri) };
+            else { const base = clampAdaptiveSet(ap); adaptiveReasonPoints = { exa: {...base}, tri: {...base} }; }
             saveAdaptivePoints();
           }
           currentRaceIdx = 0;
@@ -2827,7 +2833,7 @@
     }
     // AUTO BET MATRIX: 印の1着決着パターンで本線と狙いを作り、洛書は追加する。
     function buildAutoTickets(race,options={}) {
-      const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints};
+      const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
       const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
       const ranked=scored.map(x=>Number(x.car)),cars=ranked.filter((x,i,a)=>a.indexOf(x)===i);
       const generatedAt=new Date().toISOString(),generatedAfterResult=parseFinish(race).length>=3||!!race.resultRecordedAt;
@@ -2856,19 +2862,35 @@
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
         predictionSnapshot:scored.map(x=>({car:x.car,mark:x.mark,basePoints:x.basePoints,adjustment:x.adjustment,featureContributions:x.featureContributions,reasons:x.reasons,totalPoints:x.totalPoints}))};
     }
+    // 券種別生成：2車単は2車単用ポイント、3連単は3連単用ポイントでそれぞれ生成する
+    function buildRaceTickets(race) {
+      const exaBuild=buildAutoTickets(race,{adaptiveSnapshot:{...adaptiveReasonPoints.exa}});
+      const triBuild=buildAutoTickets(race,{adaptiveSnapshot:{...adaptiveReasonPoints.tri}});
+      return {...triBuild,exacta:exaBuild.exacta,exactaReasons:exaBuild.exactaReasons,
+        adaptivePointSnapshot:{exa:{...adaptiveReasonPoints.exa},tri:{...adaptiveReasonPoints.tri}}};
+    }
     function ticketContains(list,target){return (list||[]).some(t=>Array.isArray(t)&&t.length===target.length&&t.every((v,i)=>Number(v)===Number(target[i])));}
     function learnAdaptiveReasonPoints(race) {
       const saved=race.autoTickets,finish=parseFinish(race);
       if(!saved||!saved.generatedAt||saved.learningAppliedAt||finish.length<3)return false;
       if(!Number.isFinite(new Date(saved.generatedAt).getTime()))return false;
-      const targets=[{key:'exacta',target:finish.slice(0,2)},{key:'trifecta',target:finish.slice(0,3)}];
-      const baselineHits=targets.filter(x=>ticketContains(saved[x.key],x.target)).length,changes={};
-      ADAPTIVE_FEATURES.forEach(feature=>{
-        const without=buildAutoTickets(race,{disabledFeature:feature,adaptiveSnapshot:saved.adaptivePointSnapshot||{...adaptiveReasonPoints}});
-        const withoutHits=targets.filter(x=>ticketContains(without[x.key],x.target)).length;
-        const delta=baselineHits-withoutHits,change=delta===0?0:delta>0?0.05:-0.05;
-        changes[feature]=change;
-        adaptiveReasonPoints[feature]=Math.max(-1.5,Math.min(1.5,Number(adaptiveReasonPoints[feature]||0)+change));
+      const snap=saved.adaptivePointSnapshot||{};
+      const snapFor=kind=>{
+        if (snap[kind]) return {...snap[kind]};
+        if (!snap.exa && !snap.tri && (snap.mark!==undefined||snap.lineRole!==undefined||snap.markRelation!==undefined)) return {...snap};
+        return {...adaptiveReasonPoints[kind]};
+      };
+      const kinds=[{key:'exacta',kind:'exa',target:finish.slice(0,2)},{key:'trifecta',kind:'tri',target:finish.slice(0,3)}];
+      const changes={exa:{},tri:{}};
+      kinds.forEach(({key,kind,target})=>{
+        const baseHit=ticketContains(saved[key],target)?1:0,snapshot=snapFor(kind);
+        ADAPTIVE_FEATURES.forEach(feature=>{
+          const without=buildAutoTickets(race,{disabledFeature:feature,adaptiveSnapshot:snapshot});
+          const withoutHit=ticketContains(without[key],target)?1:0;
+          const delta=baseHit-withoutHit,change=delta===0?0:delta>0?0.05:-0.05;
+          changes[kind][feature]=change;
+          adaptiveReasonPoints[kind][feature]=Math.max(-1.5,Math.min(1.5,Number(adaptiveReasonPoints[kind][feature]||0)+change));
+        });
       });
       race.autoTickets.learningAppliedAt=new Date().toISOString();
       race.autoTickets.learningChanges=changes;
@@ -2879,7 +2901,8 @@
       const resultKnown = parseFinish(race).length >= 3 || !!race.resultRecordedAt;
       const staleUnresulted = !resultKnown &&
         race.autoTickets?.featureBaselineVersion !== FEATURE_POINT_BASELINE.version;
-      if (!race.autoTickets || (!resultKnown && force) || staleUnresulted) race.autoTickets = buildAutoTickets(race);
+      const staleScheme = !resultKnown && !(race.autoTickets?.adaptivePointSnapshot && race.autoTickets.adaptivePointSnapshot.exa);
+      if (!race.autoTickets || (!resultKnown && force) || staleUnresulted || staleScheme) race.autoTickets = buildRaceTickets(race);
       return race.autoTickets;
     }
     function parseFinish(race) {
@@ -2984,7 +3007,7 @@
         showToast('結果確定済みのため、保存済み買い目は変更できません');
         return;
       }
-      race.autoTickets = buildAutoTickets(race); persistRaces(); renderBetLab();
+      race.autoTickets = buildRaceTickets(race); persistRaces(); renderBetLab();
     });
     ['betStatsDateBasis','betStatsFrom','betStatsTo'].forEach(id => document.getElementById(id).addEventListener('change', renderBetStats));
     document.getElementById('clearBetStatsRangeBtn').addEventListener('click', () => {
@@ -3070,7 +3093,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.22 · サイトチェックにBを追加';
+    const APP_RELEASE_LABEL = '更新版 v3.23 · 学習を券種別に分離';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
