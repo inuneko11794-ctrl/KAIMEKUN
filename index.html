@@ -2377,7 +2377,7 @@
         if (file.name.endsWith('.md') || text.includes('並び予想')) {
           const parsedMd = parseMarkdownRaces(text);
           if (parsedMd.length > 0) {
-            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate:'', dataEntryDate:todayForEntry(), exactaPayout:null, payout:null}));
+            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate:'', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null}));
             document.getElementById('instantPasteInput').value = text;
             document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${parsedMd.length}レース検出。下欄に日付・配当を入力してください`;
             document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${parsedMd.length}レース読込・入力待ち`;
