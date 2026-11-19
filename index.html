@@ -2621,14 +2621,41 @@
 
 
     // 洛書条件は初期ポイント0。買い目に追加し、成績を条件別に独立計測する。
-    const RAKUSHO_POINT_WEIGHTS = {L1:0,L2:0,L3:0,L4:0,L5:0,L6:0,R1:0,V1:0,V2:0,V3:0,V4:0,V5:0};
+    const RAKUSHO_POINT_WEIGHTS = {L1:0,L2:0,L3:0,L4:0,L5:0,L6:0,R1:0,V1:0,V2:0,V3:0,V4:0,V5:0,Q1:0,Q2:0,Q3:0};
     function evaluateRakushoRules(res) {
-      const lines=(res.lineSummaryList||[]).filter(x=>!x.isTanki).map(x=>x.members||[]);
+      const allGroups=(res.lineSummaryList||[]);
+      const lines=allGroups.filter(x=>!x.isTanki).map(x=>x.members||[]);
       const starters=(res.entries||[]).map(x=>Number(x.car));
-      if(starters.length!==7||new Set(starters).size!==7||![2,3].includes(lines.length))return [];
-      const mark=car=>{for(const line of lines){const m=line.find(x=>Number(x.car)===Number(car));if(m)return String(m.convertedMark||'');}return '';};
       const picks=[];
       const add=(id,label,ticket,type,reason)=>picks.push({id,label,ticket,type,reason,point:Number(RAKUSHO_POINT_WEIGHTS[id]||0)});
+      const markOf={};
+      allGroups.forEach(g=>(g.members||[]).forEach(m=>{markOf[Number(m.car)]=String(m.convertedMark||'');}));
+      // 並び宮Q系: 宮一致＝車番と並び順番号（並び全体の通し番号）の一致。7車・9車対象、重み0で独立計測。
+      if((starters.length===7||starters.length===9)&&new Set(starters).size===starters.length){
+        const queue=allGroups.flatMap(g=>(g.members||[]).map(m=>Number(m.car)));
+        const qNo={};queue.forEach((c,i)=>{qNo[c]=i+1;});
+        const miya=c=>Number(c)===qNo[c];
+        lines.forEach(line=>{
+          if(line.length>=2){
+            const a=Number(line[0].car),b=Number(line[1].car),m1=markOf[a]||'',m2=markOf[b]||'';
+            if(miya(a)&&m1==='◯'&&m2==='△')add('Q1','並び宮Q1',[a,b],'exacta','並び順番号一致＋◯-△');
+            if(miya(a)&&m1==='△'&&m2==='◎')add('Q2','並び宮Q2',[a,b],'exacta','並び順番号一致＋△-◎');
+          }
+          if(line.length===3){
+            const nums=line.map(x=>Number(x.car));
+            const rep=c=>c===queue[0]?8:c===queue[1]?9:0;
+            const keys=new Set();
+            const opts=nums.map(c=>{const o=[c];const r=rep(c);if(r&&!o.includes(r))o.push(r);return o;});
+            for(const x of opts[0])for(const y of opts[1])for(const z of opts[2])if(new Set([x,y,z]).size===3)keys.add([x,y,z].sort((p,q)=>p-q).join('-'));
+            const magic=['2-4-9','3-5-7','1-6-8','3-4-8','1-5-9','2-6-7','4-5-6','2-5-8'];
+            const hitMagic=[...keys].some(k=>magic.includes(k)&&!['2-6-7','3-5-7','4-5-6'].includes(k));
+            if(hitMagic&&markOf[nums[0]]==='◎'&&markOf[nums[1]]==='◯'&&markOf[nums[2]]==='●')
+              add('Q3','並び宮Q3',nums,'trifecta','魔方陣セット（8・9置換含む）＋◎-◯-●');
+          }
+        });
+      }
+      if(starters.length!==7||new Set(starters).size!==7||![2,3].includes(lines.length))return picks;
+      const mark=car=>{for(const line of lines){const m=line.find(x=>Number(x.car)===Number(car));if(m)return String(m.convertedMark||'');}return '';};
       lines.forEach((line,i)=>{
         if(line.length>=2){
           const a=Number(line[0].car),b=Number(line[1].car),m1=mark(a),m2=mark(b);
@@ -2891,11 +2918,11 @@
       const retroCount = eligible.filter(r => r.autoTickets.generatedAfterResult).length;
       document.getElementById('betStatsSummary').textContent = '買い目を固定して集計: ' + Math.max(...rows.map(x=>x.n),0) + 'R / 1点100円' + (retroCount ? `（うち遡及生成 ${retroCount}R）` : '');
       document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+(x.investment==null?'—':x.investment.toLocaleString()+'円')+'</td><td>'+(x.roi==null?'—':x.roi.toFixed(2)+'%')+'</td></tr>').join('');
-      const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5'];
-      const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5'};
+      const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5','Q1','Q2','Q3'];
+      const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5',Q1:'並び宮Q1',Q2:'並び宮Q2',Q3:'並び宮Q3'};
       const ruleRows=ruleIds.map(id=>{
         const triggered=eligible.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id));
-        const data=triggered.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id)&&Number(r[id==='L5'||id==='L6'?'payout':'exactaPayout'])>0);
+        const data=triggered.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id)&&Number(r[id==='L5'||id==='L6'||id==='Q3'?'payout':'exactaPayout'])>0);
         const hit=data.filter(r=>{
           const p=(r.autoTickets.rakushoPicks||[]).find(x=>x.id===id);const finish=parseFinish(r);
           return p&&p.ticket.every((v,i)=>Number(v)===Number(finish[i]));
@@ -2903,7 +2930,7 @@
         const invest=data.length*100,returned=data.filter(r=>{
           const p=(r.autoTickets.rakushoPicks||[]).find(x=>x.id===id);const finish=parseFinish(r);
           return p&&p.ticket.every((v,i)=>Number(v)===Number(finish[i]));
-        }).reduce((sum,r)=>sum+Number(r[id==='L5'||id==='L6'?'payout':'exactaPayout']),0);
+        }).reduce((sum,r)=>sum+Number(r[id==='L5'||id==='L6'||id==='Q3'?'payout':'exactaPayout']),0);
         return {id,label:ruleLabels[id],n:data.length,triggered:triggered.length,hits:hit,rate:data.length?hit/data.length*100:0,investment:invest,roi:invest?returned/invest*100:0};
       });
       const target=document.getElementById('rakushoStatsRows');
@@ -3002,8 +3029,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.12-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.18 · 取り込みを改善';
+    const APP_RELEASE_VERSION = '3.19-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.19 · 予想条件を追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;

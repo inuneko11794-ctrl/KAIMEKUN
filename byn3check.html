@@ -31,7 +31,7 @@
 <body>
 <div class="wrap">
   <h1>✅ B/Y/Nチェック</h1>
-  <div class="sub">俺（Muse）が作った文殊用JSONを読み込んで、B・Y・Nが予想したレースにチェックを入れてから書き出すページです。書き出したJSONを文殊に「上に足す」で入れると、予想が入った状態で登録されます。的中は万車券かどうかで自動計算します。データはこの端末の外に出ません。</div>
+  <div class="sub">俺（Muse）が作った文殊用JSONを読み込んで、B・Y・Nが予想したレースにチェックを入れてから書き出すページです。書き出したJSONを文殊に「上に足す」で入れると、予想が入った状態で登録されます。的中は万車券かどうかで自動計算します。チェック状態はこのブラウザに自動保存されるので、ページを閉じても続きから再開できます。データはこの端末の外に出ません。</div>
 
   <div class="drop" id="drop">
     <div>文殊用JSON（*_byn3.json）をドラッグ＆ドロップ、または</div>
@@ -49,11 +49,34 @@
     <div style="overflow-x:auto"><table id="raceTable"></table></div>
     <button id="exportBtn">チェック済みJSONを書き出す</button>
     <div class="sub">書き出したファイルを文殊（BYN3）で読み込み、「上に足す」を選んでください。</div>
+    <div class="sub" id="saveLine" style="margin-top:8px"></div>
+    <button id="clearSaveBtn" class="bulk" style="margin-top:6px">保存データを消す</button>
   </section>
 </div>
 
 <script>
+const SAVE_KEY = 'byn3check_save_v1';
 const state = { records: null, fileName: '' };
+function saveState() {
+  if (!state.records) return;
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ fileName: state.fileName, records: state.records, savedAt: Date.now() }));
+    const el = document.getElementById('saveLine');
+    if (el) el.textContent = 'チェック状態をこのブラウザに自動保存しました（' + new Date().toLocaleTimeString('ja-JP') + '）';
+  } catch (e) { /* 保存容量オーバー等は無視 */ }
+}
+function restoreState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (!s || !Array.isArray(s.records) || !s.records.length || !s.records[0].sites) return;
+    state.records = s.records;
+    state.fileName = s.fileName || 'byn3.json';
+    document.getElementById('fileStatus').textContent = `前回のチェックを復元: ${state.fileName}（${s.records.length}件 / ${new Date(s.savedAt).toLocaleString('ja-JP')} 保存）`;
+    render();
+  } catch (e) { /* 壊れた保存は無視 */ }
+}
 const pInt = v => { const n = parseInt(String(v ?? '').replace(/,/g, ''), 10); return isNaN(n) ? 0 : n; };
 const yen = n => n.toLocaleString() + '円';
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -108,9 +131,18 @@ function render() {
     syncHit(r, s);
     render();
   }));
+  saveState();
 }
 function syncHit(r, s) { r.sites[s].hit = !!r.sites[s].bet && pInt(r.payout3) >= 10000; }
 
+document.getElementById('clearSaveBtn').addEventListener('click', () => {
+  if (!confirm('保存データ（読み込んだJSONとチェック状態）を消しますか？')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  state.records = null; state.fileName = '';
+  document.getElementById('fileStatus').textContent = '未読込';
+  document.getElementById('mainSection').classList.add('hidden');
+});
+restoreState();
 document.getElementById('exportBtn').addEventListener('click', () => {
   if (!state.records) return;
   state.records.forEach(r => SITES.forEach(s => syncHit(r, s)));
