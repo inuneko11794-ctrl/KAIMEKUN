@@ -1481,6 +1481,8 @@
       });
       allRaces.push(...importedRaces);
       if (!persistRaces()) { allRaces.splice(before); return; }
+      importedRaces.forEach(race => learnAdaptiveReasonPoints(race));
+      persistRaces();
       currentRaceIdx = before;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       instantPasteInput.value = '';
@@ -2951,7 +2953,7 @@
 
 
     const APP_RELEASE_VERSION = '3.12-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.14 · 取り込みを改善';
+    const APP_RELEASE_LABEL = '更新版 v3.15 · 取り込みを改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -3046,7 +3048,7 @@
       switchWorkspaceTab(activeWorkspaceTab);
     }
     initWorkspaceTabs();
-    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && (parseFinish(r).length>=3 || r.resultRecordedAt)) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
