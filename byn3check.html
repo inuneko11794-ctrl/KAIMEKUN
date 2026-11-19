@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B/Y/Nチェック | 文殊用JSONに予想を入れる</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #020617; color: #e2e8f0; font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 14px; line-height: 1.6; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 8px 0 2px; }
+  .sub { color: #94a3b8; font-size: 12px; }
+  .drop { border: 2px dashed #334155; border-radius: 14px; padding: 22px; text-align: center; color: #94a3b8; margin-top: 14px; background: #0f172a; }
+  .drop.over { border-color: #22d3ee; color: #e2e8f0; }
+  .drop input { display: none; }
+  .drop label { display: inline-block; padding: 10px 18px; border-radius: 10px; background: #164e63; color: #ecfeff; font-weight: bold; cursor: pointer; min-height: 40px; }
+  .files { margin-top: 10px; font-size: 12px; color: #a5f3fc; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
+  th, td { border: 1px solid #1e293b; padding: 6px 8px; text-align: center; }
+  th { background: #0f172a; color: #94a3b8; font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; }
+  .chip { display: inline-block; min-width: 52px; padding: 10px 0; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: #64748b; font-weight: 800; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .chip.on { background: #0e7490; color: #ecfeff; border-color: #22d3ee; }
+  .chip.hit { box-shadow: 0 0 0 2px #f59e0b inset; }
+  .bulk { padding: 8px 10px; border-radius: 8px; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; cursor: pointer; margin: 2px; }
+  #exportBtn { display: block; width: 100%; padding: 16px; border-radius: 12px; background: #0e7490; color: #ecfeff; font-weight: 800; font-size: 16px; border: none; cursor: pointer; margin-top: 14px; }
+  .hidden { display: none; }
+  .man { color: #fcd34d; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>✅ B/Y/Nチェック</h1>
+  <div class="sub">俺（Muse）が作った文殊用JSONを読み込んで、B・Y・Nが予想したレースにチェックを入れてから書き出すページです。書き出したJSONを文殊に「上に足す」で入れると、予想が入った状態で登録されます。的中は万車券かどうかで自動計算します。データはこの端末の外に出ません。</div>
+
+  <div class="drop" id="drop">
+    <div>文殊用JSON（*_byn3.json）をドラッグ＆ドロップ、または</div>
+    <label for="fileInput">ファイルを選ぶ</label>
+    <input type="file" id="fileInput" accept=".json,application/json">
+    <div class="files" id="fileStatus">未読込</div>
+  </div>
+
+  <section id="mainSection" class="hidden">
+    <div style="margin-top:14px">
+      <span class="sub">一括：</span>
+      <span id="bulkBtns"></span>
+    </div>
+    <div class="sub" id="countLine"></div>
+    <div style="overflow-x:auto"><table id="raceTable"></table></div>
+    <button id="exportBtn">チェック済みJSONを書き出す</button>
+    <div class="sub">書き出したファイルを文殊（BYN3）で読み込み、「上に足す」を選んでください。</div>
+  </section>
+</div>
+
+<script>
+const state = { records: null, fileName: '' };
+const pInt = v => { const n = parseInt(String(v ?? '').replace(/,/g, ''), 10); return isNaN(n) ? 0 : n; };
+const yen = n => n.toLocaleString() + '円';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function loadRecords(data, name) {
+  const arr = Array.isArray(data) ? data : (data && Array.isArray(data.races) ? data.races : null);
+  if (!arr || !arr.length || !arr[0].sites) { alert('文殊用JSONの形式ではないようです: ' + name); return; }
+  state.records = arr;
+  state.fileName = name;
+  document.getElementById('fileStatus').textContent = `読込済: ${name}（${arr.length}件）`;
+  render();
+}
+function handleFiles(files) {
+  [...files].forEach(f => {
+    const r = new FileReader();
+    r.onload = e => { try { loadRecords(JSON.parse(e.target.result), f.name); } catch (err) { alert('読み込み失敗: ' + f.name); } };
+    r.readAsText(f);
+  });
+}
+const drop = document.getElementById('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+document.getElementById('fileInput').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
+
+const SITES = ['B', 'Y', 'N'];
+function render() {
+  const d = state.records;
+  document.getElementById('mainSection').classList.remove('hidden');
+  document.getElementById('bulkBtns').innerHTML = SITES.map(s =>
+    `<button class="bulk" data-bulk="${s}" data-mode="on">${s} 全ON</button><button class="bulk" data-bulk="${s}" data-mode="off">${s} 全OFF</button>`).join('');
+  document.querySelectorAll('[data-bulk]').forEach(btn => btn.addEventListener('click', () => {
+    const on = btn.dataset.mode === 'on';
+    d.forEach(r => { r.sites[btn.dataset.bulk].bet = on; syncHit(r, btn.dataset.bulk); });
+    render();
+  }));
+  const counts = SITES.map(s => `${s}: ${d.filter(r => r.sites[s].bet).length}件`).join(' ／ ');
+  document.getElementById('countLine').textContent = 'チェック中 ' + counts;
+  document.getElementById('raceTable').innerHTML =
+    '<tr><th>R</th><th>着順</th><th>3連単</th><th>B</th><th>Y</th><th>N</th></tr>' +
+    d.map((r, i) => {
+      const man = pInt(r.payout3) >= 10000;
+      const chips = SITES.map(s => {
+        const on = !!r.sites[s].bet;
+        return `<td><span class="chip ${on ? 'on' : ''} ${on && man ? 'hit' : ''}" data-i="${i}" data-s="${s}">${s}${on && man ? ' 的中' : ''}</span></td>`;
+      }).join('');
+      return `<tr><td>${r.raceNo}R</td><td>${esc(r.order)}</td><td class="${man ? 'man' : ''}">${yen(pInt(r.payout3))}</td>${chips}</tr>`;
+    }).join('');
+  document.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+    const r = d[+ch.dataset.i], s = ch.dataset.s;
+    r.sites[s].bet = !r.sites[s].bet;
+    syncHit(r, s);
+    render();
+  }));
+}
+function syncHit(r, s) { r.sites[s].hit = !!r.sites[s].bet && pInt(r.payout3) >= 10000; }
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (!state.records) return;
+  state.records.forEach(r => SITES.forEach(s => syncHit(r, s)));
+  const blob = new Blob([JSON.stringify(state.records, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = state.fileName.replace(/\.json$/i, '') + '_checked.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+</script>
+</body>
+</html>
