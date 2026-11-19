@@ -1880,17 +1880,17 @@
       }
       const confEl = document.getElementById('aiConfidence');
       if (confEl) {
-        // 帯別実績（全25,477R・自動買い目合算の実測値、2026-11-19集計）
-        const bandRecord = prob >= 78 ? { hit: 19.1, roi: 98.2 }
-          : prob >= 60 ? { hit: 23.6, roi: 65.9 }
-          : prob >= 41 ? { hit: 31.0, roi: 72.0 }
-          : prob >= 22 ? { hit: 50.3, roi: 70.8 }
-          : { hit: 64.6, roi: 48.3 };
+        // 帯別実績（2025-2026の直近1年半・自動買い目合算の実測値、2026-11-20集計）
+        const bandRecord = prob >= 78 ? { hit: 19.4, roi: 90.0 }
+          : prob >= 60 ? { hit: 23.5, roi: 63.8 }
+          : prob >= 41 ? { hit: 31.5, roi: 73.6 }
+          : prob >= 22 ? { hit: 50.3, roi: 70.0 }
+          : { hit: 64.4, roi: 47.1 };
         const hitStars = bandRecord.hit >= 45 ? 3 : bandRecord.hit >= 25 ? 2 : 1;
         const roiStars = bandRecord.roi >= 85 ? 3 : bandRecord.roi >= 65 ? 2 : 1;
         confEl.innerHTML = `<div>的中率 <span class="text-slate-100 tracking-[0.2em]">${'☆'.repeat(hitStars)}<span class="opacity-30">${'☆'.repeat(3 - hitStars)}</span></span> ${bandRecord.hit.toFixed(1)}%</div>`
           + `<div>回収率 <span class="text-amber-300 tracking-[0.2em]">${'★'.repeat(roiStars)}<span class="opacity-30">${'★'.repeat(3 - roiStars)}</span></span> ${bandRecord.roi.toFixed(1)}%</div>`
-          + `<div class="text-[10px] text-slate-500">この波乱度帯の実績（全25,477R・自動買い目）</div>`;
+          + `<div class="text-[10px] text-slate-500">この波乱度帯の実績（2025-2026・自動買い目）</div>`;
       }
       const lpEl = document.getElementById('linePowerContainer');
       if (lpEl) {
@@ -1921,7 +1921,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261118-v4-PATTERN-FORMATION',
+      version: 'CSV-BASELINE-20261120-v5-BANDCAP-WIN3',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2832,6 +2832,15 @@
       return { win: heads.slice(0, 2), exacta, trifecta, mode: sujiMain ? 'スジ王道' : splitMain ? '別線・細切れ' : '混合' };
     }
     // AUTO BET MATRIX: 印の1着決着パターンで本線と狙いを作り、洛書は追加する。
+    let __dnaFreqCache = { len: -1, map: null };
+    function getDnaFreqMapCached() {
+      const list = (typeof allRaces !== 'undefined' && Array.isArray(allRaces)) ? allRaces : [];
+      if (__dnaFreqCache.map && __dnaFreqCache.len === list.length) return __dnaFreqCache.map;
+      const map = {};
+      list.forEach(r => { try { const d = analyzeRace(r).raceDna; map[d] = (map[d] || 0) + 1; } catch (e) {} });
+      __dnaFreqCache = { len: list.length, map };
+      return map;
+    }
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
       const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
@@ -2851,12 +2860,18 @@
       scored.forEach(x=>{pointByCar[Number(x.car)]=(Number(x.totalPoints)||0)-(refByCar[Number(x.car)]||0);});
       const pattern=buildPatternTickets(race,res,pointByCar);
       if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
-      const win=pattern.win.length?pattern.win:cars.slice(0,2);
+      const win=cars.slice(0,3);
       const exacta=pattern.exacta.map(x=>x.ticket);
       const selected=pattern.trifecta.map(x=>x.ticket);
       const reasonByKey=new Map(pattern.exacta.concat(pattern.trifecta).map(x=>[x.key,x.reason]));
       rakushoPicks.filter(p=>p.type==='exacta').forEach(p=>{if(!exacta.some(t=>t.join('-')===p.ticket.join('-')))exacta.push(p.ticket);});
       rakushoPicks.filter(p=>p.type==='trifecta').forEach(p=>{if(!selected.some(t=>t.join('-')===p.ticket.join('-')))selected.push(p.ticket);});
+      // 波乱帯別の点数キャップ（直近1年半の実績で検証済みの範囲のみ）
+      try {
+        const dispProb = toDisplayProb(predictUpset(extractFeatures(res, getDnaFreqMapCached())));
+        if (dispProb < 22) { exacta.splice(2); selected.splice(4); }
+        else if (dispProb >= 60 && dispProb < 78) { selected.splice(4); }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -3093,7 +3108,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.24 · 予想ランキングの精度向上';
+    const APP_RELEASE_LABEL = '更新版 v3.25 · 自信度と買い目を直近実績に更新';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -3391,7 +3406,7 @@
       paRender(0.02);
     });
 
-    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>{ const t=r.autoTickets; if(t && Array.isArray(t.win) && t.win.length>2){ t.win=t.win.slice(0,2); if(Array.isArray(t.winReasons)) t.winReasons=t.winReasons.slice(0,2); } }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>{ const t=r.autoTickets; if(t && Array.isArray(t.win) && t.win.length>3){ t.win=t.win.slice(0,3); if(Array.isArray(t.winReasons)) t.winReasons=t.winReasons.slice(0,3); } }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
