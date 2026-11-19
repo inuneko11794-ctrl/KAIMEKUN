@@ -1372,7 +1372,7 @@
     const TETRA_SHAPES={'4-2-1':[993,1830,'17.9','立体(4)具現化型'],'4-3':[1359,2100,'19.6','立体(4)具現化型'],'3-3-1':[4223,3110,'23.0','面(3)標準均衡型'],'3-2-2':[10069,3900,'26.7','面(3)標準均衡型'],'3-2-1-1':[2635,4070,'28.4','面(3)標準均衡型'],'2-2-2-1':[2448,5645,'32.6','次元分散カオス型'],'2-2-1-1-1':[293,6610,'34.8','次元分散カオス型']};
     const ENN_F=[[1,4],[4,2],[2,5],[5,7],[7,1]],ENN_R=[[4,1],[2,4],[5,2],[7,5],[1,7]],ENN_T=[[1,4,2],[4,2,5],[2,5,7],[5,7,1],[7,1,4]],ENN_RT=[[1,7,5],[7,5,2],[5,2,4],[2,4,1],[4,1,7]],TEN=[[1,2,7],[1,3,6],[1,4,5],[2,3,5]];
     function numberLoreAnalyze(race,raw){
-      const res=analyzeRace(race),groups=res.lineSummaryList.filter(x=>!x.isTanki).map(x=>x.members),shape=groups.map(g=>g.length).sort((a,b)=>b-a).join('-'),converted=res.lineSummaryList.map(g=>g.members.map(m=>m.car+'('+m.convertedMark+')').join('-')).join(' / '),rules=[];
+      const res=analyzeRace(race),groups=res.lineSummaryList.filter(x=>!x.isTanki).map(x=>x.members),shape=res.lineSummaryList.map(x=>x.members.length).sort((a,b)=>b-a).join('-'),converted=res.lineSummaryList.map(g=>g.members.map(m=>m.car+'('+m.convertedMark+')').join('-')).join(' / '),rules=[];
       const mark=(g,i)=>g&&g[i]?g[i].convertedMark:'',add=(id,ticket)=>{const b=NUMBER_LORE_BENCHMARKS.find(x=>x[0]===id);if(b)rules.push({id:b[0],name:b[1],type:b[2],n:b[3],hits:b[4],rate:b[5],roi:b[6],avg:b[7],ticket:ticket.join('-')});};
       groups.forEach(g=>{const A=g[0],B=g[1],C=g[2],pair=A&&B?A.car+'-'+B.car:'';if(A&&B&&['1-2','2-3','3-4'].includes(pair)&&mark(g,0)==='▲'&&mark(g,1)==='△')add('TET-1',[A.car,B.car]);if(A&&B&&['1-2','2-3','3-4'].includes(pair)&&mark(g,0)==='☆'&&mark(g,1)==='★')add('TET-2',[A.car,B.car]);if(A&&B&&['2-1','3-2','4-3'].includes(pair)&&mark(g,0)==='△'&&mark(g,1)==='✕')add('TET-3',[A.car,B.car]);if(A&&B&&['2-1','3-2','4-3'].includes(pair)&&mark(g,0)==='✕'&&mark(g,1)==='◯')add('TET-4',[A.car,B.car]);
         if(A&&B&&C){const sorted=[A.car,B.car,C.car].sort((a,b)=>a-b).join('-'),ten=TEN.some(t=>t.slice().sort((a,b)=>a-b).join('-')===sorted);if(ten&&mark(g,0)==='◎'&&mark(g,1)==='△'&&mark(g,2)==='▲')add('TET-5',[B.car,A.car,C.car]);if(ten&&mark(g,0)==='✕'&&mark(g,1)==='△'&&mark(g,2)==='▲')add('TET-6',[A.car,B.car,C.car]);
@@ -1678,7 +1678,7 @@
           { label: '④ 大穴ゾーン (50,000円〜)', countStr: '基準 8%', dis: '5.10', chaos: '8.30', coup: '58%', bias: '0.165', prob: '50.3%', badge: 'text-rose-300 font-bold' }
         ];
         tbody.innerHTML = presetTiers.map(t => `<tr class="hover:bg-slate-900/50"><td class="py-2 px-2.5 text-slate-200">${t.label}</td><td class="py-2 px-2.5 text-right text-slate-400">${t.countStr}</td><td class="py-2 px-2.5 text-right text-cyan-300">${t.dis}</td><td class="py-2 px-2.5 text-right text-purple-300">${t.chaos}</td><td class="py-2 px-2.5 text-right text-rose-300">${t.coup}</td><td class="py-2 px-2.5 text-right text-amber-300">${t.bias}</td><td class="py-2 px-2.5 text-right ${t.badge}">${t.prob}</td><td class="py-2 px-2.5 text-center text-slate-400">CSV読込で実レース表示</td></tr>`).join('');
-        alertSummaryEl.innerHTML = `🎯 波乱度78%以上フィルター（基準モデル）: 実績較正済み（上位帯の万車券率 約40%）`;
+        alertSummaryEl.innerHTML = `🎯 波乱度78%以上フィルター（基準モデル）: 実績較正済み（上位帯の万車券率 52.9%｜全25,477R）`;
         return;
       }
       const tiers = [
@@ -2915,8 +2915,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.9-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.9 · 表示を改善';
+    const APP_RELEASE_VERSION = '3.10-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.10 · 表示を改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
