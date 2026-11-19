@@ -167,6 +167,9 @@
         <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">洛書フィルター別成績（各条件1点・100円）</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">条件</th><th>発動R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="rakushoStatsRows"></tbody></table></div>
         <div id="rakushoStatsSummary" class="text-xs text-slate-400 mt-2">洛書条件の発動データを集計します。</div></div>
+        <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">会場別成績（自動買い目全体）</div>
+        <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">会場</th><th>対象R</th><th>2車単的中率</th><th>2車単回収率</th><th>3連単的中率</th><th>3連単回収率</th></tr></thead><tbody id="venueStatsRows"></tbody></table></div>
+        <div id="venueStatsSummary" class="text-xs text-slate-400 mt-2">会場ごとの集計を表示します。</div></div>
       </div>
     </section>
 
@@ -2937,6 +2940,26 @@
       if(target)target.innerHTML=ruleRows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+' <span class="text-slate-400">('+RAKUSHO_POINT_WEIGHTS[x.id]+'点)</span></td><td>'+x.triggered+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+x.investment.toLocaleString()+'円</td><td>'+x.roi.toFixed(2)+'%</td></tr>').join('');
       const summary=document.getElementById('rakushoStatsSummary');
       if(summary)summary.textContent='発動Rは予測時点の条件一致数。成績対象は結果・配当登録済みR。各条件1点100円で独立集計（同一買い目が別条件と重複しても各条件で計上）。';
+      const VENUE_LIST=['函館','青森','いわき平','弥彦','前橋','取手','宇都宮','大宮','西武園','京王閣','立川','松戸','千葉','川崎','平塚','小田原','伊東温泉','静岡','名古屋','岐阜','大垣','豊橋','富山','松阪','四日市','福井','京都向日町','奈良','和歌山','岸和田','玉野','広島','防府','高松','小松島','高知','松山','小倉','久留米','武雄','佐世保','別府','熊本'];
+      const venueOf=r=>{const t=String(r.id||'');for(const v of VENUE_LIST){if(t.startsWith(v))return v;}for(const v of VENUE_LIST){if(t.includes(v))return v;}return 'その他';};
+      const byVenue={};
+      eligible.forEach(r=>{const v=venueOf(r);(byVenue[v]=byVenue[v]||[]).push(r);});
+      const venueCalc=(rs,payoutKey,ticketsOf,hitOf)=>{
+        const data=rs.filter(r=>Number(r[payoutKey])>0);
+        const hits=data.filter(hitOf).length;
+        const inv=data.reduce((s,r)=>s+Number(ticketsOf(r)||0)*100,0);
+        const ret=data.filter(hitOf).reduce((s,r)=>s+Number(r[payoutKey]),0);
+        return {n:data.length,rate:data.length?hits/data.length*100:0,roi:inv?ret/inv*100:0};
+      };
+      const venueRows=Object.entries(byVenue).map(([v,rs])=>({
+        v,n:rs.length,
+        ex:venueCalc(rs,'exactaPayout',r=>(r.autoTickets.exacta||[]).length,r=>r.autoTickets.exacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1])),
+        tri:venueCalc(rs,'payout',r=>(r.autoTickets.trifecta||[]).length,r=>r.autoTickets.trifecta.some(t=>t.join('-')===parseFinish(r).join('-')))
+      })).sort((a,b)=>b.n-a.n);
+      const vTarget=document.getElementById('venueStatsRows');
+      if(vTarget)vTarget.innerHTML=venueRows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.v+'</td><td>'+x.n+'</td><td>'+x.ex.rate.toFixed(2)+'%</td><td>'+x.ex.roi.toFixed(2)+'%</td><td>'+x.tri.rate.toFixed(2)+'%</td><td>'+x.tri.roi.toFixed(2)+'%</td></tr>').join('');
+      const vSummary=document.getElementById('venueStatsSummary');
+      if(vSummary)vSummary.textContent='期間指定の対象レースを会場ごとに集計（自動買い目全体・1点100円）。会場はレース名から判定。';
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
       const race = allRaces[currentRaceIdx]; if (!race) return;
@@ -3029,8 +3052,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.19-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.19 · 予想条件を追加';
+    const APP_RELEASE_VERSION = '3.20-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.20 · 会場別成績を追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
