@@ -938,9 +938,19 @@
       blocks.forEach((blk, idx) => {
         const lines = blk.split(/\r?\n/);
         const title = lines[0].trim() || `MD-RACE #${idx + 1}`;
-        let rawFormation = '', parsedLines = [];
+        let rawFormation = '', parsedLines = [], resultOrder = '', payout = null, exactaPayout = null;
         const entries = [];
         lines.forEach(line => {
+          if (!resultOrder && line.includes('結果')) {
+            const rm = line.match(/([1-9])\s*[-ー－]\s*([1-9])\s*[-ー－]\s*([1-9])/);
+            if (rm) resultOrder = `${rm[1]}-${rm[2]}-${rm[3]}`;
+          }
+          if (line.includes('払戻') || line.includes('配当')) {
+            const pm3 = line.match(/3連単\s*[：:]?\s*([\d,]+)/);
+            if (pm3) payout = Number(pm3[1].replace(/,/g, ''));
+            const pm2 = line.match(/2車単\s*[：:]?\s*([\d,]+)/);
+            if (pm2) exactaPayout = Number(pm2[1].replace(/,/g, ''));
+          }
           if (line.includes('並び予想')) {
             const bracketMatches = line.match(/\[[^\]]+\]/g);
             if (bracketMatches) {
@@ -953,7 +963,7 @@
             entries.push({ car: parseInt(tableMatch[1], 10), name: tableMatch[2].trim(), rawMark: tableMatch[7].trim() });
           }
         });
-        if (entries.length >= 5) races.push({ id: title, recordedAt: new Date().toISOString(), rawFormation, lines: parsedLines, resultOrder: '', payout: null, entries });
+        if (entries.length >= 5) races.push({ id: title, recordedAt: new Date().toISOString(), rawFormation, lines: parsedLines, resultOrder, payout, exactaPayout, entries });
       });
       return races;
     }
@@ -1446,7 +1456,7 @@
       const signature = mdRaces.map(r => r.id + ':' + r.entries.length + ':' + JSON.stringify(r.lines)).join('|');
       if (signature === lastInstantMdSignature) return;
       lastInstantMdSignature = signature;
-      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: '', dataEntryDate: todayForEntry(), exactaPayout: null, payout: null }));
+      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: '', dataEntryDate: todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null }));
       renderInstantResultEntryRows();
       document.getElementById('applyInstantMdBtn').disabled = pendingInstantMdRaces.length === 0;
       if (mdRaces.length) document.getElementById('instantReadStatus').textContent = `MD形式 ${mdRaces.length}レース検出。下欄に日付・配当を入力してください`;
@@ -1528,7 +1538,7 @@
       reader.onload = (e) => {
         const text = String(e.target.result || '');
         instantPasteInput.value = text;
-        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate:'', dataEntryDate:todayForEntry(), exactaPayout:null, payout:null}));
+        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate:'', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null}));
         document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${pendingInstantMdRaces.length}レース検出。下欄に日付・配当を入力してください`;
         runInstantDiagnosisFromTextarea();
         renderInstantResultEntryRows();
@@ -2931,8 +2941,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.11-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.11 · 取り込みを改善';
+    const APP_RELEASE_VERSION = '3.12-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.12 · 取り込みを改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
