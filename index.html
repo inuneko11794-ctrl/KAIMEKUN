@@ -2006,7 +2006,7 @@
       const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints.tri;
       const byCar=new Map(res.entries.map(entry=>{
         const empiricalSevenCar=res.entries.length===7;
-        const markBase=empiricalSevenCar?getEmpiricalMarkPoints(entry.mark):0.5;
+        const markBase=getEmpiricalMarkPoints(entry.mark);
         const basePoints=disabled==='mark'?0:markBase;
         const markLearned=disabled==='mark'||!empiricalSevenCar?0:markBase*Number(adaptive.mark||0)*0.1;
         return [Number(entry.car),{...entry,basePoints,adjustment:0,reasons:[],
@@ -3093,7 +3093,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.23 · 学習を券種別に分離';
+    const APP_RELEASE_LABEL = '更新版 v3.24 · 予想ランキングの精度向上';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
