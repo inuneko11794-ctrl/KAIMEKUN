@@ -1479,21 +1479,44 @@
         if (race.resultOrder && !race.resultRecordedAt) race.resultRecordedAt = new Date().toISOString();
         if (parseFinish(race).length >= 3) ensureRaceTickets(race);
       });
-      allRaces.push(...importedRaces);
+      const keyOf = r => `${r.id}|${r.rawFormation || ''}`;
+      const existingByKey = new Map(allRaces.map((r, i) => [keyOf(r), i]));
+      const batchKeys = new Set();
+      const toAdd = [];
+      let dupCount = 0;
+      importedRaces.forEach(race => {
+        const key = keyOf(race);
+        if (batchKeys.has(key)) { dupCount++; return; }
+        batchKeys.add(key);
+        const idx = existingByKey.get(key);
+        if (idx === undefined) { toAdd.push(race); return; }
+        dupCount++;
+        const ex = allRaces[idx];
+        if (!ex.eventDate && race.eventDate) ex.eventDate = race.eventDate;
+        if (parseFinish(ex).length < 3 && parseFinish(race).length >= 3) {
+          ex.resultOrder = race.resultOrder;
+          ex.payout = race.payout;
+          ex.exactaPayout = race.exactaPayout;
+          ex.resultRecordedAt = new Date().toISOString();
+          if (!ex.autoTickets) ensureRaceTickets(ex);
+          learnAdaptiveReasonPoints(ex);
+        }
+      });
+      allRaces.push(...toAdd);
       if (!persistRaces()) { allRaces.splice(before); return; }
-      importedRaces.forEach(race => learnAdaptiveReasonPoints(race));
+      toAdd.forEach(race => learnAdaptiveReasonPoints(race));
       persistRaces();
-      currentRaceIdx = before;
+      if (toAdd.length) currentRaceIdx = before;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       instantPasteInput.value = '';
       document.getElementById('instantMdFileInput').value = '';
       runInstantDiagnosisFromTextarea();
-      document.getElementById('instantReadStatus').textContent = `${importedRaces.length}レースを一覧へ反映・登録しました`;
+      document.getElementById('instantReadStatus').textContent = `${toAdd.length}レースを一覧へ反映・登録しました` + (dupCount ? `（重複 ${dupCount}件は既存に統合・スキップ）` : '');
       document.getElementById('applyInstantMdBtn').disabled = true;
       pendingInstantMdRaces = [];
       lastInstantMdSignature = '';
       renderInstantResultEntryRows();
-      showToast(`MDから ${importedRaces.length}レースを日付・配当付きで一覧へ登録しました`);
+      showToast(`MDから ${toAdd.length}レースを日付・配当付きで一覧へ登録しました` + (dupCount ? `（重複 ${dupCount}件は統合・スキップ）` : ''));
     });
 
     document.getElementById('dnaMatchList').addEventListener('click', (ev) => {
@@ -2954,7 +2977,7 @@
 
 
     const APP_RELEASE_VERSION = '3.12-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.16 · 取り込みを改善';
+    const APP_RELEASE_LABEL = '更新版 v3.17 · 取り込みを改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
