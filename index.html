@@ -2727,7 +2727,7 @@
       const heads = [];
       trifecta.concat(exacta).forEach(t => { if (!heads.includes(t.ticket[0])) heads.push(t.ticket[0]); });
       ['◎', '◯', '△', '✕'].forEach(m => of(m).forEach(c => { if (!heads.includes(c)) heads.push(c); }));
-      return { win: heads.slice(0, 4), exacta, trifecta, mode: sujiMain ? 'スジ王道' : splitMain ? '別線・細切れ' : '混合' };
+      return { win: heads.slice(0, 2), exacta, trifecta, mode: sujiMain ? 'スジ王道' : splitMain ? '別線・細切れ' : '混合' };
     }
     // AUTO BET MATRIX: 印の1着決着パターンで本線と狙いを作り、洛書は追加する。
     function buildAutoTickets(race,options={}) {
@@ -2749,7 +2749,7 @@
       scored.forEach(x=>{pointByCar[Number(x.car)]=(Number(x.totalPoints)||0)-(refByCar[Number(x.car)]||0);});
       const pattern=buildPatternTickets(race,res,pointByCar);
       if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
-      const win=pattern.win.length?pattern.win:cars.slice(0,4);
+      const win=pattern.win.length?pattern.win:cars.slice(0,2);
       const exacta=pattern.exacta.map(x=>x.ticket);
       const selected=pattern.trifecta.map(x=>x.ticket);
       const reasonByKey=new Map(pattern.exacta.concat(pattern.trifecta).map(x=>[x.key,x.reason]));
@@ -2827,20 +2827,21 @@
         return true;
       });
       const configs = [
-        {key:'win',label:'単勝',tickets:r=>4,payout:'winPayout',hit:r=>r.autoTickets.win.includes(parseFinish(r)[0])},
+        {key:'win',label:'単勝',rateOnly:true,payout:'winPayout',hit:r=>(r.autoTickets.win||[]).includes(parseFinish(r)[0])},
         {key:'exacta',label:'2車単',tickets:r=>(r.autoTickets.exacta||[]).length,payout:'exactaPayout',hit:r=>r.autoTickets.exacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1])},
         {key:'trifecta',label:'3連単',tickets:r=>(r.autoTickets.trifecta||[]).length,payout:'payout',hit:r=>r.autoTickets.trifecta.some(t=>t.join('-')===parseFinish(r).join('-'))}
       ];
       const rows = configs.map(c => {
-        const data = eligible.filter(r => Number.isFinite(Number(r[c.payout])) && Number(r[c.payout]) > 0);
+        const data = c.rateOnly ? eligible : eligible.filter(r => Number.isFinite(Number(r[c.payout])) && Number(r[c.payout]) > 0);
         const hits = data.filter(c.hit).length;
+        if (c.rateOnly) return {label:c.label,n:data.length,hits,rate:data.length?hits/data.length*100:0,investment:null,roi:null};
         const investment = data.reduce((sum,r)=>sum+Number(c.tickets(r)||0)*100,0);
         const returned = data.filter(c.hit).reduce((sum,r)=>sum+Number(r[c.payout]),0);
         return {label:c.label,n:data.length,hits,rate:data.length?hits/data.length*100:0,investment,roi:investment?returned/investment*100:0};
       });
       const retroCount = eligible.filter(r => r.autoTickets.generatedAfterResult).length;
       document.getElementById('betStatsSummary').textContent = '買い目を固定して集計: ' + Math.max(...rows.map(x=>x.n),0) + 'R / 1点100円' + (retroCount ? `（うち遡及生成 ${retroCount}R）` : '');
-      document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+x.investment.toLocaleString()+'円</td><td>'+x.roi.toFixed(2)+'%</td></tr>').join('');
+      document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+(x.investment==null?'—':x.investment.toLocaleString()+'円')+'</td><td>'+(x.roi==null?'—':x.roi.toFixed(2)+'%')+'</td></tr>').join('');
       const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5'];
       const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5'};
       const ruleRows=ruleIds.map(id=>{
@@ -2953,7 +2954,7 @@
 
 
     const APP_RELEASE_VERSION = '3.12-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.15 · 取り込みを改善';
+    const APP_RELEASE_LABEL = '更新版 v3.16 · 取り込みを改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -3048,7 +3049,7 @@
       switchWorkspaceTab(activeWorkspaceTab);
     }
     initWorkspaceTabs();
-    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>{ const t=r.autoTickets; if(t && Array.isArray(t.win) && t.win.length>2){ t.win=t.win.slice(0,2); if(Array.isArray(t.winReasons)) t.winReasons=t.winReasons.slice(0,2); } }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
