@@ -257,7 +257,7 @@
             <button id="copyInstantTextBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200">コピー</button>
             <span id="instantReadStatus" class="text-xs text-slate-400 self-center">テキスト未確認</span>
           </div>
-          <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
+          <textarea id="instantPasteInput" rows="4" placeholder="ここにMarkdown表や出走表テキストを貼り付けるか、右上の『📄 MDファイル読込』からファイルを選択してください！レース表MDを貼ると並び・印を取り込んで『反映・登録』できます。" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 text-xs font-mono-code text-slate-200 focus:border-cyan-400 focus:outline-none"></textarea>
           <div id="instantResultEntryArea" class="hidden mt-3 rounded-xl border border-amber-400/30 bg-slate-900/80 p-3 space-y-3">
             <div class="text-xs font-bold text-amber-200">読み込みレースの結果・日付入力</div>
             <p class="text-xs text-slate-300">各レースの確定着順・開催日・データ入力日・2車単配当・3連単配当を入力してから「反映・登録」を押してください。</p>
@@ -1439,6 +1439,20 @@
 
     instantPasteInput.addEventListener('input', runInstantDiagnosisFromTextarea);
 
+    let lastInstantMdSignature = '';
+    function syncInstantMdImportFromPaste() {
+      const text = instantPasteInput.value || '';
+      const mdRaces = parseMarkdownRaces(text);
+      const signature = mdRaces.map(r => r.id + ':' + r.entries.length + ':' + JSON.stringify(r.lines)).join('|');
+      if (signature === lastInstantMdSignature) return;
+      lastInstantMdSignature = signature;
+      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: '', dataEntryDate: todayForEntry(), exactaPayout: null, payout: null }));
+      renderInstantResultEntryRows();
+      document.getElementById('applyInstantMdBtn').disabled = pendingInstantMdRaces.length === 0;
+      if (mdRaces.length) document.getElementById('instantReadStatus').textContent = `MD形式 ${mdRaces.length}レース検出。下欄に日付・配当を入力してください`;
+    }
+    instantPasteInput.addEventListener('input', syncInstantMdImportFromPaste);
+
     document.getElementById('applyInstantMdBtn').addEventListener('click', () => {
       const importedRaces = pendingInstantMdRaces.length ? pendingInstantMdRaces : parseMarkdownRaces(instantPasteInput.value || '');
       if (!importedRaces.length) {
@@ -1457,6 +1471,7 @@
       document.getElementById('instantReadStatus').textContent = `${importedRaces.length}レースを一覧へ反映・登録しました`;
       document.getElementById('applyInstantMdBtn').disabled = true;
       pendingInstantMdRaces = [];
+      lastInstantMdSignature = '';
       renderInstantResultEntryRows();
       showToast(`MDから ${importedRaces.length}レースを日付・配当付きで一覧へ登録しました`);
     });
@@ -1530,6 +1545,7 @@
       instantPasteInput.value = '';
       document.getElementById('instantMdFileInput').value = '';
       pendingInstantMdRaces = [];
+      lastInstantMdSignature = '';
       renderInstantResultEntryRows();
       document.getElementById('applyInstantMdBtn').disabled = true;
       document.getElementById('instantReadStatus').textContent = '入力欄を削除しました';
@@ -2915,8 +2931,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.10-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.10 · 表示を改善';
+    const APP_RELEASE_VERSION = '3.11-20261119';
+    const APP_RELEASE_LABEL = '更新版 v3.11 · 取り込みを改善';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
