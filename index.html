@@ -373,6 +373,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><div><label class="block text-xs font-mono-code text-slate-400 mb-1">開催日</label><input id="builderEventDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div><div><label class="block text-xs font-mono-code text-slate-400 mb-1">データ入力日</label><input id="builderEntryDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div></div>
           <div class="flex flex-wrap items-center gap-2">
             <span class="text-xs font-mono-code text-slate-400">他サイトの予想:</span>
+            <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="builderAgreeB" class="accent-cyan-400 w-4 h-4"> Bも予想</label>
             <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="builderAgreeY" class="accent-cyan-400 w-4 h-4"> Yも予想</label>
             <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="builderAgreeN" class="accent-cyan-400 w-4 h-4"> Nも予想</label>
             <span class="text-xs text-slate-500">一致はAIカードに実績表示</span>
@@ -1489,7 +1490,7 @@
       const signature = mdRaces.map(r => r.id + ':' + r.entries.length + ':' + JSON.stringify(r.lines)).join('|');
       if (signature === lastInstantMdSignature) return;
       lastInstantMdSignature = signature;
-      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: race.eventDate || '', dataEntryDate: todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeY: !!race.agreeY, agreeN: !!race.agreeN }));
+      pendingInstantMdRaces = mdRaces.map(race => ({ ...race, eventDate: race.eventDate || '', dataEntryDate: todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeB: !!race.agreeB, agreeY: !!race.agreeY, agreeN: !!race.agreeN }));
       renderInstantResultEntryRows();
       document.getElementById('applyInstantMdBtn').disabled = pendingInstantMdRaces.length === 0;
       if (mdRaces.length) document.getElementById('instantReadStatus').textContent = `MD形式 ${mdRaces.length}レース検出。下欄に日付・配当を入力してください`;
@@ -1522,6 +1523,7 @@
         dupCount++;
         const ex = allRaces[idx];
         if (!ex.eventDate && race.eventDate) ex.eventDate = race.eventDate;
+        if (race.agreeB) ex.agreeB = true;
         if (race.agreeY) ex.agreeY = true;
         if (race.agreeN) ex.agreeN = true;
         if (parseFinish(ex).length < 3 && parseFinish(race).length >= 3) {
@@ -1585,6 +1587,7 @@
             <label class="text-xs text-slate-300">3連単配当（円）<input data-md-field="payout" data-md-index="${idx}" type="number" min="0" placeholder="例: 12450" value="${race.payout ?? ''}" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-xs text-amber-200"></label>
           </div>
           <div class="flex flex-wrap gap-2">
+            <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" data-md-check="agreeB" data-md-index="${idx}" ${race.agreeB ? 'checked' : ''} class="accent-cyan-400 w-4 h-4"> Bも予想</label>
             <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" data-md-check="agreeY" data-md-index="${idx}" ${race.agreeY ? 'checked' : ''} class="accent-cyan-400 w-4 h-4"> Yも予想</label>
             <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" data-md-check="agreeN" data-md-index="${idx}" ${race.agreeN ? 'checked' : ''} class="accent-cyan-400 w-4 h-4"> Nも予想</label>
           </div>
@@ -1611,7 +1614,7 @@
       reader.onload = (e) => {
         const text = String(e.target.result || '');
         instantPasteInput.value = text;
-        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeY: !!race.agreeY, agreeN: !!race.agreeN}));
+        pendingInstantMdRaces = parseMarkdownRaces(text).map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeB: !!race.agreeB, agreeY: !!race.agreeY, agreeN: !!race.agreeN}));
         document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${pendingInstantMdRaces.length}レース検出。下欄に日付・配当を入力してください`;
         runInstantDiagnosisFromTextarea();
         renderInstantResultEntryRows();
@@ -1869,7 +1872,9 @@
       if (ovEl) {
         const cur = allRaces[currentRaceIdx];
         const oy = !!(cur && cur.agreeY), on = !!(cur && cur.agreeN);
-        if (oy && on) { ovEl.textContent = '🤝 Y・Nとも一致 ｜ 3サイト一致の実績 的中率 64.3%（14R）'; ovEl.className = 'text-xs font-mono-code font-bold text-rose-300'; }
+        const bPicked = !(cur && cur.agreeB === false);
+        if (!bPicked) { ovEl.textContent = 'Bは予想なし（Y/Nの記録のみ）'; ovEl.className = 'text-xs font-mono-code text-slate-500'; }
+        else if (oy && on) { ovEl.textContent = '🤝 Y・Nとも一致 ｜ 3サイト一致の実績 的中率 64.3%（14R）'; ovEl.className = 'text-xs font-mono-code font-bold text-rose-300'; }
         else if (oy || on) { ovEl.textContent = `🤝 ${oy ? 'Y' : 'N'}と一致 ｜ 2サイト一致の実績 的中率 43.5%（46R）`; ovEl.className = 'text-xs font-mono-code font-bold text-amber-300'; }
         else { ovEl.textContent = '単独予想 ｜ B単独の実績 的中率 25.0%（72R）'; ovEl.className = 'text-xs font-mono-code text-slate-400'; }
       }
@@ -2338,7 +2343,7 @@
     document.getElementById('closeManualBuilderBtn').addEventListener('click', () => switchWorkspaceTab('analysis'));
     document.getElementById('clearBuilderFormBtn').addEventListener('click', () => {
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput'].forEach(id => document.getElementById(id).value = '');
-      ['builderAgreeY', 'builderAgreeN'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+      ['builderAgreeB', 'builderAgreeY', 'builderAgreeN'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
       renderBuilderRows();
       showToast('🗑️ 入力フォームをすべてクリアしました');
     });
@@ -2352,13 +2357,14 @@
       const parsedLines = parseFormationString(rawLineInput, entries);
       const entryDate = document.getElementById('builderEntryDate').value || new Date().toISOString().slice(0,10);
       const eventDate = document.getElementById('builderEventDate').value || '';
+      const agreeB = document.getElementById('builderAgreeB')?.checked || false;
       const agreeY = document.getElementById('builderAgreeY')?.checked || false;
       const agreeN = document.getElementById('builderAgreeN')?.checked || false;
-      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, eventDate, dataEntryDate: entryDate, recordedAt: new Date(entryDate + 'T12:00:00').toISOString(), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries, agreeY, agreeN };
+      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, eventDate, dataEntryDate: entryDate, recordedAt: new Date(entryDate + 'T12:00:00').toISOString(), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries, agreeB, agreeY, agreeN };
       allRaces.push(newRace); persistRaces(); currentRaceIdx = allRaces.length - 1;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput','builderEventDate'].forEach(id => document.getElementById(id).value = '');
-      ['builderAgreeY', 'builderAgreeN'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+      ['builderAgreeB', 'builderAgreeY', 'builderAgreeN'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
       document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10);
       renderBuilderRows();
       showToast(`✅ 「${newRace.id}」を追加しました！`);
@@ -2451,7 +2457,7 @@
         if (file.name.endsWith('.md') || text.includes('並び予想')) {
           const parsedMd = parseMarkdownRaces(text);
           if (parsedMd.length > 0) {
-            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeY: !!race.agreeY, agreeN: !!race.agreeN}));
+            pendingInstantMdRaces = parsedMd.map(race => ({...race, eventDate: race.eventDate || '', dataEntryDate:todayForEntry(), exactaPayout: race.exactaPayout ?? null, payout: race.payout ?? null, agreeB: !!race.agreeB, agreeY: !!race.agreeY, agreeN: !!race.agreeN}));
             document.getElementById('instantPasteInput').value = text;
             document.getElementById('instantReadStatus').textContent = `${file.name} / ${text.length.toLocaleString()}文字 / MD形式 ${parsedMd.length}レース検出。下欄に日付・配当を入力してください`;
             document.getElementById('dataFileReadStatus').textContent = `${file.name} / ${parsedMd.length}レース読込・入力待ち`;
@@ -3064,7 +3070,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.21 · 取り込みにサイトチェックを追加';
+    const APP_RELEASE_LABEL = '更新版 v3.22 · サイトチェックにBを追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
