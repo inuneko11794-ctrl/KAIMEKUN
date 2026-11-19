@@ -35,15 +35,25 @@
   <h1>🔬 記録検証ラボ</h1>
   <div class="sub">BYN3バックアップと万車ノートのJSONを読み込んで、その場で集計します。データはこの端末の外に出ません。</div>
 
-  <div class="drop" id="drop">
-    <div>ここにJSONをドラッグ＆ドロップ、または</div>
-    <label for="fileInput">ファイルを選ぶ</label>
-    <input type="file" id="fileInput" accept=".json,application/json" multiple>
-    <div class="files" id="fileList"></div>
+  <div class="drop" id="bynDrop">
+    <div><b>① BYN3バックアップ</b>（byn3_backup_pro_*.json）</div>
+    <div>ここにドラッグ＆ドロップ、または</div>
+    <label for="bynFileInput">ファイルを選ぶ</label>
+    <input type="file" id="bynFileInput" accept=".json,application/json">
+    <div class="files" id="bynFileStatus">未読込</div>
   </div>
 
+  <div class="drop" id="noteDrop">
+    <div><b>② 万車ノート</b>（mansha-note*.json）</div>
+    <div>ここにドラッグ＆ドロップ、または</div>
+    <label for="noteFileInput">ファイルを選ぶ</label>
+    <input type="file" id="noteFileInput" accept=".json,application/json">
+    <div class="files" id="noteFileStatus">未読込</div>
+  </div>
+  <div class="sub">2つは別々に読み込めます。片方だけでも集計します。間違った枠に入れても自動で振り分けます。</div>
+
   <section id="bynSection" class="hidden">
-    <h2>📊 BYN3 サイト別実績</h2>
+    <h2>📊 BYN3 サイト別実績 <button id="bynClear" style="float:right;padding:6px 12px;border-radius:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;cursor:pointer">このデータだけ消す</button></h2>
     <div class="grid" id="bynSummary"></div>
     <div class="scroll"><table id="bynTable"></table></div>
     <h2>🤝 重なりの分解（排他）</h2>
@@ -53,12 +63,10 @@
   </section>
 
   <section id="noteSection" class="hidden">
-    <h2>🌋 万車ノート集計</h2>
+    <h2>🌋 万車ノート集計 <button id="noteClear" style="float:right;padding:6px 12px;border-radius:8px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;cursor:pointer">このデータだけ消す</button></h2>
     <div class="grid" id="noteSummary"></div>
     <h2>🔢 万車券の車番パターン</h2>
     <div id="notePatterns"></div>
-    <h2>📍 場別（万車券）</h2>
-    <div class="scroll"><table id="noteVenue"></table></div>
     <h2>📜 万車券リスト</h2>
     <div class="scroll"><table id="noteList"></table></div>
   </section>
@@ -70,26 +78,41 @@ const yen = n => Math.round(n).toLocaleString() + '円';
 const pct = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
 
 function detectAndLoad(data, name) {
-  if (Array.isArray(data) && data.length && data[0].sites) { state.byn = data; renderByn(name); }
-  else if (data && Array.isArray(data.races)) { state.note = data.races; renderNote(name); }
-  else { alert('形式を判別できませんでした: ' + name); }
+  if (Array.isArray(data) && data.length && data[0].sites) {
+    state.byn = data; renderByn();
+    document.getElementById('bynFileStatus').textContent = `読込済: ${name}（${data.length}件）`;
+  } else if (data && Array.isArray(data.races)) {
+    state.note = data.races; renderNote();
+    document.getElementById('noteFileStatus').textContent = `読込済: ${name}（${data.races.length}件）`;
+  } else { alert('形式を判別できませんでした: ' + name); }
 }
 
 function handleFiles(files) {
-  const names = [];
   [...files].forEach(f => {
-    names.push(f.name);
     const r = new FileReader();
     r.onload = e => { try { detectAndLoad(JSON.parse(e.target.result), f.name); } catch (err) { alert('読み込み失敗: ' + f.name); } };
     r.readAsText(f);
   });
-  document.getElementById('fileList').textContent = '読込: ' + names.join(' / ');
 }
-const drop = document.getElementById('drop');
-drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
-drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); handleFiles(e.dataTransfer.files); });
-document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+function wireDrop(zoneId, inputId) {
+  const zone = document.getElementById(zoneId);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+  document.getElementById(inputId).addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
+}
+wireDrop('bynDrop', 'bynFileInput');
+wireDrop('noteDrop', 'noteFileInput');
+document.getElementById('bynClear').addEventListener('click', () => {
+  state.byn = null;
+  document.getElementById('bynSection').classList.add('hidden');
+  document.getElementById('bynFileStatus').textContent = '未読込';
+});
+document.getElementById('noteClear').addEventListener('click', () => {
+  state.note = null;
+  document.getElementById('noteSection').classList.add('hidden');
+  document.getElementById('noteFileStatus').textContent = '未読込';
+});
 
 /* ---------- BYN3 ---------- */
 function p3(r) { const v = parseInt(String(r.payout3).replace(/,/g, ''), 10); return isNaN(v) ? 0 : v; }
@@ -172,20 +195,11 @@ function renderNote() {
      <div class="card"><b>出目トップ10</b><ul class="list">${combos.map(([c, n]) => `<li>${c} … ${n}回</li>`).join('')}</ul></div>
      <div class="card"><b>内枠（1〜3番車）が3着内に何人</b>：${innerDist}</div>
      <div class="card"><b>車番合計の多い帯</b>：${sumDist.map(([c, n]) => `合計${c} … ${n}回`).join('、')}</div>`;
-  // 場別
-  const byVenue = {};
-  rs.forEach(r => { (byVenue[r.venue] = byVenue[r.venue] || []).push(r); });
-  document.getElementById('noteVenue').innerHTML =
-    '<tr><th>競輪場</th><th>レース数</th><th>万車券</th><th>万車券率</th></tr>' +
-    Object.entries(byVenue).sort((a, b) => b[1].length - a[1].length).map(([v, sel]) => {
-      const m = sel.filter(r => (r.sanrentan || 0) >= 10000).length;
-      return `<tr><td>${v}</td><td>${sel.length}R</td><td>${m}R</td><td>${pct(m, sel.length)}</td></tr>`;
-    }).join('');
-  // リスト
+  // リスト（会場は記録が当てにならないので使わない）
   document.getElementById('noteList').innerHTML =
-    '<tr><th>日付</th><th>場</th><th>R</th><th>着順</th><th>3連単</th></tr>' +
+    '<tr><th>日付</th><th>R</th><th>級</th><th>着順</th><th>3連単</th></tr>' +
     mans.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map(r =>
-      `<tr><td>${r.date || ''}</td><td>${r.venue || ''}</td><td>${r.raceNo}R</td><td>${r.first.car}-${r.second.car}-${r.third.car}</td><td>${yen(r.sanrentan)}</td></tr>`).join('');
+      `<tr><td>${r.date || ''}</td><td>${r.raceNo}R</td><td>${r.klass || ''}</td><td>${r.first.car}-${r.second.car}-${r.third.car}</td><td>${yen(r.sanrentan)}</td></tr>`).join('');
 }
 </script>
 </body>
