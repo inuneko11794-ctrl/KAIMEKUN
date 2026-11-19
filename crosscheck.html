@@ -56,6 +56,13 @@
     <h2>📋 突き合わせ結果</h2>
     <div class="grid" id="summary"></div>
 
+    <h2>📈 検証済みデータの分析（完全一致した組だけ）</h2>
+    <div class="grid" id="anaSummary"></div>
+    <h2>🏆 サイト別実績（検証済み vs 全件）</h2>
+    <div id="anaSites"><div class="muted">集計中…</div></div>
+    <h2>🚗 戦型別・1着ライン別・決まり手別（検証済み）</h2>
+    <div id="anaGroups"><div class="muted">集計中…</div></div>
+
     <h2>⚠️ 決まり手の食い違い（指紋は一致）</h2>
     <div id="techDiffWrap"><div class="muted">集計中…</div></div>
 
@@ -179,6 +186,36 @@ function runCrosscheck() {
      <div class="card">BYN3にしかない<div class="big">${bynOnly.length}件</div></div>
      <div class="card">ノートにしかない<div class="big">${noteOnly.length}件</div></div>
      <div class="card">重複候補<div class="big ${bynDups.length + noteDups.length ? 'amber' : ''}">BYN3 ${bynDups.length} / ノート ${noteDups.length}</div></div>`;
+
+  // ---- 検証済みデータの分析 ----
+  const isMan = b => pInt(b.payout3) >= 10000;
+  const pctStr = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
+  const manCount = matched.filter(m => isMan(m.b)).length;
+  const pops = matched.filter(m => isMan(m.b) && m.n.sanPop).map(m => m.n.sanPop).sort((a, b) => a - b);
+  const popAvg = pops.length ? (pops.reduce((a, x) => a + x, 0) / pops.length).toFixed(1) : '—';
+  const popMed = pops.length ? pops[Math.floor(pops.length / 2)] : '—';
+  document.getElementById('anaSummary').innerHTML =
+    `<div class="card">検証済みの万車券率<div class="big cyan">${pctStr(manCount, matched.length)}</div><div class="muted">${manCount} / ${matched.length} 件</div></div>
+     <div class="card">万車券の3連単人気<div class="big amber">${popMed}番人気</div><div class="muted">中央値（平均 ${popAvg}番人気・${pops.length}件）</div></div>`;
+  const siteRows = ['B', 'Y', 'N'].map(s => {
+    const sub = matched.filter(m => m.b.sites[s].bet);
+    const subHit = sub.filter(m => isMan(m.b)).length;
+    const all = state.byn.filter(b => b.sites[s].bet);
+    const allHit = all.filter(isMan).length;
+    return `<tr><td><b>${s}</b></td><td>${sub.length}R</td><td>${pctStr(subHit, sub.length)}</td><td>${all.length}R</td><td>${pctStr(allHit, all.length)}</td></tr>`;
+  });
+  document.getElementById('anaSites').innerHTML = tableHTML(['サイト', '検証済み 予想', '検証済み 的中率', '全件 予想', '全件 的中率'], siteRows);
+  const groupTable = (title, keyFn) => {
+    const g = {};
+    matched.forEach(m => { const k = keyFn(m.b) || '?'; (g[k] = g[k] || []).push(m); });
+    const rows = Object.entries(g).sort((a, b) => b[1].length - a[1].length).map(([k, v]) =>
+      `<tr><td>${esc(k)}</td><td>${v.length}R</td><td>${pctStr(v.filter(m => isMan(m.b)).length, v.length)}</td></tr>`);
+    return `<div class="muted" style="margin-top:10px"><b>${title}</b></div>` + tableHTML(['', 'レース数', '万車券率'], rows);
+  };
+  document.getElementById('anaGroups').innerHTML =
+    groupTable('戦型別', b => b.battle) +
+    groupTable('1着ライン別（単=単騎勝ち、0=単騎戦）', b => b.winLine) +
+    groupTable('1着の決まり手別', b => b.tech1);
 
   document.getElementById('techDiffWrap').innerHTML = tableHTML(
     ['R', '着順', '食い違い'],
