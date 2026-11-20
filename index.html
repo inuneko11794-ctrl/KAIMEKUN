@@ -1933,7 +1933,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261120-v8-SELECTFINAL',
+      version: 'CSV-BASELINE-20261120-v9-SELECTTRI89CUT',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2900,6 +2900,7 @@
         if ((a === 5 && p === 7) || (a === 7 && p === 5)) return;
         cars.forEach(x => {
           if (x === a || x === p) return;
+          if (x === 8 || x === 9) return;
           if (['T', '★', '⑳'].includes(info[x].conv)) return;
           if (a + p + x === 6) return;
           out.push([a, p, x]);
@@ -3158,7 +3159,7 @@
         };
         selTarget.innerHTML=selRow('厳選2車単','selectExacta','exactaPayout',2)+selRow('厳選3連単','selectTrifecta','payout',3);
         const selSummary=document.getElementById('selectStatsSummary');
-        if(selSummary)selSummary.textContent='厳選は印・車番のみで決まるため、結果確定済みレースも遡及計算して全レース集計（期間指定は上の設定と共通・1点100円）。25,477R実測では2車単 的中23.4%・回収77.0%・平均1.51点、3連単 的中15.2%・回収82.9%・平均3.08点。';
+        if(selSummary)selSummary.textContent='厳選は印・車番のみで決まるため、結果確定済みレースも遡及計算して全レース集計（期間指定は上の設定と共通・1点100円）。25,477R実測では2車単 的中23.4%・回収77.0%・平均1.51点、3連単 的中15.0%・回収83.3%・平均3.00点。';
       }
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
@@ -3253,7 +3254,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.30 · 同じ開催のレース一覧（熱い・厳選バッジ付き）を追加';
+    const APP_RELEASE_LABEL = '更新版 v3.31 · 厳選3連単の3着から8・9番車を除外';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
