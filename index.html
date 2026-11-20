@@ -160,6 +160,7 @@
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-xs text-amber-200 mt-2">洛書発動: --</div></div>
       </div>
+      <div class="rounded-xl bg-slate-950/70 border border-cyan-700/60 p-3"><div class="text-xs text-cyan-200 font-bold mb-2">厳選2車単（印×車番セル）</div><div id="autoSelectExactaPicks" class="font-mono-code text-sm">--</div></div>
       <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-3">
         <div class="space-y-2"><div class="text-sm font-bold">期間指定成績</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><select id="betStatsDateBasis" class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm"><option value="event">開催日で検索</option><option value="entry" selected>データ入力日で検索</option></select><label class="text-xs text-slate-300">開始日<input id="betStatsFrom" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label><label class="text-xs text-slate-300">終了日<input id="betStatsTo" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label></div><div class="flex justify-end"><button id="clearBetStatsRangeBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs">期間をクリア</button></div></div>
         <div id="betStatsSummary" class="text-xs text-slate-200">結果・配当を登録すると集計します。</div>
@@ -170,6 +171,9 @@
         <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">会場別成績（自動買い目全体）</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">会場</th><th>対象R</th><th>2車単的中率</th><th>2車単回収率</th><th>3連単的中率</th><th>3連単回収率</th></tr></thead><tbody id="venueStatsRows"></tbody></table></div>
         <div id="venueStatsSummary" class="text-xs text-slate-400 mt-2">会場ごとの集計を表示します。</div></div>
+        <div class="pt-3"><div class="text-sm font-bold text-cyan-200 mb-2">厳選2車単 成績（別表）</div>
+        <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-cyan-200 border-b border-slate-700"><tr><th class="py-2">対象R</th><th>的中R</th><th>的中率</th><th>平均点数</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="selectStatsRows"></tbody></table></div>
+        <div id="selectStatsSummary" class="text-xs text-slate-400 mt-2">厳選2車単が生成されたレースのみ集計します。</div></div>
       </div>
     </section>
 
@@ -1921,7 +1925,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261120-v6-PAIR12',
+      version: 'CSV-BASELINE-20261120-v7-SELECTEXA',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2841,6 +2845,28 @@
       __dnaFreqCache = { len: list.length, map };
       return map;
     }
+    // 厳選2車単：1着候補セル×2着候補セル（印×車番）の組み合わせ。25,477R実測で選定し、年別（2024〜2026）でも的中25%台・回収71〜77%と安定した条件
+    const SELECT_FIRST_CELLS = new Set(['◎×1','◎×2','◎×3','◎×4','◎×5','◎×7','◯×1','◯×2','◯×3','◯×4','◯×5','△×2','△×3','△×4','△×5']);
+    const SELECT_SECOND_CELLS = new Set(['◯×1','◯×2','◯×3','◯×4','◯×5','◯×7','◎×1','◎×2','◎×3','◎×4','◎×5','◎×7','△×1','△×2','△×3']);
+    const SELECT_BAD_PAIRS = new Set(['◯×1→△×2','◯×4→△×1','◎×2→◯×3','△×3→▲×6']);
+    function buildSelectExacta(res) {
+      const info = {};
+      (res.lineSummaryList || []).forEach(line => (line.members || []).forEach(m => { info[Number(m.car)] = { raw: m.rawMark, conv: m.convertedMark }; }));
+      const cars = Object.keys(info).map(Number);
+      const sankakuCar = cars.find(c => info[c].conv === '▲');
+      const out = [];
+      cars.filter(c => SELECT_FIRST_CELLS.has(info[c].conv + '×' + c)).forEach(a => {
+        let partners = cars.filter(p => p !== a && SELECT_SECOND_CELLS.has(info[p].conv + '×' + p));
+        if (info[a].conv === '△') partners = sankakuCar ? [sankakuCar] : [];
+        if (a === 2) partners = partners.filter(p => ![1, 4, 6].includes(p));
+        partners = partners.filter(p => !(info[p].conv === '◎' && info[a].raw !== '無'));
+        partners.forEach(p => {
+          if (SELECT_BAD_PAIRS.has(info[a].conv + '×' + a + '→' + info[p].conv + '×' + p)) return;
+          if (!out.some(x => x[0] === a && x[1] === p)) out.push([a, p]);
+        });
+      });
+      return out;
+    }
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
       const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
@@ -2859,7 +2885,8 @@
       const pointByCar={};
       scored.forEach(x=>{pointByCar[Number(x.car)]=(Number(x.totalPoints)||0)-(refByCar[Number(x.car)]||0);});
       const pattern=buildPatternTickets(race,res,pointByCar);
-      if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
+      const selectExacta=buildSelectExacta(res);
+      if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],selectExacta,rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
       const win=cars.slice(0,3);
       const exacta=pattern.exacta.map(x=>x.ticket);
       const selected=pattern.trifecta.map(x=>x.ticket);
@@ -2893,7 +2920,7 @@
         });
       } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
-      return {win,exacta,trifecta:selected,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
+      return {win,exacta,trifecta:selected,selectExacta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
         predictionSnapshot:scored.map(x=>({car:x.car,mark:x.mark,basePoints:x.basePoints,adjustment:x.adjustment,featureContributions:x.featureContributions,reasons:x.reasons,totalPoints:x.totalPoints}))};
     }
@@ -2956,6 +2983,8 @@
       const renderReasons=(rows,fallback)=>rows?.length?rows.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-xs text-cyan-300">理由: '+x.reason+'</div></div>').join(''):fallback;
       document.getElementById('autoWinPicks').innerHTML=tickets.winReasons?.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-xs text-cyan-300">理由: '+x.reason+'</div></div>').join('')||show(tickets.win,4);
       document.getElementById('autoExactaPicks').innerHTML=renderReasons(tickets.exactaReasons,show(tickets.exacta,4));
+      const selEl=document.getElementById('autoSelectExactaPicks');
+      if(selEl)selEl.innerHTML=(tickets.selectExacta&&tickets.selectExacta.length)?show(tickets.selectExacta,4):'該当なし';
       document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
       const baseNote=document.getElementById('patternBaselineNote');
@@ -3035,6 +3064,18 @@
       if(vTarget)vTarget.innerHTML=venueRows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.v+'</td><td>'+x.n+'</td><td>'+x.ex.rate.toFixed(2)+'%</td><td>'+x.ex.roi.toFixed(2)+'%</td><td>'+x.tri.rate.toFixed(2)+'%</td><td>'+x.tri.roi.toFixed(2)+'%</td></tr>').join('');
       const vSummary=document.getElementById('venueStatsSummary');
       if(vSummary)vSummary.textContent='期間指定の対象レースを会場ごとに集計（自動買い目全体・1点100円）。会場はレース名から判定。';
+      const selTarget=document.getElementById('selectStatsRows');
+      if(selTarget){
+        const selData=eligible.filter(r=>Array.isArray(r.autoTickets.selectExacta)&&Number(r.exactaPayout)>0);
+        const selHitOf=r=>r.autoTickets.selectExacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1]);
+        const selHits=selData.filter(selHitOf).length;
+        const selInv=selData.reduce((s,r)=>s+r.autoTickets.selectExacta.length*100,0);
+        const selRet=selData.filter(selHitOf).reduce((s,r)=>s+Number(r.exactaPayout),0);
+        const selAvg=selData.length?selData.reduce((s,r)=>s+r.autoTickets.selectExacta.length,0)/selData.length:0;
+        selTarget.innerHTML='<tr class="border-b border-slate-800"><td class="py-2">'+selData.length+'</td><td>'+selHits+'</td><td>'+(selData.length?(selHits/selData.length*100).toFixed(2):'0.00')+'%</td><td>'+selAvg.toFixed(2)+'点</td><td>'+selInv.toLocaleString()+'円</td><td>'+(selInv?(selRet/selInv*100).toFixed(2):'0.00')+'%</td></tr>';
+        const selSummary=document.getElementById('selectStatsSummary');
+        if(selSummary)selSummary.textContent='厳選2車単が生成されたレースのみ集計（期間指定は上の設定と共通・1点100円）。25,477R実測では的中25.6%・回収73.6%・平均1.86点。';
+      }
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
       const race = allRaces[currentRaceIdx]; if (!race) return;
@@ -3128,7 +3169,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.26 · 隣接ペアの2車単を追加';
+    const APP_RELEASE_LABEL = '更新版 v3.27 · 厳選2車単と成績別表を追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
