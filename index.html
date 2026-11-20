@@ -2945,10 +2945,19 @@
       let honGroup = null, honPos = -1;
       groups.forEach(g => (g.members || []).forEach((m, i) => { if (m.rawMark === '◎') { honGroup = g; honPos = i; } }));
       const honHeadLong = Boolean(honGroup) && (honGroup.members || []).length >= 3 && honPos === 0;
+      const honLen = honGroup ? (honGroup.members || []).length : 0;
+      const honHead = honPos === 0;
       const tanki = groups.filter(g => g.isTanki).length;
-      if (units < 3) return { tier: 0, label: 'T0 堅め', rec: ['sExa', 'sTri'], detail: '印ユニット' + units };
+      if (units < 3) {
+        if (honHead && honLen >= 4) return { tier: 0, label: 'T0 堅め・◎厚壁', rec: ['sExa', 'sTri'], detail: '印ユニット' + units + '・◎が4車ラインの先頭' };
+        return { tier: 0, label: 'T0 堅め', rec: ['sExa', 'sTri'], detail: '印ユニット' + units };
+      }
       if (honHeadLong) return { tier: 1, label: 'T1 印集中・◎頭長', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・◎が長いラインの先頭' };
-      if (tanki >= 1) return { tier: 3, label: 'T3 荒れ強', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki };
+      if (tanki >= 1) {
+        if (!honHead && honLen === 2) return { tier: 3, label: 'T3 荒れ強・◎番手', rec: ['tro', 'sExa', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki + '・◎は2車ラインの番手' };
+        if (!honHead && honLen >= 3) return { tier: 3, label: 'T3 荒れ強・◎ライン中', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki + '・◎はラインの中' };
+        return { tier: 3, label: 'T3 荒れ強', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki };
+      }
       return { tier: 2, label: 'T2 荒れ', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・単騎なし' };
     }
     function buildAutoTickets(race,options={}) {
@@ -3344,8 +3353,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.36-20261120';
-    const APP_RELEASE_LABEL = '更新版 v3.36';
+    const APP_RELEASE_VERSION = '3.37-20261120';
+    const APP_RELEASE_LABEL = '更新版 v3.37';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
