@@ -123,7 +123,12 @@
   @media (max-width:767px){
     button{min-height:40px}
     select,textarea,input[type="text"],input[type="number"],input[type="date"],input[type="search"]{min-height:40px}
+    /* スマホ幅に合わせる：全体を少しだけ大きくし、横はみ出しを止める */
+    html{font-size:17px}
+    body{padding:.55rem}
   }
+  html,body{overflow-x:hidden}
+  img,svg,video{max-width:100%}
   .workspace-panel[hidden]{display:none!important}
   .workspace-data-card{background:rgba(38,20,74,.72);border:1px solid rgba(192,132,252,.35);border-radius:1rem;padding:1rem}
   @media(max-width:640px){.workspace-tabs{margin:0 -.15rem}.workspace-tab{padding:.65rem .8rem;font-size:.74rem}.workspace-panel{gap:1rem}}
@@ -801,7 +806,7 @@
         <div id="carPointTopSummary" class="text-sm font-mono-code text-amber-200">評価待機中</div>
       </div>
       <div class="overflow-x-auto rounded-xl border border-slate-800">
-        <table class="w-full min-w-[620px] text-left text-xs font-mono-code">
+        <table class="w-full min-w-[540px] text-left text-xs font-mono-code">
           <thead class="bg-slate-900 text-slate-300">
             <tr><th class="p-2">順位</th><th class="p-2">車番</th><th class="p-2">変換印</th><th class="p-2">基礎点</th><th class="p-2">加減点</th><th class="p-2">合計</th><th class="p-2">根拠</th></tr>
           </thead>
@@ -3294,7 +3299,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.34 · 占いナイトテーマ（深紫の星空＋金）に配色変更';
+    const APP_RELEASE_LABEL = '更新版 v3.35';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
