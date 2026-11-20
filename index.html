@@ -181,6 +181,7 @@
       <p id="patternBaselineNote" class="text-xs leading-relaxed text-slate-300">検証中...</p>
       <div id="chaosTierBanner" class="rounded-xl bg-rose-500/10 border border-rose-400/40 px-3 py-2 text-sm">荒れ度タイプ: --</div>
       <div id="overlapBanner" class="rounded-xl bg-violet-500/10 border border-violet-400/40 px-3 py-2 text-sm mt-2">🤝被り予報: --</div>
+      <div id="pairPayoutBanner" class="rounded-xl bg-amber-500/10 border border-amber-400/40 px-3 py-2 text-sm mt-2">💰先頭ペア配当目安: --</div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 2点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点 <span id="recExa" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
@@ -2989,6 +2990,10 @@
     }
     // 荒れ度タイプ：印の散らばり（印のあるユニット数）・◎の足場・単騎数で判定するルールベースの4階層。25,477R実測で階層ごとに効く券種が違うため、買い目ラボでおすすめ表示に使う
     const OVERLAP_FORECAST = { 'なし': { rate: 24.3, n: 597 }, 'B': { rate: 25.0, n: 72 }, 'Y': { rate: 26.3, n: 76 }, 'N': { rate: 30.9, n: 97 }, 'B+Y': { rate: 36.8, n: 19 }, 'Y+N': { rate: 43.6, n: 39 }, 'B+N': { rate: 48.1, n: 27 }, 'B+Y+N': { rate: 64.3, n: 14 } };
+    // ライン①先頭ペアの配当中央値 [3連単, 2車単, R数]（過去CSV 25,477R・7車立て実測）
+    const PAIR_PAYOUT_CAR = { '1-2': [2100, 480, 1097], '2-1': [2510, 600, 823], '1-3': [2760, 710, 794], '4-7': [3030, 760, 238], '3-7': [3190, 870, 319], '3-1': [3190, 830, 660], '7-3': [3210, 800, 268], '4-3': [3570, 830, 229], '4-1': [3620, 900, 1829], '1-5': [3670, 950, 2045], '3-4': [3710, 900, 218], '1-4': [3770, 960, 2045], '3-5': [3820, 1000, 320], '5-2': [3870, 990, 456], '5-1': [3890, 1050, 1750], '5-3': [3890, 920, 299], '7-2': [3980, 1040, 406], '1-7': [3990, 1000, 1547], '7-1': [4090, 1010, 1466], '2-4': [4240, 1090, 432], '1-6': [4380, 1100, 754], '2-7': [4460, 1120, 483], '6-2': [4470, 1140, 203], '2-5': [4500, 1020, 554], '4-2': [4500, 1080, 357], '6-1': [4570, 1110, 760], '2-6': [5200, 1320, 224] };
+    const PAIR_PAYOUT_MARK = { '◎→◯': [2300, 570, 5918], '◯→◎': [3390, 820, 3743], '△→✕': [3740, 940, 624], '◯→✕': [3910, 1010, 414], '◎→✕': [3990, 1030, 594], '✕→無': [4000, 990, 984], '△→◎': [4080, 1040, 891], '✕→△': [4150, 1070, 672], '無→✕': [4260, 1040, 866], '◎→△': [4360, 1080, 940], '◯→△': [4400, 1090, 492], '△→無': [4470, 1150, 758], '無→無': [4490, 1180, 1324], '✕→◎': [4700, 1070, 536], '無→△': [4850, 1070, 795], '✕→◯': [4940, 1180, 375], '△→◯': [5070, 1320, 442], '◯→無': [5070, 1220, 411], '◎→無': [5390, 1220, 420], '無→◎': [5620, 1310, 430], '無→◯': [6510, 1590, 391] };
+    const PAIR_PAYOUT_CROSS = { '2-1|◎→◯': [1550, 370, 226], '1-2|◎→◯': [1610, 370, 817], '4-1|◎→◯': [2070, 510, 413], '1-3|◎→◯': [2130, 540, 475], '1-7|◎→◯': [2220, 540, 389], '1-5|◎→◯': [2330, 600, 594], '2-1|◯→◎': [2540, 600, 482], '5-1|◎→◯': [2560, 640, 403], '1-4|◎→◯': [2980, 710, 638], '3-1|◯→◎': [3010, 760, 285], '4-1|◯→◎': [3040, 780, 378], '7-1|◎→◯': [3150, 790, 319], '5-1|◯→◎': [3260, 780, 335], '2-5|◎→◯': [3320, 720, 157], '7-1|◯→◎': [3420, 830, 278], '1-4|◎→△': [3440, 1020, 142], '1-2|◯→◎': [3490, 840, 162], '1-7|◯→◎': [3670, 1270, 221], '1-4|◯→◎': [3770, 890, 240], '1-5|◯→◎': [3780, 770, 282], '1-6|無→無': [3930, 1110, 185], '6-1|無→無': [4070, 980, 166], '6-1|無→✕': [4860, 1210, 124], '1-5|◎→△': [4870, 1170, 122], '6-1|無→△': [6140, 1190, 121] };
     const OVERLAP_COUNT_RATE = { 2: 43.5, 3: 64.3 };
     function overlapOf(r) {
       const sites = [];
@@ -3214,6 +3219,22 @@
           if(!ov.recorded) ovBanner.innerHTML='<span class="font-bold text-violet-200">🤝被り予報</span> <span class="text-xs text-slate-300">Y/Nの予想チェックが未記録のレースです（取り込み時にチェックを入れると予報が出ます）</span>';
           else if(ov.key==='なし') ovBanner.innerHTML='<span class="font-bold text-violet-200">🤝被り予報: どのサイトも予想なし</span> <span class="text-xs text-slate-300">過去の同じ条件では万車率'+fc.rate+'%（'+fc.n+'R）</span>';
           else ovBanner.innerHTML='<span class="font-bold text-violet-200">🤝被り予報: '+ov.key+' 一致</span> <span class="text-xs text-slate-300">過去の同じ被り方では万車率'+fc.rate+'%（'+fc.n+'R）</span>';
+        }
+        const ppBanner=document.getElementById('pairPayoutBanner');
+        if(ppBanner){
+          const ppLines=(res.lineSummaryList||[]).filter(l=>!l.isTanki);
+          if((res.entries||[]).length!==7||!ppLines.length||ppLines[0].members.length<2){
+            ppBanner.innerHTML='<span class="font-bold text-amber-200">💰先頭ペア配当目安</span> <span class="text-xs text-slate-300">7車立て・ライン①に先頭ペアがあるレースが対象です</span>';
+          } else {
+            const h=ppLines[0].members[0], s2=ppLines[0].members[1];
+            const cp=h.car+'-'+s2.car, mp=(h.rawMark||'無')+'→'+(s2.rawMark||'無');
+            const fmt=v=>'3連単 '+v[0].toLocaleString()+'円・2車単 '+v[1].toLocaleString()+'円（'+v[2]+'R）';
+            const cross=PAIR_PAYOUT_CROSS[cp+'|'+mp], car=PAIR_PAYOUT_CAR[cp], mark=PAIR_PAYOUT_MARK[mp];
+            let body='';
+            if(cross) body='車番'+cp+' × 印'+mp+' の過去中央値: '+fmt(cross);
+            else { const parts=[]; if(car)parts.push('車番'+cp+': '+fmt(car)); if(mark)parts.push('印'+mp+': '+fmt(mark)); body=parts.length?parts.join(' ／ '):'この組み合わせの十分な実績データがありません'; }
+            ppBanner.innerHTML='<span class="font-bold text-amber-200">💰先頭ペア配当目安</span> <span class="text-xs text-slate-300">'+body+'</span>';
+          }
         }
       } catch(e) {}
       document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
@@ -3442,8 +3463,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.45-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.45';
+    const APP_RELEASE_VERSION = '3.46-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.46';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
