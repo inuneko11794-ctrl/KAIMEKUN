@@ -1249,11 +1249,21 @@
       const name = VENUE_NAMES_BY_LEN.find(n => String(title).startsWith(n));
       return name ? VENUE_STRAIGHT[name] : null;
     }
+    // ライン①先頭ペア（車番）の静的補正: 過去CSV 25,477Rで3年間とも同符号だったペアのみ（7車立てのみ）
+    const LINE1_PAIR_DELTA = { '1-2': -0.103, '2-1': -0.088, '1-5': -0.057, '2-6': 0.157 };
+    function line1PairDelta(res) {
+      if (!res || (res.entries || []).length !== 7) return 0;
+      const lines = (res.lineSummaryList || []).filter(l => !l.isTanki);
+      if (!lines.length || lines[0].members.length < 2) return 0;
+      const k = lines[0].members[0].car + '-' + lines[0].members[1].car;
+      return LINE1_PAIR_DELTA[k] || 0;
+    }
     function predictUpsetForRace(title, res, dnaFreqMap) {
       const p = predictUpset(extractFeatures(res, dnaFreqMap));
       const s = venueStraightOfTitle(title);
-      if (s == null) return p;
-      const d = s < 45 ? -0.04 : s < 55 ? -0.01 : s < 60 ? 0.04 : 0.08;
+      const dVenue = s == null ? 0 : s < 45 ? -0.04 : s < 55 ? -0.01 : s < 60 ? 0.04 : 0.08;
+      const d = dVenue + line1PairDelta(res);
+      if (!d) return p;
       const z = Math.log(p / (1 - p)) + d;
       return 1 / (1 + Math.exp(-z));
     }
@@ -3432,8 +3442,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.44-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.44';
+    const APP_RELEASE_VERSION = '3.45-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.45';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
