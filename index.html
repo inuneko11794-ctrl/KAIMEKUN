@@ -1241,6 +1241,23 @@
       return 1 / (1 + Math.exp(-z));
     }
 
+    // 開催場の静的補正: みなし直線の長さで波乱確率の土台をずらす（25,477R実測の較正ズレを補正。千葉は現行バンクが異なるため対象外）
+    const VENUE_STRAIGHT = { '函館': 51.3, '青森': 58.9, 'いわき平': 62.7, '弥彦': 63.1, '前橋': 46.7, '取手': 54.8, '宇都宮': 63.3, '大宮': 66.7, '西武園': 47.6, '京王閣': 51.5, '立川': 58.0, '松戸': 38.2, '川崎': 58.0, '平塚': 54.2, '小田原': 36.1, '伊東': 46.6, '静岡': 56.4, '名古屋': 58.8, '岐阜': 59.3, '大垣': 56.0, '豊橋': 60.3, '富山': 43.0, '松阪': 61.5, '四日市': 62.4, '福井': 52.8, '奈良': 38.0, '向日町': 47.3, '和歌山': 59.9, '岸和田': 56.7, '玉野': 47.9, '広島': 57.9, '防府': 42.5, '高松': 54.8, '小松島': 55.5, '高知': 52.0, '松山': 58.6, '小倉': 56.9, '久留米': 50.7, '武雄': 64.4, '佐世保': 40.2, '別府': 59.9, '熊本': 60.3 };
+    const VENUE_NAMES_BY_LEN = Object.keys(VENUE_STRAIGHT).sort((a, b) => b.length - a.length);
+    function venueStraightOfTitle(title) {
+      if (!title) return null;
+      const name = VENUE_NAMES_BY_LEN.find(n => String(title).startsWith(n));
+      return name ? VENUE_STRAIGHT[name] : null;
+    }
+    function predictUpsetForRace(title, res, dnaFreqMap) {
+      const p = predictUpset(extractFeatures(res, dnaFreqMap));
+      const s = venueStraightOfTitle(title);
+      if (s == null) return p;
+      const d = s < 45 ? -0.04 : s < 55 ? -0.01 : s < 60 ? 0.04 : 0.08;
+      const z = Math.log(p / (1 - p)) + d;
+      return 1 / (1 + Math.exp(-z));
+    }
+
     // 表示用レンジ変換: 実確率(0-1)を20〜90%スケールへ線形変換（基準CSVの1%点→20、99%点→90）
     function toDisplayProb(rawProb) {
       return Math.min(90, Math.max(20, 20 + (rawProb - 0.1726) * 271.78));
@@ -1397,7 +1414,7 @@
       }
       const tempRace = { id: 'LIVE-DRAFT', rawFormation: rawLineInput, lines: parseFormationString(rawLineInput, entries), entries };
       const res = analyzeRace(tempRace);
-      const prob = toDisplayProb(predictUpset(extractFeatures(res, null)));
+      const prob = toDisplayProb(predictUpsetForRace(tempRace.id, res, null));
       const meta = getUpsetJudgeMeta(prob);
       badge.className = `px-2.5 py-1 rounded-lg border text-xs font-mono-code font-bold transition ${meta.badgeStyle}`;
       badge.textContent = `${prob.toFixed(1)}% ｜ ${meta.headline}`;
@@ -1516,7 +1533,7 @@
         document.getElementById('instantTicketStatus').textContent = '買い目の算出エラー';
         document.getElementById('instantTicketReasons').textContent = String(ticketError.message || ticketError);
       }
-      const prob = toDisplayProb(predictUpset(extractFeatures(res, null)));
+      const prob = toDisplayProb(predictUpsetForRace((parsed && parsed.id) || '', res, null));
       const meta = getUpsetJudgeMeta(prob);
 
       pctEl.textContent = `${prob.toFixed(1)}%`;
@@ -1815,7 +1832,7 @@
       const dnaFreqMap = {};
       analyzedAll.forEach(item => { dnaFreqMap[item.res.raceDna] = (dnaFreqMap[item.res.raceDna] || 0) + 1; });
       analyzedAll.forEach(item => {
-        item.prob = toDisplayProb(predictUpset(extractFeatures(item.res, dnaFreqMap)));
+        item.prob = toDisplayProb(predictUpsetForRace(item.race.id, item.res, dnaFreqMap));
         item.payNum = item.race.payout ? Number(item.race.payout) : null;
       });
       const withPayout = analyzedAll.filter(it => it.payNum !== null && !isNaN(it.payNum) && it.payNum > 0);
@@ -1899,7 +1916,7 @@
 
       const dnaFreqMap = {};
       allRaces.forEach(r => { const d = analyzeRace(r).raceDna; dnaFreqMap[d] = (dnaFreqMap[d] || 0) + 1; });
-      const prob = toDisplayProb(predictUpset(extractFeatures(res, dnaFreqMap)));
+      const prob = toDisplayProb(predictUpsetForRace((allRaces[currentRaceIdx] || {}).id, res, dnaFreqMap));
       const diffFromBase = prob - 47.8;
       const judgeMeta = getUpsetJudgeMeta(prob);
       const probEl = document.getElementById('aiUpsetProb');
@@ -3136,7 +3153,7 @@
         let badges = '';
         try {
           const res = analyzeRace(r);
-          const disp = toDisplayProb(predictUpset(extractFeatures(res, dna)));
+          const disp = toDisplayProb(predictUpsetForRace(r.id, res, dna));
           const sel = Array.isArray(r.autoTickets && r.autoTickets.selectExacta) ? r.autoTickets.selectExacta : buildSelectExacta(res);
           const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
           if (disp >= 60) badges += '<span class="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/60 text-rose-200 text-[11px] font-bold">🔥ここ熱い！</span>';
@@ -3415,8 +3432,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.43-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.43';
+    const APP_RELEASE_VERSION = '3.44-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.44';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
