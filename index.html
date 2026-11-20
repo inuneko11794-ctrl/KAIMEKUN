@@ -160,14 +160,16 @@
         </div>
       </div>
       <p id="patternBaselineNote" class="text-xs leading-relaxed text-slate-300">検証中...</p>
+      <div id="chaosTierBanner" class="rounded-xl bg-rose-500/10 border border-rose-400/40 px-3 py-2 text-sm">荒れ度タイプ: --</div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 2点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点</div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点</div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-xs text-amber-200 mt-2">洛書発動: --</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点 <span id="recExa" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点 <span id="recTri" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-xs text-amber-200 mt-2">洛書発動: --</div></div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div class="rounded-xl bg-slate-950/70 border border-cyan-700/60 p-3"><div class="text-xs text-cyan-200 font-bold mb-2">厳選2車単（印×車番セル）</div><div id="autoSelectExactaPicks" class="font-mono-code text-sm">--</div></div>
-        <div class="rounded-xl bg-slate-950/70 border border-cyan-700/60 p-3"><div class="text-xs text-cyan-200 font-bold mb-2">厳選3連単（厳選ペア＋3着流し）</div><div id="autoSelectTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="rounded-xl bg-slate-950/70 border border-cyan-700/60 p-3"><div class="text-xs text-cyan-200 font-bold mb-2">厳選2車単（印×車番セル） <span id="recSExa" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoSelectExactaPicks" class="font-mono-code text-sm">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-cyan-700/60 p-3"><div class="text-xs text-cyan-200 font-bold mb-2">厳選3連単（厳選ペア＋3着流し） <span id="recSTri" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoSelectTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">本線3連複（3連単と同組合せ・順不同） <span id="recTro" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoTrioPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
       </div>
       <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 space-y-3">
         <div class="space-y-2"><div class="text-sm font-bold">期間指定成績</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><select id="betStatsDateBasis" class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm"><option value="event">開催日で検索</option><option value="entry" selected>データ入力日で検索</option></select><label class="text-xs text-slate-300">開始日<input id="betStatsFrom" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label><label class="text-xs text-slate-300">終了日<input id="betStatsTo" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label></div><div class="flex justify-end"><button id="clearBetStatsRangeBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs">期間をクリア</button></div></div>
@@ -2909,6 +2911,20 @@
       });
       return out;
     }
+    // 荒れ度タイプ：印の散らばり（印のあるユニット数）・◎の足場・単騎数で判定するルールベースの4階層。25,477R実測で階層ごとに効く券種が違うため、買い目ラボでおすすめ表示に使う
+    function chaosTierOf(res) {
+      const groups = res.lineSummaryList || [];
+      const marked = g => (g.members || []).some(m => ['◎', '◯', '△', '✕'].includes(m.rawMark));
+      const units = groups.filter(marked).length;
+      let honGroup = null, honPos = -1;
+      groups.forEach(g => (g.members || []).forEach((m, i) => { if (m.rawMark === '◎') { honGroup = g; honPos = i; } }));
+      const honHeadLong = Boolean(honGroup) && (honGroup.members || []).length >= 3 && honPos === 0;
+      const tanki = groups.filter(g => g.isTanki).length;
+      if (units < 3) return { tier: 0, label: 'T0 堅め', rec: ['sExa', 'sTri'], detail: '印ユニット' + units };
+      if (honHeadLong) return { tier: 1, label: 'T1 印集中・◎頭長', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・◎が長いラインの先頭' };
+      if (tanki >= 1) return { tier: 3, label: 'T3 荒れ強', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki };
+      return { tier: 2, label: 'T2 荒れ', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・単騎なし' };
+    }
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
       const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
@@ -3067,6 +3083,15 @@
       if(selEl)selEl.innerHTML=(tickets.selectExacta&&tickets.selectExacta.length)?show(tickets.selectExacta,4):'該当なし';
       const selTriEl=document.getElementById('autoSelectTrifectaPicks');
       if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?show(tickets.selectTrifecta,15):'該当なし';
+      const trioEl=document.getElementById('autoTrioPicks');
+      if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('・')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
+      try {
+        const tierInfo=chaosTierOf(res);
+        const banner=document.getElementById('chaosTierBanner');
+        if(banner)banner.innerHTML='<span class="font-bold text-rose-200">荒れ度タイプ: '+tierInfo.label+'</span> <span class="text-xs text-slate-300">（'+tierInfo.detail+'）</span>';
+        const recMap={exa:'recExa',tri:'recTri',tro:'recTro',sExa:'recSExa',sTri:'recSTri'};
+        Object.entries(recMap).forEach(([k,id])=>{ const el=document.getElementById(id); if(el)el.classList.toggle('hidden',!tierInfo.rec.includes(k)); });
+      } catch(e) {}
       document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
       const baseNote=document.getElementById('patternBaselineNote');
@@ -3255,7 +3280,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.32 · 番手の印関係を4分割（新聞印の番手も加点）';
+    const APP_RELEASE_LABEL = '更新版 v3.33 · 荒れ度タイプ表示とタイプ別おすすめ買い目を追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
