@@ -698,17 +698,17 @@
         <div>
           <div class="flex items-center justify-between">
             <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 text-xs font-mono-code font-bold">THEORY 01 // SONIFICATION</span>
-            <span id="dissonanceBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-cyan-200">不協和度: --</span>
+            <span id="dissonanceBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-cyan-200">形: --</span>
           </div>
-          <h3 class="text-lg font-bold text-white mt-3">🎼 出走表の音楽化（不協和音アラート）</h3>
-          <p class="text-xs text-slate-400 mt-1">車番を音階、変換後印の強さを音量・和音に変換。基準値を超える不協和音が響くほど波乱（高配当）の予兆。</p>
+          <h3 class="text-lg font-bold text-white mt-3">🎼 出走表の音楽化（形の聞き分け）</h3>
+          <p class="text-xs text-slate-400 mt-1">並び順に1人ずつ、車番＝音程・変換後印＝音色と強さで演奏します。形が整ったレースは流れが揃い、単騎や印の散らばりは音の散らばりとして聞こえます。荒れ判定は波乱度とタイプ表示の担当で、こちらは聞いて形を掴むための楽器です。</p>
           <div id="noteBars" class="grid grid-cols-9 gap-1.5 mt-4 h-24 items-end bg-slate-950/70 p-3 rounded-xl border border-slate-800"></div>
         </div>
         <div class="mt-4 space-y-2.5">
           <div id="chordDiagnosis" class="text-xs text-cyan-200 font-mono-code">コード判定: 解析待機中...</div>
           <div class="flex flex-wrap items-center gap-2">
             <button id="playSonificationBtn" class="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition">🔊 単発再生</button>
-            <button id="loopBgmBtn" class="px-3.5 py-2 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white font-bold text-xs border border-purple-400/40 shadow-lg transition">🔁 不協和BGMループ: OFF</button>
+            <button id="loopBgmBtn" class="px-3.5 py-2 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white font-bold text-xs border border-purple-400/40 shadow-lg transition">🔁 演奏ループ: OFF</button>
             <button id="exportWavBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-400/40 transition ml-auto">💾 曲をWAV保存</button>
           </div>
         </div>
@@ -2131,8 +2131,9 @@
         return `<div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 space-y-2"><div class="flex items-center justify-between"><span class="px-2 py-0.5 rounded text-xs font-mono-code font-bold border ${badgeStyle}">${lObj.label}</span><span class="text-xs font-mono-code text-amber-200 font-bold">[${lObj.members.map(m => m.convertedMark).join(' ')}]</span></div><div class="space-y-1.5">${membersHtml}</div></div>`;
       }).join('');
 
-      document.getElementById('dissonanceBadge').textContent = `不協和度: ${res.dissonance} (基準:${activeBaseline.dissonanceMean})`;
-      document.getElementById('chordDiagnosis').textContent = res.dissonance > activeBaseline.dissonanceMean ? '⚡ 基準値超過: 不協和テンションコード検出（高配当波乱の響き）' : '🎵 基準値以下: メジャー協和音（本命サイドの安定した響き）';
+      const tierInfo = chaosTierOf(res);
+      document.getElementById('dissonanceBadge').textContent = '形: ' + tierInfo.label;
+      document.getElementById('chordDiagnosis').textContent = '🎼 ' + tierInfo.label + '（' + tierInfo.detail + '） ｜ 並び順に演奏中身： ◎は高く強く、単騎は間を空けて小さく鳴ります';
 
       const noteBars = document.getElementById('noteBars');
       noteBars.innerHTML = '';
@@ -2239,22 +2240,35 @@
 
     let audioCtx = null;
     function scheduleRaceTrack(ctx, destNode, startTime, race, res) {
-      const entries = res.entries;
-      const freqs = res.dissonance > activeBaseline.dissonanceMean
-        ? [261.63, 277.18, 311.13, 369.99, 392.00, 415.30, 493.88, 554.37, 622.25]
-        : [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99];
-      const stepSec = 0.18;
-      entries.forEach((e, idx) => {
-        const sc = getScore(e.mark), t = startTime + idx * stepSec;
-        const osc = ctx.createOscillator(), gain = ctx.createGain();
-        osc.type = sc >= 4 ? 'triangle' : sc >= 2 ? 'sine' : 'sawtooth';
-        osc.frequency.setValueAtTime(freqs[(e.car - 1) % 9], t);
-        gain.gain.setValueAtTime(0.001, t);
-        gain.gain.exponentialRampToValueAtTime(Math.min(0.24, 0.04 + sc * 0.038), t + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
-        osc.connect(gain); gain.connect(destNode); osc.start(t); osc.stop(t + 0.42);
+      // 並び順に演奏する：ラインごとに区切り、単騎の前は間を空ける。車番→音程（ドレミ）、変換後印→音色・強さ・長さ。
+      const BASE = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33];
+      const stepSec = 0.22;
+      let t = startTime;
+      const groups = (res.lineSummaryList && res.lineSummaryList.length) ? res.lineSummaryList : res.entries.map(e => ({ isTanki: e.isTanki, members: [e] }));
+      groups.forEach((g, gi) => {
+        if (gi > 0) t += g.isTanki ? 0.30 : 0.12;
+        (g.members || []).forEach(m => {
+          const e = res.entries.find(x => Number(x.car) === Number(m.car));
+          const cm = e ? e.mark : (m.convertedMark || '無');
+          const sc = getScore(cm);
+          let freq = BASE[(Number(m.car) - 1) % 9];
+          let type = 'sine', peak = Math.min(0.16, 0.05 + sc * 0.025), dur = 0.34;
+          if (cm === '◎') { freq *= 2; type = 'triangle'; peak = 0.24; dur = 0.44; }
+          else if (cm === '◯') { type = 'triangle'; peak = 0.20; }
+          else if (cm === '△') { peak = 0.15; }
+          else if (cm === '✕') { peak = 0.12; dur = 0.28; }
+          else if (cm === 'T') { peak = 0.08; dur = 0.24; }
+          const osc = ctx.createOscillator(), gain = ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.exponentialRampToValueAtTime(peak, t + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          osc.connect(gain); gain.connect(destNode); osc.start(t); osc.stop(t + dur + 0.05);
+          t += stepSec;
+        });
       });
-      return entries.length * stepSec + 0.25;
+      return (t - startTime) + 0.3;
     }
 
     function ensureAudioCtx() {
@@ -2614,7 +2628,7 @@
     }
     function setLoopButtonState(on) {
       const btn = document.getElementById('loopBgmBtn');
-      btn.textContent = on ? '■ 不協和BGMループ: ON（停止）' : '▶ 不協和BGMループ: OFF';
+      btn.textContent = on ? '■ 演奏ループ: ON（停止）' : '▶ 演奏ループ: OFF';
       btn.setAttribute('aria-pressed', String(on));
     }
     function stopSonificationLoop() {
@@ -2672,7 +2686,7 @@
       const btn = document.getElementById('exportWavBtn'), original = btn.textContent;
       try {
         const race = currentSonificationRace(), result = analyzeRace(race);
-        const duration = race.entries.length * 0.18 + 0.25;
+        const duration = race.entries.length * 0.22 + (result.lineSummaryList ? result.lineSummaryList.length : 1) * 0.3 + 0.8;
         const sampleRate = 44100, offline = new OfflineAudioContext(1, Math.ceil((duration + 0.2) * sampleRate), sampleRate);
         scheduleRaceTrack(offline, offline.destination, 0.05, race, result);
         btn.disabled = true; btn.textContent = 'WAV生成中…';
@@ -3374,8 +3388,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.38-20261120';
-    const APP_RELEASE_LABEL = '更新版 v3.38';
+    const APP_RELEASE_VERSION = '3.39-20261120';
+    const APP_RELEASE_LABEL = '更新版 v3.39';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
