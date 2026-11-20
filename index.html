@@ -1933,7 +1933,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261120-v9-SELECTTRI89CUT',
+      version: 'CSV-BASELINE-20261120-v10-MARKREL4',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -1948,9 +1948,9 @@
       },
       rider: {
         lineRole: { front: 0.101, second: 0.050, rear: -0.213, tanki: -0.201 },
-        markRelation: { normal: -0.278, secondMarkHigher: 0.278, scale: 1.0,
-          trainHigherWeighted: 1.3027, trainNotHigherWeighted: 0.7460,
-          validationHigherWeighted: 1.2483, validationNotHigherWeighted: 0.7606 }
+        markRelation: { higher: 0.647, news: 0.568, conv: -0.445, other: -0.771, normal: -0.278, secondMarkHigher: 0.278, scale: 1.0,
+          trainHigherWeighted: 1.3027, trainNewsWeighted: 1.2036, trainConvWeighted: 0.4371, trainOtherWeighted: 0.3156,
+          validationHigherWeighted: 1.2483, validationNewsWeighted: 1.2005, validationConvWeighted: 0.4249, validationOtherWeighted: 0.3365 }
       },
       notes: {
         markTarget: '的中した2車・3車の組合せへの出現率。1着/2着/3着別の加点ではない',
@@ -2039,7 +2039,8 @@
         if(line.isTanki||line.members.length<2)return;
         const front=line.members[0],second=line.members[1],row=byCar.get(Number(second.car));if(!row)return;
         const secondMarkHigher=getEmpiricalMarkPoints(second.convertedMark)>getEmpiricalMarkPoints(front.convertedMark);
-        const relationBase=res.entries.length!==7?0:secondMarkHigher?FEATURE_POINT_BASELINE.rider.markRelation.secondMarkHigher:FEATURE_POINT_BASELINE.rider.markRelation.normal;
+        const relationGroup=secondMarkHigher?'higher':({ '◎':'⑳','◯':'●','△':'▲','✕':'✖' }[front.convertedMark]===second.convertedMark?'conv':['◎','◯','△','✕'].includes(second.convertedMark)?'news':'other');
+        const relationBase=res.entries.length!==7?0:FEATURE_POINT_BASELINE.rider.markRelation[relationGroup];
         const relationLearned=disabled==='markRelation'?0:relationBase*Number(adaptive.markRelation||0)*0.5;
         row.featureContributions.markRelation=disabled==='markRelation'?0:relationBase+relationLearned;
         row.learnedAdjustments.markRelation=relationLearned;
@@ -3254,7 +3255,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.31 · 厳選3連単の3着から8・9番車を除外';
+    const APP_RELEASE_LABEL = '更新版 v3.32 · 番手の印関係を4分割（新聞印の番手も加点）';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
