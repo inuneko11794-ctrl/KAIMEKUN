@@ -68,42 +68,56 @@
     ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
 
-    /* SPACE / MONOCHROME + SOLAR GOLD：可読性を優先した全体配色 */
+    /* FORTUNE / 占いナイト：深紫の星空＋金の差し色。真っ黒をやめて紫の階調で読みやすく */
     :root {
-      --abyss-bg: #020308;
-      --abyss-card: rgba(10, 12, 18, 0.94);
-      --prism-cyan: #facc15;
+      --abyss-bg: #160b2e;
+      --abyss-card: rgba(43, 24, 84, 0.78);
+      --prism-cyan: #a5f3fc;
       --prism-gold: #fde047;
-      --prism-purple: #e5e7eb;
-      --prism-emerald: #facc15;
-      --prism-rose: #facc15;
+      --prism-purple: #d8b4fe;
+      --prism-emerald: #6ee7b7;
+      --prism-rose: #fda4af;
     }
     body {
-      background-color: #020308;
+      background-color: #160b2e;
       background-image:
-        radial-gradient(ellipse at 18% 12%, rgba(250,204,21,.10), transparent 38%),
-        radial-gradient(ellipse at 82% 78%, rgba(255,255,255,.055), transparent 42%),
-        linear-gradient(180deg, #020308 0%, #080a10 52%, #010205 100%);
-      color: #f8fafc;
+        radial-gradient(circle, rgba(255,255,255,.85) 1px, transparent 1.6px),
+        radial-gradient(circle, rgba(255,236,190,.65) 1px, transparent 1.6px),
+        radial-gradient(ellipse at 18% 10%, rgba(168,85,247,.30), transparent 42%),
+        radial-gradient(ellipse at 84% 80%, rgba(250,204,21,.13), transparent 40%),
+        radial-gradient(ellipse at 70% 15%, rgba(236,72,153,.12), transparent 45%),
+        linear-gradient(180deg, #150829 0%, #26124e 48%, #0d0518 100%);
+      background-size: 140px 140px, 230px 230px, auto, auto, auto, auto;
+      background-position: 0 0, 60px 90px, 0 0, 0 0, 0 0, 0 0;
+      color: #f5f0ff;
     }
-    .glass-panel { background: rgba(8, 10, 16, .94); border-color: rgba(250,204,21,.34); }
-    .prism-border::before { background: linear-gradient(135deg, #ffffff, #facc15, #737373); }
-    ::-webkit-scrollbar-track { background: #050608; }
-    ::-webkit-scrollbar-thumb { background: #6b5b16; }
+    .glass-panel { background: rgba(43, 24, 84, .78); border-color: rgba(250,204,21,.38); box-shadow: 0 8px 32px rgba(10,2,24,.55), inset 0 1px 0 rgba(255,255,255,.10); }
+    .prism-border::before { background: linear-gradient(135deg, #facc15, #c084fc, #f472b6); }
+    ::-webkit-scrollbar-track { background: #1c0d38; }
+    ::-webkit-scrollbar-thumb { background: #6d4bb0; }
     ::-webkit-scrollbar-thumb:hover { background: #facc15; }
-    /* 薄い補助文字を白へ引き上げ、色付き文字は白・太陽色に統一 */
-    .text-slate-400, .text-slate-400, .text-slate-300 { color: #d1d5db !important; }
-    .text-cyan-100, .text-cyan-200, .text-cyan-300, .text-cyan-400,
-    .text-purple-200, .text-purple-300, .text-emerald-200, .text-emerald-300,
-    .text-rose-200, .text-rose-300, .text-amber-200, .text-amber-300 { color: #facc15 !important; }
-    .border-slate-800, .border-slate-700 { border-color: rgba(255,255,255,.18) !important; }
+    /* パネル類は紫ガラスに：真っ黒な面をなくして階調で区切る */
+    .bg-slate-950\/70, .bg-slate-950\/80, .bg-slate-950\/90 { background-color: rgba(43,24,84,.66) !important; }
+    .bg-slate-950 { background-color: rgba(30,16,58,.92) !important; }
+    .bg-slate-900, .bg-slate-900\/90, .bg-slate-900\/80, .bg-slate-900\/70, .bg-slate-900\/60 { background-color: rgba(56,32,105,.55) !important; }
+    .bg-slate-800 { background-color: rgba(82,54,142,.50) !important; }
+    .bg-slate-800\/80 { background-color: rgba(82,54,142,.55) !important; }
+    /* 補助文字はラベンダー寄りの明色、差し色は占いパステルに */
+    .text-slate-400, .text-slate-300 { color: #cfc4ee !important; }
+    .text-amber-200, .text-amber-300 { color: #fde68a !important; }
+    .text-cyan-100, .text-cyan-200, .text-cyan-300, .text-cyan-400 { color: #a5f3fc !important; }
+    .text-purple-200, .text-purple-300 { color: #d8b4fe !important; }
+    .text-emerald-200, .text-emerald-300 { color: #6ee7b7 !important; }
+    .text-rose-200, .text-rose-300 { color: #fda4af !important; }
+    .border-slate-800, .border-slate-700 { border-color: rgba(192,132,252,.28) !important; }
+    .border-slate-600 { border-color: rgba(192,132,252,.42) !important; }
     button:disabled { opacity: .65; cursor: wait; }
     button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
       outline: 2px solid #facc15; outline-offset: 3px;
     }
-  .workspace-tabs{position:sticky;top:0;z-index:40;display:flex;gap:.45rem;overflow-x:auto;padding:.65rem;background:rgba(5,12,28,.94);backdrop-filter:blur(14px);border:1px solid rgba(103,232,249,.22);border-radius:1rem;scrollbar-width:thin}
-  .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(148,163,184,.22);border-radius:.75rem;background:rgba(15,23,42,.88);color:#cbd5e1;font-size:.78rem;font-weight:700;transition:.18s}
-  .workspace-tab[aria-selected="true"]{background:linear-gradient(120deg,rgba(8,145,178,.34),rgba(124,58,237,.24));border-color:rgba(103,232,249,.7);color:#fff;box-shadow:0 0 18px rgba(34,211,238,.12)}
+  .workspace-tabs{position:sticky;top:0;z-index:40;display:flex;gap:.45rem;overflow-x:auto;padding:.65rem;background:rgba(24,10,48,.92);backdrop-filter:blur(14px);border:1px solid rgba(192,132,252,.35);border-radius:1rem;scrollbar-width:thin}
+  .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(192,132,252,.25);border-radius:.75rem;background:rgba(46,26,92,.85);color:#e9d5ff;font-size:.78rem;font-weight:700;transition:.18s}
+  .workspace-tab[aria-selected="true"]{background:linear-gradient(120deg,rgba(147,51,234,.45),rgba(250,204,21,.22));border-color:rgba(250,204,21,.65);color:#fff;box-shadow:0 0 18px rgba(168,85,247,.35)}
   .workspace-panel{display:flex;flex-direction:column;gap:1.5rem;min-width:0}
   html{scroll-padding-top:84px}
   @media (max-width:767px){
@@ -111,7 +125,7 @@
     select,textarea,input[type="text"],input[type="number"],input[type="date"],input[type="search"]{min-height:40px}
   }
   .workspace-panel[hidden]{display:none!important}
-  .workspace-data-card{background:rgba(2,6,23,.72);border:1px solid rgba(103,232,249,.25);border-radius:1rem;padding:1rem}
+  .workspace-data-card{background:rgba(38,20,74,.72);border:1px solid rgba(192,132,252,.35);border-radius:1rem;padding:1rem}
   @media(max-width:640px){.workspace-tabs{margin:0 -.15rem}.workspace-tab{padding:.65rem .8rem;font-size:.74rem}.workspace-panel{gap:1rem}}
   </style>
 </head>
@@ -124,7 +138,7 @@
     <header class="glass-panel prism-border rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-2 text-xs font-mono-code text-cyan-400 tracking-widest uppercase">
-          <span>ATLANTIS VELODROME ARCHIVE // V7.2</span>
+          <span>🔮 ATLANTIS VELODROME ARCHIVE // V7.2</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">BASELINE CALIBRATED</span>
           <button id="appUpdateBadge" type="button" class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 tracking-normal normal-case" title="押すとこの更新を確認済みにします">更新版 v1.9 · 2026/11/18</button>
         </div>
@@ -3280,7 +3294,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.33 · 荒れ度タイプ表示とタイプ別おすすめ買い目を追加';
+    const APP_RELEASE_LABEL = '更新版 v3.34 · 占いナイトテーマ（深紫の星空＋金）に配色変更';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
