@@ -2948,6 +2948,26 @@
       const honLen = honGroup ? (honGroup.members || []).length : 0;
       const honHead = honPos === 0;
       const tanki = groups.filter(g => g.isTanki).length;
+      // 超堅判定：堅さ特徴（長いラインに印が厚く乗る形）と散り特徴（印が単騎・細切れに散る形）の差し引き
+      const posOfMark = mk2 => { let found = { len: 0, idx: -1 }; groups.forEach(g => (g.members || []).forEach((m, i) => { if (m.rawMark === mk2) found = { len: (g.members || []).length, idx: i }; })); return found; };
+      const honP = posOfMark('◎'), maruP = posOfMark('◯'), sanP = posOfMark('△'), shiP = posOfMark('✕');
+      const multiGroups = groups.filter(g => !g.isTanki);
+      const markedTanki = groups.filter(g => g.isTanki && (g.members || []).some(m => ['◎', '◯', '△', '✕'].includes(m.rawMark))).length;
+      let wall = 0, chaos = 0;
+      if (honP.len >= 4 && honP.idx === 0) wall++;
+      if (maruP.len === 4 && maruP.idx === 1) wall++;
+      if (sanP.len === 4 && sanP.idx >= 2) wall++;
+      if (multiGroups.length && (multiGroups[0].members || []).length === 4) wall++;
+      if (units <= 2) wall++;
+      if (honP.len >= 3 && honP.idx === 0) wall++;
+      if (markedTanki >= 1) chaos++;
+      if (maruP.len === 1) chaos++;
+      if (sanP.len === 1) chaos++;
+      if (shiP.len === 1) chaos++;
+      if (multiGroups.every(g => (g.members || []).length <= 2)) chaos++;
+      if (units >= 3) chaos++;
+      if (honP.len === 1) chaos++;
+      if (chaos - wall <= -3) return { tier: -1, label: '💎 超堅', rec: ['sExa', 'sTri'], detail: '堅さ' + wall + '・散り' + chaos + '（印が長いラインに集中）' };
       if (units < 3) {
         if (honHead && honLen >= 4) return { tier: 0, label: 'T0 堅め・◎厚壁', rec: ['sExa', 'sTri'], detail: '印ユニット' + units + '・◎が4車ラインの先頭' };
         return { tier: 0, label: 'T0 堅め', rec: ['sExa', 'sTri'], detail: '印ユニット' + units };
@@ -3087,6 +3107,7 @@
           const sel = Array.isArray(r.autoTickets && r.autoTickets.selectExacta) ? r.autoTickets.selectExacta : buildSelectExacta(res);
           const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
           if (disp >= 60) badges += '<span class="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/60 text-rose-200 text-[11px] font-bold">🔥ここ熱い！</span>';
+          if (chaosTierOf(res).tier === -1) badges += '<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/60 text-sky-200 text-[11px] font-bold">💎超堅</span>';
           if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
           if (sel.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選2車単あります！（' + sel.length + '点）</span>';
           badges += '<span class="text-[11px] text-slate-400">波乱度' + Math.round(disp) + '%</span>';
@@ -3353,8 +3374,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.37-20261120';
-    const APP_RELEASE_LABEL = '更新版 v3.37';
+    const APP_RELEASE_VERSION = '3.38-20261120';
+    const APP_RELEASE_LABEL = '更新版 v3.38';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
