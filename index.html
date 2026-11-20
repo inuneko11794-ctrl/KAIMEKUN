@@ -145,6 +145,11 @@
     </header>
 
 
+    <section id="meetingListSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-3">
+      <div><div class="text-xs font-mono-code text-rose-300 font-bold">MEETING HOT LIST</div><h2 class="text-lg font-bold">同じ開催のレース一覧</h2><p class="text-xs text-slate-400">タップでそのレースへ移動。波乱度60%以上は「熱い」、厳選の買い目があるレースには印が付く。</p></div>
+      <div id="meetingListPanel" class="space-y-2"></div>
+    </section>
+
     <section id="kaimekunBetLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div><div class="text-xs font-mono-code text-amber-300 font-bold">AUTO BET MATRIX</div><h2 class="text-lg font-bold">自動買い目・成績検証</h2></div>
@@ -3009,7 +3014,42 @@
       const nums = String(race.resultOrder || '').match(/[1-9]/g);
       return nums ? nums.map(Number).slice(0,3) : [];
     }
+    function renderMeetingList() {
+      const panel = document.getElementById('meetingListPanel');
+      if (!panel) return;
+      const cur = allRaces[currentRaceIdx];
+      if (!cur) { panel.innerHTML = '<div class="text-xs text-slate-500">レースがありません</div>'; return; }
+      const venueOf = r => { const m = String(r.id || '').match(/^(.+?)\d+R/); return m ? m[1] : String(r.id || ''); };
+      const keyOf = r => (r.eventDate || r.dataEntryDate || '') + '|' + venueOf(r);
+      const key = keyOf(cur);
+      const group = allRaces.map((r, i) => ({ r, i })).filter(x => keyOf(x.r) === key);
+      const numOf = r => { const m = String(r.id || '').match(/(\d+)R/); return m ? parseInt(m[1], 10) : 999; };
+      group.sort((a, b) => numOf(a.r) - numOf(b.r));
+      const dna = getDnaFreqMapCached();
+      panel.innerHTML = group.map(({ r, i }) => {
+        let badges = '';
+        try {
+          const res = analyzeRace(r);
+          const disp = toDisplayProb(predictUpset(extractFeatures(res, dna)));
+          const sel = Array.isArray(r.autoTickets && r.autoTickets.selectExacta) ? r.autoTickets.selectExacta : buildSelectExacta(res);
+          const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
+          if (disp >= 60) badges += '<span class="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/60 text-rose-200 text-[11px] font-bold">🔥ここ熱い！</span>';
+          if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
+          if (sel.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選2車単あります！（' + sel.length + '点）</span>';
+          badges += '<span class="text-[11px] text-slate-400">波乱度' + Math.round(disp) + '%</span>';
+          if (r.payout || r.resultOrder) badges += '<span class="text-[11px] text-emerald-300">結果あり</span>';
+        } catch (e) {}
+        return '<button data-meeting-idx="' + i + '" class="w-full text-left rounded-xl border ' + (i === currentRaceIdx ? 'border-amber-400/70 bg-amber-400/10' : 'border-slate-700 bg-slate-950/60') + ' px-3 py-2 flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + r.id + '</span>' + badges + '</button>';
+      }).join('');
+      panel.querySelectorAll('[data-meeting-idx]').forEach(el => el.addEventListener('click', () => {
+        currentRaceIdx = parseInt(el.dataset.meetingIdx, 10);
+        if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
+        renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }));
+    }
     function renderBetLab() {
+      renderMeetingList();
       const race = allRaces[currentRaceIdx];
       if (!race) return;
       const previousVersion = race.autoTickets?.featureBaselineVersion;
@@ -3213,7 +3253,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.29 · 厳選の最終形（2車単＋3連単）を実装';
+    const APP_RELEASE_LABEL = '更新版 v3.30 · 同じ開催のレース一覧（熱い・厳選バッジ付き）を追加';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
