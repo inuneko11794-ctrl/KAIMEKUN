@@ -241,6 +241,13 @@
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label class="text-xs text-slate-300 md:col-span-2">登録レース（自動判定）
+          <select id="rakushoRaceSelect" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+            <option value="auto">選択中のレースに連動（自動）</option>
+            <option value="manual">手入力</option>
+          </select>
+          <span class="block mt-1 text-xs text-slate-400">登録済みレースを選ぶと、並びと印を自動で読み込んで判定します。手入力も今まで通り使えます。</span>
+        </label>
         <label class="text-xs text-slate-300">戦型
           <select id="rakushoRaceType" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
             <option value="3">三分戦</option><option value="2">二分戦</option>
@@ -3290,6 +3297,45 @@
         }
       }
       $('rakushoJudgeBtn').addEventListener('click', judge);
+      // 登録レースから自動で読み込んで判定する（手入力不要化）
+      const raceSel = $('rakushoRaceSelect');
+      function rebuildRaceOptions() {
+        if (!raceSel) return;
+        const cur = raceSel.value || 'auto';
+        let html = '<option value="auto">選択中のレースに連動（自動）</option><option value="manual">手入力</option>';
+        allRaces.forEach((r, i) => { html += '<option value="' + i + '">' + String(r.id || ('レース' + (i + 1))).replace(/</g, '') + '</option>'; });
+        raceSel.innerHTML = html;
+        raceSel.value = [...raceSel.options].some(o => o.value === cur) ? cur : 'auto';
+      }
+      function renderPicksAuto(picks) {
+        $('rakushoPickOutput').innerHTML = '<div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div>' + (picks.length ? picks.map(p => '<div class="rounded-lg border border-amber-300/30 bg-amber-300/5 p-3"><div class="text-xs font-bold text-amber-200">' + p.label + '</div><div class="text-lg font-mono-code font-bold mt-1">' + p.ticket.join('→') + '</div><div class="text-xs text-slate-300 mt-1">根拠：' + p.reason + '</div></div>').join('') : '<div class="text-sm text-slate-200">見送り（該当なし）</div>');
+      }
+      function autoJudge() {
+        if (!raceSel) return;
+        rebuildRaceOptions();
+        if (raceSel.value === 'manual') return;
+        const idx = raceSel.value === 'auto' ? currentRaceIdx : Number(raceSel.value);
+        const race = allRaces[idx];
+        if (!race || !Array.isArray(race.lines) || !Array.isArray(race.entries)) return;
+        try {
+          const copy = JSON.parse(JSON.stringify(race));
+          const applied = applyLineAndMarkRules(copy);
+          renderPicksAuto(evaluateRakushoRules({ entries: copy.entries, lineSummaryList: applied.lineSummaryList }));
+        } catch (e) { /* 判定できないレースは静かにスキップ */ }
+        const groups = race.lines.filter(l => l && l.length);
+        if (race.entries.length === 7 && groups.length >= 2 && groups.length <= 3) {
+          $('rakushoLines').value = groups.map(l => l.join('-')).join(' / ');
+          $('rakushoMarks').value = race.entries.filter(e => e.rawMark && e.rawMark !== '無').map(e => e.rawMark + e.car).join(' ');
+          $('rakushoRaceType').value = String(groups.length);
+          judge();
+        } else {
+          $('rakushoGridOutput').innerHTML = '<div class="text-xs text-slate-400">盤面表示は2〜3ライン・7車立てのレースのみ対応です。このレースの判定結果は下に表示しています。</div>';
+        }
+      }
+      if (raceSel) raceSel.addEventListener('change', autoJudge);
+      const _origRenderCurrentRace = renderCurrentRace;
+      renderCurrentRace = function () { const r = _origRenderCurrentRace.apply(this, arguments); try { autoJudge(); } catch (e) {} return r; };
+      try { autoJudge(); } catch (e) {}
       $('rakushoClearBtn').addEventListener('click', () => {
         $('rakushoLines').value=''; $('rakushoMarks').value=''; $('rakushoGridOutput').innerHTML='';
         $('rakushoPickOutput').innerHTML='<div class="text-sm font-bold text-amber-200">該当フィルターと推奨買い目</div><div class="text-xs text-slate-300">ラインと基本印を入力して判定してください。</div>';
@@ -3298,8 +3344,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.35';
+    const APP_RELEASE_VERSION = '3.36-20261120';
+    const APP_RELEASE_LABEL = '更新版 v3.36';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
