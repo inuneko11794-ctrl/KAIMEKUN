@@ -610,6 +610,7 @@
             <span id="aiModelStatus" class="text-xs font-mono-code text-slate-400">状態: 基準値ベースライン適用中</span>
           </div>
           <h2 class="text-lg font-bold text-white mt-2">🧠 5大解析・自己学習ニューラルエンジン（荒れる／荒れない基準値判定）</h2>
+          <p class="text-xs sm:text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-200 to-emerald-300 mt-1 tracking-wide">――敗北は教師であり、的中は報酬である。この機械は眠らない。学び続ける。</p>
           <p class="text-xs text-slate-400 mt-0.5">
             波乱度は過去CSVの実績をもとに基準キャリブレーション済み（表示レンジ20〜90%）。手元のCSV読込後も即座に再調整可能です。
           </p>
@@ -701,6 +702,7 @@
             <span id="dissonanceBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-cyan-200">形: --</span>
           </div>
           <h3 class="text-lg font-bold text-white mt-3">🎼 出走表の音楽化（形の聞き分け）</h3>
+          <p class="text-xs sm:text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-amber-200 to-cyan-300 mt-1.5 tracking-wide">――並びは楽譜、印は音色。号砲の前に、レースはもう鳴っている。</p>
           <p class="text-xs text-slate-400 mt-1">並び順に1人ずつ、車番＝音程・変換後印＝音色と強さで演奏します。形が整ったレースは流れが揃い、単騎や印の散らばりは音の散らばりとして聞こえます。荒れ判定は波乱度とタイプ表示の担当で、こちらは聞いて形を掴むための楽器です。</p>
           <div id="noteBars" class="grid grid-cols-9 gap-1.5 mt-4 h-24 items-end bg-slate-950/70 p-3 rounded-xl border border-slate-800"></div>
         </div>
@@ -721,6 +723,7 @@
             <span id="chaosBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-purple-200">カオス指数: --</span>
           </div>
           <h3 class="text-lg font-bold text-white mt-3">🪐 競輪重力場・三体問題シミュレーター</h3>
+          <p class="text-xs sm:text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-amber-200 to-purple-300 mt-1.5 tracking-wide">――引力に逆らう軌道は、必ず乱れる。三つの力が拮抗するとき、宇宙はカオスを選ぶ。</p>
           <p class="text-xs text-slate-400 mt-1">ライン①②③④の引力・反発力と単騎(T)の浮遊を物理演算。力の拮抗が基準値を超えると軌道がカオス化。</p>
           <div class="mt-3 relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 h-44">
             <canvas id="gravityCanvas" class="w-full h-full block"></canvas>
@@ -766,6 +769,7 @@
             <span id="coupAlertBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-rose-200">下剋上スコア: --</span>
           </div>
           <h3 class="text-lg font-bold text-white mt-3">🎭 裏切りと下剋上インデックス</h3>
+          <p class="text-xs sm:text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 via-amber-200 to-rose-300 mt-1.5 tracking-wide">――忠誠の裏側で、刃は研がれている。番手が先頭を超える日、王朝は終わる。</p>
           <p class="text-xs text-slate-400 mt-1">ライン①②③④の「先頭」と「番手」の変換後印ギャップから、番手差し・ちぎれを検出。</p>
           <div id="lineDramaContainer" class="mt-4 space-y-2 max-h-40 overflow-y-auto"></div>
         </div>
@@ -782,6 +786,7 @@
             <span id="biasLevelBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-amber-200">重心偏り: --</span>
           </div>
           <h3 class="text-lg font-bold text-white mt-3">🧭 車番ポリゴン・重心シフト ＆ 出走印変換テーブル</h3>
+          <p class="text-xs sm:text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 mt-1.5 tracking-wide">――重心は嘘をつかない。偏った力場は、やがて自らの重さで崩れ落ちる。</p>
           <div class="mt-4 overflow-x-auto">
             <table class="w-full min-w-[560px] text-left border-collapse text-xs font-mono-code">
               <thead>
@@ -3389,8 +3394,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.40-20261120';
-    const APP_RELEASE_LABEL = '更新版 v3.40';
+    const APP_RELEASE_VERSION = '3.41-20261120';
+    const APP_RELEASE_LABEL = '更新版 v3.41';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
