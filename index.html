@@ -2965,6 +2965,8 @@
         race.autoTickets?.featureBaselineVersion !== FEATURE_POINT_BASELINE.version;
       const staleScheme = !resultKnown && !(race.autoTickets?.adaptivePointSnapshot && race.autoTickets.adaptivePointSnapshot.exa);
       if (!race.autoTickets || (!resultKnown && force) || staleUnresulted || staleScheme) race.autoTickets = buildRaceTickets(race);
+      // 厳選2車単は印・車番だけから決まる（結果・配当に触れない）ため、結果確定済みレースにも遡及で付与できる
+      if (race.autoTickets && !Array.isArray(race.autoTickets.selectExacta)) { try { race.autoTickets.selectExacta = buildSelectExacta(analyzeRace(race)); } catch (e) {} }
       return race.autoTickets;
     }
     function parseFinish(race) {
@@ -3066,15 +3068,16 @@
       if(vSummary)vSummary.textContent='期間指定の対象レースを会場ごとに集計（自動買い目全体・1点100円）。会場はレース名から判定。';
       const selTarget=document.getElementById('selectStatsRows');
       if(selTarget){
-        const selData=eligible.filter(r=>Array.isArray(r.autoTickets.selectExacta)&&Number(r.exactaPayout)>0);
-        const selHitOf=r=>r.autoTickets.selectExacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1]);
+        const selTicketsOf=r=>{ if(Array.isArray(r.autoTickets.selectExacta)) return r.autoTickets.selectExacta; try { return buildSelectExacta(analyzeRace(r)); } catch(e) { return []; } };
+        const selData=eligible.filter(r=>Number(r.exactaPayout)>0);
+        const selHitOf=r=>selTicketsOf(r).some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1]);
         const selHits=selData.filter(selHitOf).length;
-        const selInv=selData.reduce((s,r)=>s+r.autoTickets.selectExacta.length*100,0);
+        const selInv=selData.reduce((s,r)=>s+selTicketsOf(r).length*100,0);
         const selRet=selData.filter(selHitOf).reduce((s,r)=>s+Number(r.exactaPayout),0);
-        const selAvg=selData.length?selData.reduce((s,r)=>s+r.autoTickets.selectExacta.length,0)/selData.length:0;
+        const selAvg=selData.length?selData.reduce((s,r)=>s+selTicketsOf(r).length,0)/selData.length:0;
         selTarget.innerHTML='<tr class="border-b border-slate-800"><td class="py-2">'+selData.length+'</td><td>'+selHits+'</td><td>'+(selData.length?(selHits/selData.length*100).toFixed(2):'0.00')+'%</td><td>'+selAvg.toFixed(2)+'点</td><td>'+selInv.toLocaleString()+'円</td><td>'+(selInv?(selRet/selInv*100).toFixed(2):'0.00')+'%</td></tr>';
         const selSummary=document.getElementById('selectStatsSummary');
-        if(selSummary)selSummary.textContent='厳選2車単が生成されたレースのみ集計（期間指定は上の設定と共通・1点100円）。25,477R実測では的中25.6%・回収73.6%・平均1.86点。';
+        if(selSummary)selSummary.textContent='厳選2車単は印・車番のみで決まるため、結果確定済みレースも遡及計算して全レース集計（期間指定は上の設定と共通・1点100円）。25,477R実測では的中25.6%・回収73.6%・平均1.86点。';
       }
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
@@ -3169,7 +3172,7 @@
 
 
     const APP_RELEASE_VERSION = '3.21-20261119';
-    const APP_RELEASE_LABEL = '更新版 v3.27 · 厳選2車単と成績別表を追加';
+    const APP_RELEASE_LABEL = '更新版 v3.28 · 厳選2車単を結果済みレースにも遡及適用';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
