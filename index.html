@@ -180,6 +180,7 @@
       </div>
       <p id="patternBaselineNote" class="text-xs leading-relaxed text-slate-300">検証中...</p>
       <div id="chaosTierBanner" class="rounded-xl bg-rose-500/10 border border-rose-400/40 px-3 py-2 text-sm">荒れ度タイプ: --</div>
+      <div id="overlapBanner" class="rounded-xl bg-violet-500/10 border border-violet-400/40 px-3 py-2 text-sm mt-2">🤝被り予報: --</div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 2点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点 <span id="recExa" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
@@ -2958,6 +2959,16 @@
       return out;
     }
     // 荒れ度タイプ：印の散らばり（印のあるユニット数）・◎の足場・単騎数で判定するルールベースの4階層。25,477R実測で階層ごとに効く券種が違うため、買い目ラボでおすすめ表示に使う
+    const OVERLAP_FORECAST = { 'なし': { rate: 24.3, n: 597 }, 'B': { rate: 25.0, n: 72 }, 'Y': { rate: 26.3, n: 76 }, 'N': { rate: 30.9, n: 97 }, 'B+Y': { rate: 36.8, n: 19 }, 'Y+N': { rate: 43.6, n: 39 }, 'B+N': { rate: 48.1, n: 27 }, 'B+Y+N': { rate: 64.3, n: 14 } };
+    const OVERLAP_COUNT_RATE = { 2: 43.5, 3: 64.3 };
+    function overlapOf(r) {
+      const sites = [];
+      if (r.agreeB !== false) sites.push('B');
+      if (r.agreeY) sites.push('Y');
+      if (r.agreeN) sites.push('N');
+      const recorded = (r.agreeY !== undefined || r.agreeN !== undefined || r.agreeB !== undefined);
+      return { sites, key: sites.length ? sites.join('+') : 'なし', recorded };
+    }
     function chaosTierOf(res) {
       const groups = res.lineSummaryList || [];
       const marked = g => (g.members || []).some(m => ['◎', '◯', '△', '✕'].includes(m.rawMark));
@@ -3128,6 +3139,8 @@
           const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
           if (disp >= 60) badges += '<span class="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/60 text-rose-200 text-[11px] font-bold">🔥ここ熱い！</span>';
           if (chaosTierOf(res).tier === -1) badges += '<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/60 text-sky-200 text-[11px] font-bold">💎超堅</span>';
+          const ov = overlapOf(r);
+          if (ov.recorded && ov.sites.length >= 2) badges += '<span class="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/60 text-violet-200 text-[11px] font-bold">🤝' + ov.sites.length + 'サイト一致 ' + OVERLAP_COUNT_RATE[ov.sites.length] + '%</span>';
           if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
           if (sel.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選2車単あります！（' + sel.length + '点）</span>';
           badges += '<span class="text-[11px] text-slate-400">波乱度' + Math.round(disp) + '%</span>';
@@ -3167,6 +3180,12 @@
         if(banner)banner.innerHTML='<span class="font-bold text-rose-200">荒れ度タイプ: '+tierInfo.label+'</span> <span class="text-xs text-slate-300">（'+tierInfo.detail+'）</span>';
         const recMap={exa:'recExa',tri:'recTri',tro:'recTro',sExa:'recSExa',sTri:'recSTri'};
         Object.entries(recMap).forEach(([k,id])=>{ const el=document.getElementById(id); if(el)el.classList.toggle('hidden',!tierInfo.rec.includes(k)); });
+        const ovBanner=document.getElementById('overlapBanner');
+        if(ovBanner){ const ov=overlapOf(race); const fc=OVERLAP_FORECAST[ov.key];
+          if(!ov.recorded) ovBanner.innerHTML='<span class="font-bold text-violet-200">🤝被り予報</span> <span class="text-xs text-slate-300">Y/Nの予想チェックが未記録のレースです（取り込み時にチェックを入れると予報が出ます）</span>';
+          else if(ov.key==='なし') ovBanner.innerHTML='<span class="font-bold text-violet-200">🤝被り予報: どのサイトも予想なし</span> <span class="text-xs text-slate-300">過去の同じ条件では万車率'+fc.rate+'%（'+fc.n+'R）</span>';
+          else ovBanner.innerHTML='<span class="font-bold text-violet-200">🤝被り予報: '+ov.key+' 一致</span> <span class="text-xs text-slate-300">過去の同じ被り方では万車率'+fc.rate+'%（'+fc.n+'R）</span>';
+        }
       } catch(e) {}
       document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
@@ -3394,8 +3413,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.41-20261120';
-    const APP_RELEASE_LABEL = '更新版 v3.41';
+    const APP_RELEASE_VERSION = '3.42-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.42';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
