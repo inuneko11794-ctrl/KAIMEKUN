@@ -2905,7 +2905,7 @@
     }
     // 厳選2車単：1着候補セル×2着候補セル（印×車番）の組み合わせ。25,477R実測で選定し、年別（2024〜2026）でも的中25%台・回収71〜77%と安定した条件
     const SELECT_FIRST_CELLS = new Set(['◎×1','◎×2','◎×3','◎×4','◎×5','◎×7','◯×1','◯×2','◯×3','◯×4','◯×5','△×2','△×3','△×4','△×5']);
-    const SELECT_SECOND_CELLS = new Set(['◯×1','◯×2','◯×3','◯×4','◯×5','◯×7','◎×1','◎×2','◎×3','◎×4','◎×5','◎×7','△×1','△×2','△×3']);
+    const SELECT_SECOND_CELLS = new Set(['◯×1','◯×2','◯×3','◯×4','◯×5','◯×7','◯×9','◎×1','◎×2','◎×3','◎×4','◎×5','◎×7','△×1','△×2','△×3']);
     const SELECT_BAD_PAIRS = new Set(['◯×1→△×2','◯×4→△×1','◎×2→◯×3','△×3→▲×6']);
     // 保守スコア（回収率−標準誤差）で不調と判定した組み合わせ。合計11の組み合わせは温存、相手が8・9番車と5-6の組み合わせは除外
     const SELECT_EXA_CUT = new Set(['△×2→▲×3','△×2→▲×7','△×2→▲×8','△×2→▲×9','△×3→▲×1','△×3→▲×2','△×3→▲×5','△×3→▲×7','△×3→▲×8','△×4→▲×2','△×4→▲×3','△×4→▲×5','△×4→▲×6','△×4→▲×9','△×5→▲×1','△×5→▲×2','△×5→▲×4','△×5→▲×6','△×5→▲×8','△×5→▲×9','◎×4→△×1','◎×4→△×2','◎×5→△×2','◎×7→△×2','◎×7→△×3','◯×5→△×1','◯×5→△×3']);
@@ -2943,14 +2943,16 @@
       const { pairs, info } = selectRawPairs(res);
       const cars = Object.keys(info).map(Number);
       const out = [];
+      const bigField = cars.length >= 9;
       pairs.forEach(({ a, p, key, am, pm }) => {
         if (SELECT_TRI_CUT.has(key) || SELECT_TRI_BAD_CELL.has(key)) return;
         if (am + '→' + pm === '◎→△' || am + '→' + pm === '◯→△') return;
-        if (pm === '▲' && (p === 8 || p === 9)) return;
+        if (pm === '▲' && (p === 8 || (p === 9 && !bigField))) return;
+        if (pm === '◯' && p === 9) return;
         if ((a === 5 && p === 7) || (a === 7 && p === 5)) return;
         cars.forEach(x => {
           if (x === a || x === p) return;
-          if (x === 8 || x === 9) return;
+          if (x === 8 || (x === 9 && !bigField)) return;
           if (['T', '★', '⑳'].includes(info[x].conv)) return;
           if (a + p + x === 6) return;
           out.push([a, p, x]);
@@ -3413,8 +3415,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.42-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.42';
+    const APP_RELEASE_VERSION = '3.43-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.43';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
