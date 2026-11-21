@@ -763,7 +763,7 @@
             <div class="text-xs font-bold text-amber-200">車番差分比率 // LINE GAP RATIO</div>
             <span class="text-xs text-slate-400">分析・記録専用 / 予測点には未反映</span>
           </div>
-          <div id="lineGapCurrent" class="text-xs text-slate-200">ライン内の隣接車番差を計算します。</div>
+          <div id="lineGapCurrent" class="text-xs text-slate-200">ライン内の車番差分（間の差を足す累積方式）を計算します。</div>
           <div id="lineGapSignal" class="text-xs text-amber-200">注目条件：差分3が25〜50％、差分5が0〜25％</div>
           <div id="lineGapHistory" class="text-xs text-slate-300">過去の該当レースを集計します。</div>
         </div>
@@ -1073,14 +1073,18 @@
 
     // ライン初期並びの車番差分比率。ライン内の隣接車番のみを対象にする。
     function calculateLineGapRatio(race) {
+      // ライン内の全ペアについて、間の隣接差を足した累積差（例：差2＋差1＝差3）を数える
       const groups = Array.isArray(race?.lines) ? race.lines : [];
-      const counts = Array(7).fill(0);
+      const counts = Array(10).fill(0);
       let total = 0;
       groups.forEach(group => {
         const cars = (Array.isArray(group) ? group : []).map(v => Number(v)).filter(n => Number.isInteger(n) && n >= 1 && n <= 9);
-        for (let i = 0; i < cars.length - 1; i++) {
-          const gap = Math.abs(cars[i + 1] - cars[i]);
-          if (gap >= 1 && gap <= 6) { counts[gap]++; total++; }
+        for (let i = 0; i < cars.length; i++) {
+          let acc = 0;
+          for (let j = i + 1; j < cars.length; j++) {
+            acc += Math.abs(cars[j] - cars[j - 1]);
+            if (acc >= 1) { counts[Math.min(acc, 9)]++; total++; }
+          }
         }
       });
       const ratios = counts.map((n, gap) => gap === 0 ? 0 : (total ? n / total * 100 : 0));
@@ -1106,12 +1110,12 @@
       if (!el || !signal || !history) return;
       const x = calculateLineGapRatio(race);
       if (!x.total) {
-        el.textContent = 'ライン内の隣接車番差を算出できません。';
-        signal.textContent = '並び予想を入力すると差分1〜6の割合を表示します。';
+        el.textContent = 'ライン内の車番差分を算出できません。';
+        signal.textContent = '並び予想を入力すると差分1〜8・9+の割合を表示します。';
         history.textContent = '—';
         return;
       }
-      el.innerHTML = x.ratios.map((pct,i) => '<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">差分'+(i+1)+'：'+pct.toFixed(1)+'% ('+x.counts[i]+'件)</span>').join('');
+      el.innerHTML = x.ratios.map((pct,i) => '<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">差分'+(i<8?(i+1):'9+')+'：'+pct.toFixed(1)+'% ('+x.counts[i]+'件)</span>').join('');
       const isSignal = x.isSevenCarThreeLine && x.ratios[2] >= 25 && x.ratios[2] <= 50 && x.ratios[4] >= 0 && x.ratios[4] <= 25;
       signal.textContent = isSignal ? '注目条件に該当：差分3＝25〜50％ ＋ 差分5＝0〜25％' : '注目条件には非該当（7車・三分戦で判定）';
       const h = lineGapHistoryStats();
@@ -3530,8 +3534,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.53-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.53';
+    const APP_RELEASE_VERSION = '3.54-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.54';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
