@@ -165,7 +165,7 @@
 
 
     <section id="meetingListSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-3">
-      <div><div class="text-xs font-mono-code text-rose-300 font-bold">MEETING HOT LIST</div><h2 class="text-lg font-bold">同じ開催のレース一覧</h2><p class="text-xs text-slate-400">タップでそのレースへ移動。波乱度60%以上は「熱い」、厳選の買い目があるレースには印が付く。</p></div>
+      <div><div class="text-xs font-mono-code text-rose-300 font-bold">MEETING HOT LIST</div><h2 class="text-lg font-bold">同じ開催のレース一覧</h2><p class="text-xs text-slate-400">タップでそのレースへ移動。各レースに荒れ度タイプ（💎超堅・T0堅め・T1印集中・T2荒れ・T3荒れ強）を表示。厳選の買い目があるレースには印が付く。</p></div>
       <div id="meetingListPanel" class="space-y-2"></div>
     </section>
 
@@ -3247,8 +3247,7 @@
           const disp = toDisplayProb(predictUpsetForRace(r.id, res, dna));
           const sel = Array.isArray(r.autoTickets && r.autoTickets.selectExacta) ? r.autoTickets.selectExacta : buildSelectExacta(res);
           const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
-          if (!res.isGirlsRace && disp >= 60) badges += '<span class="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/60 text-rose-200 text-[11px] font-bold">🔥ここ熱い！</span>';
-          if (!res.isGirlsRace && chaosTierOf(res).tier === -1) badges += '<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/60 text-sky-200 text-[11px] font-bold">💎超堅</span>';
+          if (!res.isGirlsRace) { const ct = chaosTierOf(res); const cc = ct.tier === -1 ? 'bg-sky-500/15 border-sky-400/60 text-sky-200' : ct.tier === 0 ? 'bg-emerald-500/15 border-emerald-400/60 text-emerald-200' : ct.tier === 1 ? 'bg-amber-500/15 border-amber-400/60 text-amber-200' : ct.tier === 2 ? 'bg-orange-500/15 border-orange-400/60 text-orange-200' : 'bg-rose-500/20 border-rose-400/60 text-rose-200'; badges += '<span class="px-2 py-0.5 rounded-full border ' + cc + ' text-[11px] font-bold">' + ct.label + '</span>'; }
           const ov = overlapOf(r);
           if (ov.recorded && ov.sites.length >= 2) badges += '<span class="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/60 text-violet-200 text-[11px] font-bold">🤝' + ov.sites.length + 'サイト一致 ' + OVERLAP_COUNT_RATE[ov.sites.length] + '%</span>';
           if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
@@ -3548,7 +3547,7 @@
 
 
     const APP_RELEASE_VERSION = '3.55-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.57';
+    const APP_RELEASE_LABEL = '更新版 v3.58';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
