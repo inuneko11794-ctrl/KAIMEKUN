@@ -3157,6 +3157,18 @@
       } catch (e) {}
       // 単勝は最終買い目（本線2車単・3連単）の1着候補から作る：サイトが実際に1着で買っている車が単勝の顔ぶれになる
       try {
+        // ライン①が2車ラインで◯◎（先頭◯・番手◎）のレースは、2車単をペア両方向2点に絞る（6/7車・4車以上ラインなし）。
+        // 根拠（25,477R検証）: 対象522Rで現行7.92点・的中53.1%・回収66.8%に対し、ペア2点は的中41.4%・回収81.8%（最大1件除き79.6%）。
+        try {
+          if (res.entries.length >= 6 && res.entries.length <= 7 && !(res.lineSummaryList || []).some(l => (l.members || []).length >= 4)) {
+            const firstMulti = (res.lineSummaryList || []).find(l => (l.members || []).length >= 2);
+            if (firstMulti && firstMulti.members.length === 2 && firstMulti.members[0].convertedMark === '◯' && firstMulti.members[1].convertedMark === '◎') {
+              const a = Number(firstMulti.members[0].car), b = Number(firstMulti.members[1].car);
+              exacta.length = 0;
+              exacta.push([a, b], [b, a]);
+            }
+          }
+        } catch (e) {}
         const axisFirsts=new Set([...exacta,...selected].map(t=>Number(t[0])));
         const axes=cars.filter(c=>axisFirsts.has(c));
         const rest=cars.filter(c=>!axisFirsts.has(c));
@@ -3536,7 +3548,7 @@
 
 
     const APP_RELEASE_VERSION = '3.55-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.56';
+    const APP_RELEASE_LABEL = '更新版 v3.57';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
