@@ -2391,7 +2391,7 @@
       const sel = document.getElementById('raceSelector'), limit = allRaces.length;
       sel.innerHTML = '';
       for (let i = 0; i < limit; i++) {
-        const opt = document.createElement('option'); opt.value = i; opt.textContent = `[${i + 1}/${allRaces.length}] ${allRaces[i].id}`; sel.appendChild(opt);
+        const opt = document.createElement('option'); opt.value = i; const r0 = allRaces[i]; const dateTxt = r0.eventDate ? `（開催 ${r0.eventDate}）` : (r0.dataEntryDate ? `（入力 ${r0.dataEntryDate}）` : ''); opt.textContent = `[${i + 1}/${allRaces.length}] ${r0.id}${dateTxt}`; sel.appendChild(opt);
       }
       sel.value = currentRaceIdx;
       if (typeof applyRaceSearch === 'function') applyRaceSearch();
@@ -3510,8 +3510,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.50-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.50';
+    const APP_RELEASE_VERSION = '3.51-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.51';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
