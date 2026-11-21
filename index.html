@@ -3107,7 +3107,7 @@
       const selectExacta=buildSelectExacta(res);
       const selectTrifecta=buildSelectTrifecta(res);
       if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],selectExacta,selectTrifecta,rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
-      const win=(()=>{const top2=cars.slice(0,2);const axisFirsts=new Set([...pattern.exacta,...pattern.trifecta].map(x=>Number(x.ticket[0])));const extra=cars.find(c=>!top2.includes(c)&&axisFirsts.has(c));const third=extra!==undefined?extra:cars[2];return third!==undefined?[...top2,third]:top2;})();
+      let win=cars.slice(0,3);
       const exacta=pattern.exacta.map(x=>x.ticket);
       const selected=pattern.trifecta.map(x=>x.ticket);
       const reasonByKey=new Map(pattern.exacta.concat(pattern.trifecta).map(x=>[x.key,x.reason]));
@@ -3138,6 +3138,26 @@
             if (t && !exacta.some(x => x.join('-') === t.join('-'))) exacta.push(t);
           }
         });
+      } catch (e) {}
+      // 荒れ帯（表示60以上）では「2着に△✕☆が来る形」の2車単を足す。従来の本線はこの形を構造的に買っておらず、
+      // 荒れ帯でのみ単体回収が立つ（◯→✕82%・✕→◯79%・◎→☆78%・◯→△76%・△→◯74%、堅め帯では62〜67%に落ちる）
+      try {
+        const dispProb2 = toDisplayProb(predictUpset(extractFeatures(res, getDnaFreqMapCached())));
+        if (dispProb2 >= 60) {
+          const carByMark2 = {};
+          (res.entries || []).forEach(e => { if (e.mark && !(e.mark in carByMark2)) carByMark2[e.mark] = Number(e.car); });
+          [['◯', '✕'], ['✕', '◯'], ['◎', '☆'], ['◯', '△'], ['△', '◯']].forEach(([a, b]) => {
+            const c1 = carByMark2[a], c2 = carByMark2[b];
+            if (c1 && c2 && c1 !== c2) { const t = [c1, c2]; if (!exacta.some(x => x.join('-') === t.join('-'))) exacta.push(t); }
+          });
+        }
+      } catch (e) {}
+      // 単勝は最終買い目（本線2車単・3連単）の1着候補から作る：サイトが実際に1着で買っている車が単勝の顔ぶれになる
+      try {
+        const axisFirsts=new Set([...exacta,...selected].map(t=>Number(t[0])));
+        const axes=cars.filter(c=>axisFirsts.has(c));
+        const rest=cars.filter(c=>!axisFirsts.has(c));
+        if (axes.length) win=[...axes,...rest].slice(0,3);
       } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
@@ -3510,8 +3530,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.52-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.52';
+    const APP_RELEASE_VERSION = '3.53-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.53';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
