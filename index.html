@@ -1204,6 +1204,31 @@
       trainedSamples: 0,
       accuracy: null
     };
+    // 波乱度モデルの保存（v3.61）: 学習・キャリブレーション結果を端末に残し、再読み込み後も継続する
+    const AI_MODEL_KEY = 'kaimekun_ai_model_v1';
+    function saveAiModel(){try{localStorage.setItem(AI_MODEL_KEY,JSON.stringify({weights:aiModel.weights,bias:aiModel.bias,epochs:aiModel.epochs,trainedSamples:aiModel.trainedSamples,accuracy:aiModel.accuracy,trainedWithPayout:!!aiModel.trainedWithPayout,calibrated:!!aiModel.calibrated}));}catch(e){}}
+    function applyAiModel(saved){
+      if (!saved || !Array.isArray(saved.weights) || !saved.weights.length || !saved.weights.every(w => isFinite(Number(w))) || !isFinite(Number(saved.bias))) return false;
+      aiModel.weights = saved.weights.map(Number);
+      aiModel.bias = Number(saved.bias);
+      aiModel.epochs = Number(saved.epochs) || 0;
+      aiModel.trainedSamples = Number(saved.trainedSamples) || 0;
+      aiModel.accuracy = (saved.accuracy === null || saved.accuracy === undefined) ? null : saved.accuracy;
+      aiModel.trainedWithPayout = !!saved.trainedWithPayout;
+      aiModel.calibrated = !!saved.calibrated;
+      return true;
+    }
+    (function loadAiModel(){
+      try {
+        const saved = JSON.parse(localStorage.getItem(AI_MODEL_KEY) || 'null');
+        if (saved && applyAiModel(saved)) {
+          const el = document.getElementById('aiModelStatus');
+          if (el) el.textContent = aiModel.trainedWithPayout
+            ? `状態: 実配当データ学習済 (正答率 ${aiModel.accuracy}%)`
+            : (aiModel.calibrated ? '状態: 実績率キャリブレーション済（保存済み）' : '状態: 学習済みモデルを復元しました');
+        }
+      } catch(e) {}
+    })();
 
     function extractFeatures(res, dnaFreqMap) {
       const f1 = Math.min(1.5, res.dissonance / (activeBaseline.dissonanceMean * 1.5 || 6.0));
@@ -1323,6 +1348,8 @@
       aiModel.trainedSamples = dataset.length;
       aiModel.accuracy = ((correct / dataset.length) * 100).toFixed(1);
 
+      aiModel.trainedWithPayout = useRealPayout;
+      saveAiModel();
       document.getElementById('aiModelStatus').textContent = useRealPayout
         ? `状態: 実配当データ学習済 (正答率 ${aiModel.accuracy}%)`
         : `状態: 基準値キャリブレーション学習済 (${dataset.length}R)`;
@@ -1347,6 +1374,8 @@
         let dot = 0;
         for (let i = 0; i < typicalManshaVec.length; i++) dot += typicalManshaVec[i] * (aiModel.weights[i] || 0);
         aiModel.bias = +(targetLogit - dot).toFixed(4);
+        aiModel.calibrated = true;
+        saveAiModel();
         document.getElementById('manshaValidationStats').innerHTML =
           `万車券典型プロファイル判定: <strong class="text-emerald-300">49.5%</strong> ｜ 配当付きCSV読込で実データ再計算可能`;
         if (!silent) showToast('🎯 波乱度を実績発生率にキャリブレーションしました！');
@@ -1385,6 +1414,8 @@
         ? (normalFeats.reduce((s, f) => s + predictUpset(f), 0) / normalFeats.length) * 100
         : 0;
 
+      aiModel.calibrated = true;
+      saveAiModel();
       document.getElementById('aiModelStatus').textContent =
         `状態: 実績率キャリブレーション済 (万車券 ${manshaItems.length}R)`;
       document.getElementById('manshaValidationStats').innerHTML =
@@ -2520,7 +2551,7 @@
     });
 
     document.getElementById('exportBackupJsonBtn').addEventListener('click', () => {
-      const backup = { app: 'KAIMEKUN', formatVersion: 2, exportedAt: new Date().toISOString(), adaptiveReasonPoints, races: allRaces };
+      const backup = { app: 'KAIMEKUN', formatVersion: 2, exportedAt: new Date().toISOString(), adaptiveReasonPoints, aiModel: { weights: aiModel.weights, bias: aiModel.bias, epochs: aiModel.epochs, trainedSamples: aiModel.trainedSamples, accuracy: aiModel.accuracy, trainedWithPayout: !!aiModel.trainedWithPayout, calibrated: !!aiModel.calibrated }, races: allRaces };
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob), a = document.createElement('a');
       a.href = url; a.download = `KAIMEKUN_backup_${new Date().toISOString().slice(0,10)}.json`;
@@ -2552,6 +2583,7 @@
             else { const base = clampAdaptiveSet(ap); adaptiveReasonPoints = { exa: {...base}, tri: {...base} }; }
             saveAdaptivePoints();
           }
+          if (parsed && parsed.aiModel && applyAiModel(parsed.aiModel)) saveAiModel();
           currentRaceIdx = 0;
           if (!persistRaces()) throw new Error('端末への保存に失敗しました');
           populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList();
@@ -3570,8 +3602,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.55-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.60';
+    const APP_RELEASE_VERSION = '3.61-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.61';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
