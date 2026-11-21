@@ -1657,7 +1657,12 @@
       const rows = document.getElementById('instantResultEntryRows');
       if (!pendingInstantMdRaces.length) { area.classList.add('hidden'); rows.innerHTML = ''; return; }
       area.classList.remove('hidden');
-      rows.innerHTML = pendingInstantMdRaces.map((race, idx) => `
+      rows.innerHTML = (pendingInstantMdRaces.length > 1 ? `
+        <div class="rounded-lg border border-cyan-500/40 bg-cyan-950/40 p-3 flex flex-wrap items-end gap-2">
+          <label class="text-xs text-cyan-200">開催日を一括入力<input id="instantBulkEventDate" type="date" class="block mt-1 bg-slate-900 border border-cyan-500/50 rounded-lg px-2 py-2 text-xs text-white"></label>
+          <button id="applyBulkEventDateBtn" type="button" class="px-3 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/50 text-xs text-cyan-100">全レースに適用</button>
+          <span class="text-[11px] text-slate-400">全レースの開催日をこの日付にそろえます（個別の修正は下の各カードで）</span>
+        </div>` : '') + pendingInstantMdRaces.map((race, idx) => `
         <div class="rounded-lg border border-slate-700 bg-slate-950/70 p-3 space-y-2">
           <div class="text-xs font-bold text-cyan-200">${idx + 1}. ${String(race.id || 'レース').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>
           <div class="grid grid-cols-2 gap-2">
@@ -1684,6 +1689,14 @@
         if (!pendingInstantMdRaces[idx]) return;
         pendingInstantMdRaces[idx][key] = !!input.checked;
       }));
+      const bulkBtn = document.getElementById('applyBulkEventDateBtn');
+      if (bulkBtn) bulkBtn.addEventListener('click', () => {
+        const v = document.getElementById('instantBulkEventDate').value;
+        if (!v) { showToast('日付を選んでください'); return; }
+        pendingInstantMdRaces.forEach(r => { r.eventDate = v; });
+        rows.querySelectorAll('[data-md-field="eventDate"]').forEach(inp => { inp.value = v; });
+        showToast(`開催日を全${pendingInstantMdRaces.length}レースに適用しました`);
+      });
     }
     document.getElementById('chooseInstantMdFileBtn').addEventListener('click', () => {
       document.getElementById('instantMdFileInput').click();
@@ -3558,7 +3571,7 @@
 
 
     const APP_RELEASE_VERSION = '3.55-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.59';
+    const APP_RELEASE_LABEL = '更新版 v3.60';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
