@@ -1827,7 +1827,7 @@
       document.querySelectorAll('.stock-race-item').forEach(el => {
         el.addEventListener('click', () => {
           currentRaceIdx = parseInt(el.dataset.idx, 10);
-          if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
+          document.getElementById('raceSelector').value = currentRaceIdx;
           renderCurrentRace();
           refreshVerticalStockList();
         });
@@ -1889,7 +1889,7 @@
       document.querySelectorAll('.jump-tier-race-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           currentRaceIdx = parseInt(btn.dataset.jumpIdx, 10);
-          if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
+          document.getElementById('raceSelector').value = currentRaceIdx;
           renderCurrentRace();
           refreshVerticalStockList();
           showToast(`🔍 配当レンジ代表レース「${allRaces[currentRaceIdx].id}」を表示しました！`);
@@ -2388,7 +2388,7 @@
     }
 
     function populateRaceSelector() {
-      const sel = document.getElementById('raceSelector'), limit = Math.min(allRaces.length, 500);
+      const sel = document.getElementById('raceSelector'), limit = allRaces.length;
       sel.innerHTML = '';
       for (let i = 0; i < limit; i++) {
         const opt = document.createElement('option'); opt.value = i; opt.textContent = `[${i + 1}/${allRaces.length}] ${allRaces[i].id}`; sel.appendChild(opt);
@@ -3225,7 +3225,7 @@
       }).join('');
       panel.querySelectorAll('[data-meeting-idx]').forEach(el => el.addEventListener('click', () => {
         currentRaceIdx = parseInt(el.dataset.meetingIdx, 10);
-        if (currentRaceIdx < 500) document.getElementById('raceSelector').value = currentRaceIdx;
+        document.getElementById('raceSelector').value = currentRaceIdx;
         renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }));
@@ -3510,8 +3510,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.49-20261121';
-    const APP_RELEASE_LABEL = '更新版 v3.49';
+    const APP_RELEASE_VERSION = '3.50-20261121';
+    const APP_RELEASE_LABEL = '更新版 v3.50';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
