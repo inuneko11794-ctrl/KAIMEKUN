@@ -723,7 +723,7 @@
           <div class="flex flex-wrap items-center gap-2">
             <button id="playSonificationBtn" class="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition">🔊 単発再生</button>
             <button id="loopBgmBtn" class="px-3.5 py-2 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white font-bold text-xs border border-purple-400/40 shadow-lg transition">🔁 演奏ループ: OFF</button>
-            <button id="pitchModeBtn" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-200 font-bold text-xs border border-cyan-400/40 transition">🎵 音程: 車番</button>
+            <button id="pitchModeBtn" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-200 font-bold text-xs border border-cyan-400/40 transition">🎵 音程: 落差メロディ</button>
             <button id="exportWavBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-400/40 transition ml-auto">💾 曲をWAV保存</button>
           </div>
         </div>
@@ -2366,22 +2366,28 @@
     }
 
     let audioCtx = null;
-    let sonifPitchMode = 'car'; // 'car'=車番で音程 / 'order'=並び順に音階を登る
+    let sonifPitchMode = 'diff'; // 本命は 'diff'=落差メロディ（前の車との強さの差で音程が上下） / 'car'=車番 / 'order'=並び順に音階
     function scheduleRaceTrack(ctx, destNode, startTime, race, res) {
       // 並び順に演奏する：ラインごとに区切り、単騎の前は間を空ける。車番→音程（ドレミ）、変換後印→音色・強さ・長さ。
       const BASE = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33];
       const stepSec = 0.22;
       let t = startTime;
       const groups = (res.lineSummaryList && res.lineSummaryList.length) ? res.lineSummaryList : res.entries.map(e => ({ isTanki: e.isTanki, members: [e] }));
-      let posIdx = 0;
+      let posIdx = 0, curMidi = 69, prevScore = null;
       groups.forEach((g, gi) => {
         if (gi > 0) t += g.isTanki ? 0.30 : 0.12;
         (g.members || []).forEach(m => {
           const e = res.entries.find(x => Number(x.car) === Number(m.car));
           const cm = e ? e.mark : (m.convertedMark || '無');
           const sc = getScore(cm);
-          let freq = sonifPitchMode === 'order' ? BASE[posIdx % 9] : BASE[(Number(m.car) - 1) % 9];
-          posIdx++;
+          let freq;
+          if (sonifPitchMode === 'diff') {
+            if (prevScore !== null) curMidi += Math.round((sc - prevScore) * 2);
+            curMidi = Math.max(45, Math.min(88, curMidi));
+            freq = 440 * Math.pow(2, (curMidi - 69) / 12);
+          } else if (sonifPitchMode === 'order') { freq = BASE[posIdx % 9]; }
+          else { freq = BASE[(Number(m.car) - 1) % 9]; }
+          prevScore = sc; posIdx++;
           let type = 'sine', peak = Math.min(0.16, 0.05 + sc * 0.025), dur = 0.34;
           if (cm === '◎') { freq *= 2; type = 'triangle'; peak = 0.24; dur = 0.44; }
           else if (cm === '◯') { type = 'triangle'; peak = 0.20; }
@@ -2852,8 +2858,10 @@
     }
     const pitchModeBtnEl = document.getElementById('pitchModeBtn');
     if (pitchModeBtnEl) pitchModeBtnEl.addEventListener('click', () => {
-      sonifPitchMode = sonifPitchMode === 'car' ? 'order' : 'car';
-      pitchModeBtnEl.textContent = sonifPitchMode === 'car' ? '🎵 音程: 車番' : '🎵 音程: 並び順（音階）';
+      const order = ['diff', 'car', 'order'];
+      const labels = { diff: '🎵 音程: 落差メロディ', car: '🎵 音程: 車番', order: '🎵 音程: 並び順（音階）' };
+      sonifPitchMode = order[(order.indexOf(sonifPitchMode) + 1) % order.length];
+      pitchModeBtnEl.textContent = labels[sonifPitchMode];
     });
     document.getElementById('playSonificationBtn').addEventListener('click', async () => {
       try { await playSonificationOnce(); }
@@ -3776,8 +3784,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.75-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.75';
+    const APP_RELEASE_VERSION = '3.76-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.76';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
