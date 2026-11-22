@@ -2435,8 +2435,10 @@
         };
       });
       if (gravityAnimId) cancelAnimationFrame(gravityAnimId);
-      // 計測: 同じライン内の車番ペア同士が重なった回数を1200ステップ数える（他のラインの車は数えない）
+      // 計測: 同じライン内の車番ペア同士が重なった「回数」を1200ステップ数える。
+      // 数え方: くっついたら1回、離れたら終了、またくっついたら次の1回（接触が続く長さは数えない・他のラインの車は数えない）
       const overlapCounts = new Map();
+      const overlapContact = new Set();
       let stepCount = 0;
       const wallEl = document.getElementById('lineOverlapCount');
       if (wallEl) wallEl.textContent = '0';
@@ -2450,7 +2452,11 @@
               ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'; ctx.stroke();
               if (dist > 36) { p1.vx += (dx / dist) * 0.04 * p2.w / p1.w; p1.vy += (dy / dist) * 0.04 * p2.w / p1.w; p2.vx -= (dx / dist) * 0.04 * p1.w / p2.w; p2.vy -= (dy / dist) * 0.04 * p1.w / p2.w; }
             } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08 * p2.w / p1.w; p1.vy -= (dy / dist) * 0.08 * p2.w / p1.w; p2.vx += (dx / dist) * 0.08 * p1.w / p2.w; p2.vy += (dy / dist) * 0.08 * p1.w / p2.w; }
-            if (p1.lineIdx >= 0 && p1.lineIdx === p2.lineIdx && dist < p1.radius + p2.radius) { const k = i * 16 + j; overlapCounts.set(k, (overlapCounts.get(k) || 0) + 1); }
+            if (p1.lineIdx >= 0 && p1.lineIdx === p2.lineIdx) {
+              const k = i * 16 + j;
+              if (dist < p1.radius + p2.radius) { if (!overlapContact.has(k)) { overlapContact.add(k); overlapCounts.set(k, (overlapCounts.get(k) || 0) + 1); } }
+              else overlapContact.delete(k);
+            }
           }
         }
         let cx = 0, cy = 0;
@@ -3790,8 +3796,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.80-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.80';
+    const APP_RELEASE_VERSION = '3.81-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.81';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
