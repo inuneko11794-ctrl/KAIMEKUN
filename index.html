@@ -743,10 +743,10 @@
           </div>
         </div>
         <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
-          <span>※ライン①②③④は青線で結束 / 単騎(T)は独立浮遊 ｜ 壁衝突 <span id="wallHitCount" class="text-purple-200 font-bold">0</span>回 ・ 伸び縮み <span id="spreadCycleCount" class="text-purple-200 font-bold">0</span>回（固定配置・1200ステップ計測）</span>
+          <span>※ライン①②③④は青線で結束 / 単騎(T)は独立浮遊 ｜ ライン重なり <span id="lineOverlapCount" class="text-purple-200 font-bold">0</span>組 ・ 伸び縮み <span id="spreadCycleCount" class="text-purple-200 font-bold">0</span>回（固定配置・1200ステップ計測）</span>
           <button id="resetGravityBtn" class="text-purple-300 hover:underline font-mono-code">↻ 再シミュレーション</button>
         </div>
-        <div class="mt-1 text-xs text-slate-400">壁衝突（車番別）: <span id="wallHitByCar" class="text-slate-300">--</span></div>
+        <div class="mt-1 text-xs text-slate-400">ライン重なり（ペア）: <span id="lineOverlapPairs" class="text-slate-300">--</span></div>
       </article>
 
       <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
@@ -2428,17 +2428,18 @@
         const ang = (2 * Math.PI * i) / nP - Math.PI / 2;
         return {
           car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
-          radius: 5 + res.scores[i] * 2.2, wallHits: 0, w: res.scores[i] / meanScore,
+          radius: 5 + res.scores[i] * 2.2, w: res.scores[i] / meanScore,
           x: canvas.width / 2 + 8 * Math.cos(ang), y: canvas.height / 2 + 8 * Math.sin(ang),
           vx: Math.cos(ang) * (0.6 + res.scores[i] * 0.25), vy: Math.sin(ang) * (0.6 + res.scores[i] * 0.25),
           color: CAR_COLORS[(e.car - 1) % 9]
         };
       });
       if (gravityAnimId) cancelAnimationFrame(gravityAnimId);
-      // 計測: 壁衝突回数と、系の広がり（重心からのRMS距離）の伸び縮み回数を1200ステップ数える
-      let wallHits = 0, spreadCycles = 0, stepCount = 0;
+      // 計測: 異なるライン同士が重なったペアと、系の広がり（重心からのRMS距離）の伸び縮み回数を1200ステップ数える
+      const overlapPairs = new Set();
+      let spreadCycles = 0, stepCount = 0;
       let spreadDir = 0, spreadPeak = null, spreadTrough = null;
-      const wallEl = document.getElementById('wallHitCount'), cycEl = document.getElementById('spreadCycleCount');
+      const wallEl = document.getElementById('lineOverlapCount'), cycEl = document.getElementById('spreadCycleCount');
       if (wallEl) wallEl.textContent = '0';
       if (cycEl) cycEl.textContent = '0';
       function loop() {
@@ -2451,15 +2452,16 @@
               ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'; ctx.stroke();
               if (dist > 36) { p1.vx += (dx / dist) * 0.04 * p2.w / p1.w; p1.vy += (dy / dist) * 0.04 * p2.w / p1.w; p2.vx -= (dx / dist) * 0.04 * p1.w / p2.w; p2.vy -= (dy / dist) * 0.04 * p1.w / p2.w; }
             } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08 * p2.w / p1.w; p1.vy -= (dy / dist) * 0.08 * p2.w / p1.w; p2.vx += (dx / dist) * 0.08 * p1.w / p2.w; p2.vy += (dy / dist) * 0.08 * p1.w / p2.w; }
+            if (p1.lineIdx !== p2.lineIdx && dist < p1.radius + p2.radius) overlapPairs.add(i * 16 + j);
           }
         }
         let cx = 0, cy = 0;
         gravityParticles.forEach(p => {
           p.x += p.vx; p.y += p.vy; p.vx *= 0.998; p.vy *= 0.998;
-          if (p.x < p.radius) { p.x = p.radius; p.vx *= -1; wallHits++; p.wallHits++; }
-          else if (p.x > canvas.width - p.radius) { p.x = canvas.width - p.radius; p.vx *= -1; wallHits++; p.wallHits++; }
-          if (p.y < p.radius) { p.y = p.radius; p.vy *= -1; wallHits++; p.wallHits++; }
-          else if (p.y > canvas.height - p.radius) { p.y = canvas.height - p.radius; p.vy *= -1; wallHits++; p.wallHits++; }
+          if (p.x < p.radius) { p.x = p.radius; p.vx *= -1; }
+          else if (p.x > canvas.width - p.radius) { p.x = canvas.width - p.radius; p.vx *= -1; }
+          if (p.y < p.radius) { p.y = p.radius; p.vy *= -1; }
+          else if (p.y > canvas.height - p.radius) { p.y = canvas.height - p.radius; p.vy *= -1; }
           cx += p.x; cy += p.y;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
           ctx.fillStyle = [1, 5].includes(p.car) ? '#0f172a' : '#ffffff'; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.car, p.x, p.y);
@@ -2471,10 +2473,10 @@
         if (spreadDir <= 0) { spreadTrough = Math.min(spreadTrough, spread); if (spread - spreadTrough > 2) { spreadCycles++; spreadDir = 1; spreadPeak = spread; } }
         stepCount++;
         if (stepCount % 30 === 0 || stepCount >= 1200) {
-          if (wallEl) wallEl.textContent = String(wallHits);
+          if (wallEl) wallEl.textContent = String(overlapPairs.size);
           if (cycEl) cycEl.textContent = String(spreadCycles);
-          const byCarEl = document.getElementById('wallHitByCar');
-          if (byCarEl) byCarEl.textContent = [...gravityParticles].sort((a, b) => b.wallHits - a.wallHits).map(p => p.car + '番' + p.wallHits + '回').join(' ・ ');
+          const pairsEl = document.getElementById('lineOverlapPairs');
+          if (pairsEl) pairsEl.textContent = overlapPairs.size ? [...overlapPairs].map(k => gravityParticles[Math.floor(k / 16)].car + '-' + gravityParticles[k % 16].car + '番').join(' ・ ') : 'なし';
         }
         if (stepCount < 1200) gravityAnimId = requestAnimationFrame(loop);
       }
@@ -3784,8 +3786,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.76-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.76';
+    const APP_RELEASE_VERSION = '3.77-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.77';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
