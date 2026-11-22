@@ -744,6 +744,7 @@
           <span>※ライン①②③④は青線で結束 / 単騎(T)は独立浮遊 ｜ 壁衝突 <span id="wallHitCount" class="text-purple-200 font-bold">0</span>回 ・ 伸び縮み <span id="spreadCycleCount" class="text-purple-200 font-bold">0</span>回（固定配置・1200ステップ計測）</span>
           <button id="resetGravityBtn" class="text-purple-300 hover:underline font-mono-code">↻ 再シミュレーション</button>
         </div>
+        <div class="mt-1 text-xs text-slate-400">壁衝突（車番別）: <span id="wallHitByCar" class="text-slate-300">--</span></div>
       </article>
 
       <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
@@ -2376,15 +2377,15 @@
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('gravityCanvas の2D描画コンテキストを取得できません');
       canvas.width = width; canvas.height = height;
-      // 固定配置（v3.66）: 並び順に楕円配置し、初速は理論スコアから決める。同じレースは毎回同じ軌道になる
+      // 固定配置（v3.69）: 全車を中心の1点に集め、初速は理論スコアで放射状に飛び出して始める。同じレースは毎回同じ軌道になる
       const nP = res.entries.length;
       gravityParticles = res.entries.map((e, i) => {
         const ang = (2 * Math.PI * i) / nP - Math.PI / 2;
         return {
           car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
-          radius: 7 + res.scores[i] * 1.6,
-          x: canvas.width / 2 + canvas.width * 0.30 * Math.cos(ang), y: canvas.height / 2 + canvas.height * 0.30 * Math.sin(ang),
-          vx: -Math.sin(ang) * (0.6 + res.scores[i] * 0.25), vy: Math.cos(ang) * (0.6 + res.scores[i] * 0.25),
+          radius: 7 + res.scores[i] * 1.6, wallHits: 0,
+          x: canvas.width / 2 + 8 * Math.cos(ang), y: canvas.height / 2 + 8 * Math.sin(ang),
+          vx: Math.cos(ang) * (0.6 + res.scores[i] * 0.25), vy: Math.sin(ang) * (0.6 + res.scores[i] * 0.25),
           color: CAR_COLORS[(e.car - 1) % 9]
         };
       });
@@ -2410,10 +2411,10 @@
         let cx = 0, cy = 0;
         gravityParticles.forEach(p => {
           p.x += p.vx; p.y += p.vy; p.vx *= 0.998; p.vy *= 0.998;
-          if (p.x < p.radius) { p.x = p.radius; p.vx *= -1; wallHits++; }
-          else if (p.x > canvas.width - p.radius) { p.x = canvas.width - p.radius; p.vx *= -1; wallHits++; }
-          if (p.y < p.radius) { p.y = p.radius; p.vy *= -1; wallHits++; }
-          else if (p.y > canvas.height - p.radius) { p.y = canvas.height - p.radius; p.vy *= -1; wallHits++; }
+          if (p.x < p.radius) { p.x = p.radius; p.vx *= -1; wallHits++; p.wallHits++; }
+          else if (p.x > canvas.width - p.radius) { p.x = canvas.width - p.radius; p.vx *= -1; wallHits++; p.wallHits++; }
+          if (p.y < p.radius) { p.y = p.radius; p.vy *= -1; wallHits++; p.wallHits++; }
+          else if (p.y > canvas.height - p.radius) { p.y = canvas.height - p.radius; p.vy *= -1; wallHits++; p.wallHits++; }
           cx += p.x; cy += p.y;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
           ctx.fillStyle = [1, 5].includes(p.car) ? '#0f172a' : '#ffffff'; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.car, p.x, p.y);
@@ -2427,6 +2428,8 @@
         if (stepCount % 30 === 0 || stepCount >= 1200) {
           if (wallEl) wallEl.textContent = String(wallHits);
           if (cycEl) cycEl.textContent = String(spreadCycles);
+          const byCarEl = document.getElementById('wallHitByCar');
+          if (byCarEl) byCarEl.textContent = [...gravityParticles].sort((a, b) => b.wallHits - a.wallHits).map(p => p.car + '番' + p.wallHits + '回').join(' ・ ');
         }
         if (stepCount < 1200) gravityAnimId = requestAnimationFrame(loop);
       }
@@ -3704,8 +3707,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.68-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.68';
+    const APP_RELEASE_VERSION = '3.69-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.69';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
