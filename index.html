@@ -3569,9 +3569,9 @@
           const bestRoi=valid.length?Math.max(...valid.map(x=>x.c.roi)):0;
           const rowHtml=x=>{
             const best=x.c.n&&x.c.roi===bestRoi&&bestRoi>0;
-            return '<div class="flex items-center justify-between gap-2 py-1 '+(best?'bg-amber-500/10 rounded px-1 -mx-1':'')+'"><span class="'+(best?'font-bold text-amber-200':'text-slate-300')+'">'+x.label+(best?' ★':'')+'</span><span class="font-mono-code">'+(x.c.n?('的中 '+x.c.rate.toFixed(1)+'% ・ 回収 '+x.c.roi.toFixed(1)+'%'):'—')+'</span></div>';
+            return '<div class="rounded px-2 py-1.5 '+(best?'bg-amber-500/15 border border-amber-400/40':'bg-slate-950/60 border border-slate-800')+'"><div class="text-[11px] '+(best?'font-bold text-amber-200':'text-slate-300')+'">'+x.label+(best?' ★':'')+'</div>'+(x.c.n?'<div class="font-mono-code text-[11px] text-slate-200">的中 '+x.c.rate.toFixed(1)+'%</div><div class="font-mono-code text-[11px] text-slate-200">回収 '+x.c.roi.toFixed(1)+'%</div>':'<div class="font-mono-code text-[11px] text-slate-500">—</div>')+'</div>';
           };
-          return '<div class="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2"><div class="flex items-center justify-between gap-2 border-b border-slate-700 pb-1 mb-1"><span class="font-bold text-rose-200">'+d.label+'</span><span class="text-slate-400">'+rs.length+'R ・ 万車率 '+(manData.length?manRate.toFixed(1)+'%':'—')+'</span></div>'+rows.map(rowHtml).join('')+'</div>';
+          return '<div class="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2"><div class="flex items-center justify-between gap-2 border-b border-slate-700 pb-1 mb-1"><span class="font-bold text-rose-200">'+d.label+'</span><span class="text-slate-400">'+rs.length+'R ・ 万車率 '+(manData.length?manRate.toFixed(1)+'%':'—')+'</span></div>'+'<div class="grid grid-cols-2 gap-1.5">'+rows.map(rowHtml).join('')+'</div></div>';
         }).join('');
         const tSummary=document.getElementById('tierStatsSummary');
         if(tSummary)tSummary.textContent='期間指定の対象レースを荒れ度タイプごとに集計（ガールズは対象外・1点100円）。各タイプで回収率が最も高い券種に ★ を表示。';
@@ -3707,8 +3707,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.69-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.69';
+    const APP_RELEASE_VERSION = '3.70-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.70';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
