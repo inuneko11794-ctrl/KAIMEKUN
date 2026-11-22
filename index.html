@@ -505,6 +505,12 @@
                   <input id="lateWinPayoutInput" type="number" placeholder="例: 420" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code" />
                 </div>
               </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-mono-code text-slate-400">他サイトの予想:</span>
+                <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="lateAgreeB" class="accent-amber-400 w-4 h-4"> Bも予想</label>
+                <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="lateAgreeY" class="accent-amber-400 w-4 h-4"> Yも予想</label>
+                <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 cursor-pointer"><input type="checkbox" id="lateAgreeN" class="accent-amber-400 w-4 h-4"> Nも予想</label>
+              </div>
               <button id="saveLateResultBtn" type="button" class="w-full py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 font-bold text-xs transition">
                 💾 このレースの結果を保存・更新する
               </button>
@@ -1899,6 +1905,9 @@
         document.getElementById('editingTargetRaceName').textContent = currentRace.id;
         document.getElementById('lateResultOrderInput').value = currentRace.resultOrder || '';
         document.getElementById('lateResultPayoutInput').value = currentRace.payout || '';
+        const laB = document.getElementById('lateAgreeB'); if (laB) laB.checked = currentRace.agreeB !== false;
+        const laY = document.getElementById('lateAgreeY'); if (laY) laY.checked = !!currentRace.agreeY;
+        const laN = document.getElementById('lateAgreeN'); if (laN) laN.checked = !!currentRace.agreeN;
       }
       const start = Math.max(0, currentRaceIdx - 20), end = Math.min(allRaces.length, start + 80);
       let html = '';
@@ -2617,6 +2626,9 @@
       const wp = document.getElementById('lateWinPayoutInput').value.trim();
       race.exactaPayout = ep ? Number(ep) : null;
       race.winPayout = wp ? Number(wp) : null;
+      race.agreeB = document.getElementById('lateAgreeB')?.checked || false;
+      race.agreeY = document.getElementById('lateAgreeY')?.checked || false;
+      race.agreeN = document.getElementById('lateAgreeN')?.checked || false;
       race.resultRecordedAt = new Date().toISOString();
       if (!race.autoTickets) ensureRaceTickets(race);
       learnAdaptiveReasonPoints(race);
@@ -3847,8 +3859,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.84-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.84';
+    const APP_RELEASE_VERSION = '3.85-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.85';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
