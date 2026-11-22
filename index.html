@@ -2380,11 +2380,12 @@
       canvas.width = width; canvas.height = height;
       // 固定配置（v3.69）: 全車を中心の1点に集め、初速は理論スコアで放射状に飛び出して始める。同じレースは毎回同じ軌道になる
       const nP = res.entries.length;
+      const meanScore = res.scores.reduce((a, b) => a + b, 0) / nP || 1;
       gravityParticles = res.entries.map((e, i) => {
         const ang = (2 * Math.PI * i) / nP - Math.PI / 2;
         return {
           car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
-          radius: 7 + res.scores[i] * 1.6, wallHits: 0,
+          radius: 5 + res.scores[i] * 2.2, wallHits: 0, w: res.scores[i] / meanScore,
           x: canvas.width / 2 + 8 * Math.cos(ang), y: canvas.height / 2 + 8 * Math.sin(ang),
           vx: Math.cos(ang) * (0.6 + res.scores[i] * 0.25), vy: Math.sin(ang) * (0.6 + res.scores[i] * 0.25),
           color: CAR_COLORS[(e.car - 1) % 9]
@@ -2405,8 +2406,8 @@
             const p1 = gravityParticles[i], p2 = gravityParticles[j], dx = p2.x - p1.x, dy = p2.y - p1.y, dist = Math.hypot(dx, dy) || 1;
             if (!p1.isTanki && p1.lineIdx === p2.lineIdx) {
               ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'; ctx.stroke();
-              if (dist > 36) { p1.vx += (dx / dist) * 0.04; p1.vy += (dy / dist) * 0.04; p2.vx -= (dx / dist) * 0.04; p2.vy -= (dy / dist) * 0.04; }
-            } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08; p1.vy -= (dy / dist) * 0.08; p2.vx += (dx / dist) * 0.08; p2.vy += (dy / dist) * 0.08; }
+              if (dist > 36) { p1.vx += (dx / dist) * 0.04 * p2.w / p1.w; p1.vy += (dy / dist) * 0.04 * p2.w / p1.w; p2.vx -= (dx / dist) * 0.04 * p1.w / p2.w; p2.vy -= (dy / dist) * 0.04 * p1.w / p2.w; }
+            } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08 * p2.w / p1.w; p1.vy -= (dy / dist) * 0.08 * p2.w / p1.w; p2.vx += (dx / dist) * 0.08 * p1.w / p2.w; p2.vy += (dy / dist) * 0.08 * p1.w / p2.w; }
           }
         }
         let cx = 0, cy = 0;
@@ -3733,8 +3734,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.71-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.71';
+    const APP_RELEASE_VERSION = '3.72-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.72';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
