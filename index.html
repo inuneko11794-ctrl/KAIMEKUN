@@ -183,7 +183,7 @@
       <div id="overlapBanner" class="rounded-xl bg-violet-500/10 border border-violet-400/40 px-3 py-2 text-sm mt-2">🤝被り予報: --</div>
       <div id="pairPayoutBanner" class="rounded-xl bg-amber-500/10 border border-amber-400/40 px-3 py-2 text-sm mt-2">💰先頭ペア配当目安: --</div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 2点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝 3点</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">2車単 本線2〜3点＋狙い1〜2点 <span id="recExa" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3 md:col-span-1"><div class="text-xs text-amber-200 font-bold mb-2">3連単 本線4〜6点＋狙い2〜4点 <span id="recTri" class="hidden px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoTrifectaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div><div id="autoFirstCandidates" class="text-xs text-amber-200 mt-2">1着候補: --</div><div id="rakushoAutoStatus" class="text-xs text-amber-200 mt-2">洛書発動: --</div></div>
       </div>
@@ -3366,6 +3366,7 @@
       if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('・')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
       try {
         const isGirlsLab = (race.entries||[]).length>0 && (race.lines||[]).length===(race.entries||[]).length && (race.lines||[]).every(g=>g.length===1);
+        const res = analyzeRace(race);
         const tierInfo=chaosTierOf(res);
         const banner=document.getElementById('chaosTierBanner');
         if(banner)banner.innerHTML=isGirlsLab?'<span class="font-bold text-slate-300">荒れ度タイプ: 対象外（ガールズ）</span>':'<span class="font-bold text-rose-200">荒れ度タイプ: '+tierInfo.label+'</span> <span class="text-xs text-slate-300">（'+tierInfo.detail+'）</span>';
@@ -3667,8 +3668,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.64-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.64';
+    const APP_RELEASE_VERSION = '3.65-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.65';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
