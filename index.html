@@ -2435,7 +2435,7 @@
         };
       });
       if (gravityAnimId) cancelAnimationFrame(gravityAnimId);
-      // 計測: 異なるライン同士の車番ペアが重なった回数を1200ステップ数える
+      // 計測: 同じライン内の車番ペア同士が重なった回数を1200ステップ数える（他のラインの車は数えない）
       const overlapCounts = new Map();
       let stepCount = 0;
       const wallEl = document.getElementById('lineOverlapCount');
@@ -2450,7 +2450,7 @@
               ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'; ctx.stroke();
               if (dist > 36) { p1.vx += (dx / dist) * 0.04 * p2.w / p1.w; p1.vy += (dy / dist) * 0.04 * p2.w / p1.w; p2.vx -= (dx / dist) * 0.04 * p1.w / p2.w; p2.vy -= (dy / dist) * 0.04 * p1.w / p2.w; }
             } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08 * p2.w / p1.w; p1.vy -= (dy / dist) * 0.08 * p2.w / p1.w; p2.vx += (dx / dist) * 0.08 * p1.w / p2.w; p2.vy += (dy / dist) * 0.08 * p1.w / p2.w; }
-            if (p1.lineIdx >= 0 && p2.lineIdx >= 0 && p1.lineIdx !== p2.lineIdx && dist < p1.radius + p2.radius) { const k = i * 16 + j; overlapCounts.set(k, (overlapCounts.get(k) || 0) + 1); }
+            if (p1.lineIdx >= 0 && p1.lineIdx === p2.lineIdx && dist < p1.radius + p2.radius) { const k = i * 16 + j; overlapCounts.set(k, (overlapCounts.get(k) || 0) + 1); }
           }
         }
         let cx = 0, cy = 0;
@@ -2469,7 +2469,18 @@
         if (stepCount % 30 === 0 || stepCount >= 1200) {
           if (wallEl) wallEl.textContent = String([...overlapCounts.values()].reduce((a, b) => a + b, 0));
           const pairsEl = document.getElementById('lineOverlapPairs');
-          if (pairsEl) pairsEl.textContent = overlapCounts.size ? [...overlapCounts.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => gravityParticles[Math.floor(k / 16)].car + '-' + gravityParticles[k % 16].car + '番 ' + v + '回').join(' ・ ') : 'なし';
+          if (pairsEl) {
+            if (!overlapCounts.size) pairsEl.textContent = 'なし';
+            else {
+              const byLine = new Map();
+              for (const [k, v] of overlapCounts.entries()) {
+                const pA = gravityParticles[Math.floor(k / 16)], pB = gravityParticles[k % 16];
+                if (!byLine.has(pA.lineIdx)) byLine.set(pA.lineIdx, []);
+                byLine.get(pA.lineIdx).push(pA.car + '-' + pB.car + '番 ' + v + '回');
+              }
+              pairsEl.textContent = [...byLine.entries()].sort((a, b) => a[0] - b[0]).map(([li, arr]) => 'ライン' + (li + 1) + ': ' + arr.join(' ・ ')).join(' ｜ ');
+            }
+          }
         }
         if (stepCount < 1200) gravityAnimId = requestAnimationFrame(loop);
       }
@@ -3779,8 +3790,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.79-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.79';
+    const APP_RELEASE_VERSION = '3.80-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.80';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
