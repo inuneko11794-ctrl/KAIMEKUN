@@ -291,6 +291,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button id="saveRecordsNowBtn" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-xs text-emerald-200 font-mono-code">💾 保存</button>
+          <button id="sfxToggleBtn" type="button" class="px-3 py-1.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/35 border border-pink-400/40 text-xs text-pink-200 font-mono-code">🔊 効果音: ON</button>
           <button id="exportBackupJsonBtn" type="button" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-xs text-cyan-200 font-mono-code">📦 全記録バックアップ</button>
           <button id="importBackupJsonBtn" type="button" class="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/35 border border-purple-400/40 text-xs text-purple-200 font-mono-code">📂 バックアップ読込</button>
           <input id="jsonBackupInput" type="file" accept=".json,application/json" class="hidden" />
@@ -733,6 +734,27 @@
             <button id="pitchModeBtn" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-200 font-bold text-xs border border-cyan-400/40 transition">🎵 音程: 落差メロディ</button>
             <button id="exportWavBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-400/40 transition ml-auto">💾 曲をWAV保存</button>
           </div>
+        </div>
+      </article>
+
+      <article class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-lg bg-pink-500/20 text-pink-300 text-xs font-mono-code font-bold">MUSIC // MY TRACKS</span>
+            <span id="musicStorageInfo" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-pink-200">保存: --</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mt-3">🎧 マイミュージック（MP3 / MP4）</h3>
+          <p class="text-xs text-slate-400 mt-1">手持ちの音楽ファイルを読み込むと、この端末の中に保存されて、次に開いたときもそのまま再生できます。ファイルが外に送信されることはありません。MP4は音声として再生されます。</p>
+          <div class="flex flex-wrap items-center gap-2 mt-4">
+            <label for="musicFileInput" class="px-3.5 py-2 rounded-xl bg-pink-500 hover:bg-pink-400 text-slate-950 font-bold text-xs shadow-lg shadow-pink-500/20 transition cursor-pointer">📂 ファイルを追加</label>
+            <input id="musicFileInput" type="file" accept="audio/*,video/mp4,.mp3,.m4a,.mp4,.wav,.ogg,.aac" multiple class="hidden" />
+            <button id="musicPrevBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-pink-200 font-bold text-xs border border-pink-400/40 transition">⏮ 前へ</button>
+            <button id="musicNextBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-pink-200 font-bold text-xs border border-pink-400/40 transition">⏭ 次へ</button>
+            <button id="musicClearBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold text-xs border border-rose-400/40 transition ml-auto">🗑 全削除</button>
+          </div>
+          <audio id="musicPlayer" controls class="w-full mt-3"></audio>
+          <div id="musicNowPlaying" class="text-xs text-pink-200 font-mono-code mt-2">未選択</div>
+          <ul id="musicList" class="mt-2 space-y-1.5"></ul>
         </div>
       </article>
 
@@ -2640,7 +2662,155 @@
       document.getElementById('lateWinPayoutInput').value = '';
       renderBetLab();
       showToast(`💾 「${race.id}」の結果を保存しました！`);
+      try {
+        const fin = String(race.resultOrder || '').split('-').map(Number);
+        const T = race.autoTickets || {};
+        const hitT = (arr, len) => Array.isArray(arr) && arr.some(t => { const p = Array.isArray(t) ? t.map(Number) : String(t).split('-').map(Number); return p.slice(0, len).every((v, i) => v === fin[i]); });
+        const anyHit = fin.length >= 3 && (hitT(T.exacta, 2) || hitT(T.trifecta, 3) || hitT(T.selectExacta, 2) || hitT(T.selectTrifecta, 3) || (Array.isArray(T.win) && T.win.map(Number).includes(fin[0])));
+        sfx(fin.length >= 3 ? (anyHit ? 'win' : 'lose') : 'save');
+      } catch (e) { sfx('save'); }
     });
+
+    // ===== 効果音（WebAudio合成・音源ファイル不要） =====
+    let sfxCtx = null;
+    const sfxOn = () => { try { return localStorage.getItem('kaimekun_sfx') !== 'off'; } catch (e) { return true; } };
+    function sfx(kind) {
+      if (!sfxOn()) return;
+      try {
+        if (!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (sfxCtx.state === 'suspended') sfxCtx.resume();
+        const seqs = {
+          tap: [[880, 0, 0.06, 'sine', 0.12]],
+          save: [[660, 0, 0.07, 'sine', 0.15], [990, 0.08, 0.1, 'sine', 0.15]],
+          win: [[523.25, 0, 0.1, 'triangle', 0.2], [659.25, 0.1, 0.1, 'triangle', 0.2], [783.99, 0.2, 0.1, 'triangle', 0.2], [1046.5, 0.3, 0.24, 'triangle', 0.22]],
+          lose: [[329.63, 0, 0.12, 'sine', 0.15], [261.63, 0.12, 0.2, 'sine', 0.15]]
+        };
+        const seq = seqs[kind] || seqs.tap;
+        const t0 = sfxCtx.currentTime;
+        seq.forEach(([f, dt, dur, type, vol]) => {
+          const o = sfxCtx.createOscillator(), g = sfxCtx.createGain();
+          o.type = type; o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t0 + dt);
+          g.gain.exponentialRampToValueAtTime(vol, t0 + dt + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + dur);
+          o.connect(g); g.connect(sfxCtx.destination);
+          o.start(t0 + dt); o.stop(t0 + dt + dur + 0.05);
+        });
+      } catch (e) {}
+    }
+    const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+    const sfxLabel = () => { if (sfxToggleBtn) sfxToggleBtn.textContent = sfxOn() ? '🔊 効果音: ON' : '🔇 効果音: OFF'; };
+    if (sfxToggleBtn) { sfxLabel(); sfxToggleBtn.addEventListener('click', () => { try { localStorage.setItem('kaimekun_sfx', sfxOn() ? 'off' : 'on'); } catch (e) {} sfxLabel(); sfx('tap'); }); }
+
+    // ===== マイミュージック（IndexedDBにファイルを保存して後から再生） =====
+    const musicState = { tracks: [], current: -1, urls: new Map() };
+    function musicDb() {
+      return new Promise((res, rej) => {
+        const rq = indexedDB.open('kaimekun_music', 1);
+        rq.onupgradeneeded = () => { rq.result.createObjectStore('tracks', { keyPath: 'id', autoIncrement: true }); };
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => rej(rq.error);
+      });
+    }
+    async function musicLoadAll() {
+      const db = await musicDb();
+      return new Promise((res, rej) => {
+        const out = [];
+        const cur = db.transaction('tracks', 'readonly').objectStore('tracks').openCursor();
+        cur.onsuccess = () => { const c = cur.result; if (c) { out.push({ id: c.key, name: c.value.name, blob: c.value.blob }); c.continue(); } else res(out); };
+        cur.onerror = () => rej(cur.error);
+      });
+    }
+    async function musicAddFile(file) {
+      const db = await musicDb();
+      return new Promise((res, rej) => {
+        const rq = db.transaction('tracks', 'readwrite').objectStore('tracks').add({ name: file.name, blob: file, addedAt: Date.now() });
+        rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+      });
+    }
+    async function musicDelete(id) {
+      const db = await musicDb();
+      return new Promise((res, rej) => {
+        const rq = db.transaction('tracks', 'readwrite').objectStore('tracks').delete(id);
+        rq.onsuccess = () => res(); rq.onerror = () => rej(rq.error);
+      });
+    }
+    async function musicClearAll() {
+      const db = await musicDb();
+      return new Promise((res, rej) => {
+        const rq = db.transaction('tracks', 'readwrite').objectStore('tracks').clear();
+        rq.onsuccess = () => res(); rq.onerror = () => rej(rq.error);
+      });
+    }
+    function musicUrl(t) {
+      if (!musicState.urls.has(t.id)) musicState.urls.set(t.id, URL.createObjectURL(t.blob));
+      return musicState.urls.get(t.id);
+    }
+    function renderMusicList() {
+      const list = document.getElementById('musicList'); if (!list) return;
+      const info = document.getElementById('musicStorageInfo');
+      const total = musicState.tracks.reduce((s, t) => s + (t.blob && t.blob.size || 0), 0);
+      if (info) info.textContent = '保存: ' + musicState.tracks.length + '曲 / ' + (total / 1048576).toFixed(1) + 'MB';
+      if (!musicState.tracks.length) { list.innerHTML = '<li class="text-xs text-slate-500">まだ曲がありません。「ファイルを追加」からMP3やMP4を選んでください。</li>'; return; }
+      list.innerHTML = musicState.tracks.map((t, i) =>
+        '<li class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 border ' + (i === musicState.current ? 'bg-pink-500/15 border-pink-400/50' : 'bg-slate-950/60 border-slate-800') + '">' +
+        '<button type="button" data-music-play="' + i + '" class="flex-1 text-left text-xs ' + (i === musicState.current ? 'text-pink-100 font-bold' : 'text-slate-200') + ' truncate">' + (i === musicState.current ? '▶ ' : '') + t.name.replace(/</g, '＜') + '</button>' +
+        '<span class="text-[10px] text-slate-500 font-mono-code">' + ((t.blob && t.blob.size || 0) / 1048576).toFixed(1) + 'MB</span>' +
+        '<button type="button" data-music-del="' + t.id + '" class="text-[11px] text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-400/30">削除</button></li>'
+      ).join('');
+      list.querySelectorAll('[data-music-play]').forEach(b => b.addEventListener('click', () => musicPlay(Number(b.getAttribute('data-music-play')))));
+      list.querySelectorAll('[data-music-del]').forEach(b => b.addEventListener('click', async () => {
+        const id = Number(b.getAttribute('data-music-del'));
+        try { await musicDelete(id); } catch (e) { showToast('⚠️ 削除に失敗しました'); return; }
+        const idx = musicState.tracks.findIndex(t => t.id === id);
+        if (idx >= 0) { if (musicState.urls.has(id)) { URL.revokeObjectURL(musicState.urls.get(id)); musicState.urls.delete(id); } musicState.tracks.splice(idx, 1); if (musicState.current === idx) { musicState.current = -1; const p = document.getElementById('musicPlayer'); if (p) { p.pause(); p.removeAttribute('src'); } const np = document.getElementById('musicNowPlaying'); if (np) np.textContent = '未選択'; } else if (musicState.current > idx) musicState.current--; }
+        renderMusicList();
+      }));
+    }
+    function musicPlay(i) {
+      const t = musicState.tracks[i]; if (!t) return;
+      const p = document.getElementById('musicPlayer'); if (!p) return;
+      musicState.current = i;
+      p.src = musicUrl(t);
+      p.play().catch(() => {});
+      const np = document.getElementById('musicNowPlaying');
+      if (np) np.textContent = '再生中: ' + t.name;
+      renderMusicList();
+    }
+    function musicStep(d) {
+      if (!musicState.tracks.length) return;
+      const n = musicState.tracks.length;
+      musicPlay(((musicState.current < 0 ? 0 : musicState.current) + d + n) % n);
+    }
+    (function initMusic() {
+      const input = document.getElementById('musicFileInput'); if (!input || !window.indexedDB) return;
+      input.addEventListener('change', async () => {
+        const files = [...(input.files || [])];
+        input.value = '';
+        if (!files.length) return;
+        let ok = 0;
+        for (const f of files) { try { await musicAddFile(f); ok++; } catch (e) {} }
+        try { musicState.tracks = await musicLoadAll(); } catch (e) {}
+        renderMusicList();
+        showToast(ok ? '🎧 ' + ok + '曲を保存しました' : '⚠️ 保存に失敗しました（容量を確認してください）');
+        if (ok) sfx('save');
+      });
+      const prev = document.getElementById('musicPrevBtn'); if (prev) prev.addEventListener('click', () => musicStep(-1));
+      const next = document.getElementById('musicNextBtn'); if (next) next.addEventListener('click', () => musicStep(1));
+      const clr = document.getElementById('musicClearBtn'); if (clr) clr.addEventListener('click', async () => {
+        if (!musicState.tracks.length) return;
+        if (!confirm('保存した曲を全部削除しますか？')) return;
+        try { await musicClearAll(); } catch (e) { showToast('⚠️ 削除に失敗しました'); return; }
+        musicState.tracks = []; musicState.current = -1; musicState.urls.forEach(u => URL.revokeObjectURL(u)); musicState.urls.clear();
+        const p = document.getElementById('musicPlayer'); if (p) { p.pause(); p.removeAttribute('src'); }
+        const np = document.getElementById('musicNowPlaying'); if (np) np.textContent = '未選択';
+        renderMusicList();
+      });
+      const player = document.getElementById('musicPlayer');
+      if (player) player.addEventListener('ended', () => musicStep(1));
+      musicLoadAll().then(ts => { musicState.tracks = ts; renderMusicList(); }).catch(() => {});
+    })();
+
 
     document.getElementById('exportCustomCsvBtn').addEventListener('click', () => {
       const csvRows = [['レースID', '車番', '選手名', 'AI印', '変換後印', '所属ライン', '並び予想', '確定着順', '3連単配当']];
@@ -3736,7 +3906,7 @@
         showToast('結果確定済みのため、保存済み買い目は変更できません');
         return;
       }
-      race.autoTickets = buildRaceTickets(race); persistRaces(); renderBetLab();
+      race.autoTickets = buildRaceTickets(race); persistRaces(); renderBetLab(); sfx('save');
     });
     ['betStatsDateBasis','betStatsFrom','betStatsTo'].forEach(id => document.getElementById(id).addEventListener('change', renderBetStats));
     document.getElementById('clearBetStatsRangeBtn').addEventListener('click', () => {
@@ -3860,8 +4030,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.86-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.86';
+    const APP_RELEASE_VERSION = '3.87-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.87';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
