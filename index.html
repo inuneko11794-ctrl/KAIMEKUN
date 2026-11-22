@@ -3358,6 +3358,28 @@
           }
         }
       } catch (e) {}
+      // 荒れ度タイプで3連単の作り方を切り替える（25,477R検証・6/7車）: T1は現行3連単が回収55.8%に沈むため本線2車単ペア×3着スコア上位3流し（17.4点・的中28.6%・回収84.7%）に、
+      // T2は厳選ペア×3着5流し（8.4点・的中18.9%・回収76.4%）に置き換える。T0・T3・超堅・8/9車は従来通り（T3は中間展開が上）。
+      try {
+        if (res.entries.length <= 7 && !(res.lineSummaryList || []).every(l => l.isTanki)) {
+          const tierW = chaosTierOf(res).tier;
+          if (tierW === 1 || tierW === 2) {
+            const scoreByCar = {};
+            (res.entries || []).forEach((e, i) => { scoreByCar[Number(e.car)] = res.scores[i] || 0; });
+            const wheel = (pairs, k3) => {
+              const out = [], seen = new Set();
+              (pairs || []).forEach(pair => {
+                const rest = (res.entries || []).map(e => Number(e.car)).filter(c => c !== Number(pair[0]) && c !== Number(pair[1]))
+                  .sort((a, b) => (scoreByCar[b] || 0) - (scoreByCar[a] || 0)).slice(0, k3);
+                rest.forEach(c => { const t = [Number(pair[0]), Number(pair[1]), c]; const key = t.join('-'); if (!seen.has(key)) { seen.add(key); out.push(t); } });
+              });
+              return out;
+            };
+            const w = tierW === 1 ? wheel(exacta, 3) : wheel(selectExacta, 5);
+            if (w.length) { selected.length = 0; w.forEach(t => selected.push(t)); }
+          }
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -3796,8 +3818,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.81-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.81';
+    const APP_RELEASE_VERSION = '3.82-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.82';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
