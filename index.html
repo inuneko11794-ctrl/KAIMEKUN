@@ -532,6 +532,7 @@
             <input id="raceSearchInput" type="text" placeholder="🔍 手入力で検索（会場名・レース番号・開催日）→ Enterで移動" class="min-w-0 flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400">
             <span id="raceSearchCount" class="text-xs text-slate-400 shrink-0"></span>
             <button id="raceNoResultBtn" type="button" class="shrink-0 px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs">着順未入力のみ</button>
+            <button id="raceManshaBtn" type="button" class="shrink-0 px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs">🔥万車券のみ</button>
           </div>
           <div class="flex items-center gap-2">
             <select id="raceSelector" class="min-w-0 flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400">
@@ -2730,6 +2731,7 @@
     });
     document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     let raceNoResultOnly = false;
+    let raceManshaOnly = false;
     function applyRaceSearch() {
       const input = document.getElementById('raceSearchInput'), sel = document.getElementById('raceSelector'), cnt = document.getElementById('raceSearchCount');
       if (!input || !sel) return -1;
@@ -2738,11 +2740,11 @@
       [...sel.options].forEach(o => {
         const r = allRaces[parseInt(o.value, 10)] || {};
         const hay = (r.id || '') + ' ' + (r.eventDate || '') + ' ' + (r.dataEntryDate || '');
-        const ok = (!q || hay.includes(q)) && (!raceNoResultOnly || !r.resultOrder);
+        const ok = (!q || hay.includes(q)) && (!raceNoResultOnly || !r.resultOrder) && (!raceManshaOnly || Number(r.payout) >= 10000);
         o.style.display = ok ? '' : 'none';
         if (ok) { hits++; if (first < 0) first = parseInt(o.value, 10); }
       });
-      if (cnt) cnt.textContent = (q || raceNoResultOnly) ? (hits ? hits + '件' : '該当なし') : '';
+      if (cnt) cnt.textContent = (q || raceNoResultOnly || raceManshaOnly) ? (hits ? hits + '件' : '該当なし') : '';
       return first;
     }
     const raceNoResultBtnEl = document.getElementById('raceNoResultBtn');
@@ -2751,6 +2753,14 @@
       raceNoResultBtnEl.classList.toggle('bg-cyan-600/50', raceNoResultOnly);
       raceNoResultBtnEl.classList.toggle('border-cyan-400/60', raceNoResultOnly);
       raceNoResultBtnEl.classList.toggle('bg-slate-800', !raceNoResultOnly);
+      applyRaceSearch();
+    });
+    const raceManshaBtnEl = document.getElementById('raceManshaBtn');
+    if (raceManshaBtnEl) raceManshaBtnEl.addEventListener('click', () => {
+      raceManshaOnly = !raceManshaOnly;
+      raceManshaBtnEl.classList.toggle('bg-rose-600/50', raceManshaOnly);
+      raceManshaBtnEl.classList.toggle('border-rose-400/60', raceManshaOnly);
+      raceManshaBtnEl.classList.toggle('bg-slate-800', !raceManshaOnly);
       applyRaceSearch();
     });
     const raceSearchInputEl = document.getElementById('raceSearchInput');
@@ -3694,8 +3704,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.66-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.66';
+    const APP_RELEASE_VERSION = '3.67-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.67';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
