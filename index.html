@@ -179,6 +179,7 @@
         </div>
       </div>
       <p id="patternBaselineNote" class="text-xs leading-relaxed text-slate-300">検証中...</p>
+      <div id="raceVerifyBar" class="hidden rounded-xl bg-emerald-500/10 border border-emerald-400/40 px-3 py-2 text-sm mb-2"></div>
       <div id="chaosTierBanner" class="rounded-xl bg-rose-500/10 border border-rose-400/40 px-3 py-2 text-sm">荒れ度タイプ: --</div>
       <div id="overlapBanner" class="rounded-xl bg-violet-500/10 border border-violet-400/40 px-3 py-2 text-sm mt-2">🤝被り予報: --</div>
       <div id="pairPayoutBanner" class="rounded-xl bg-amber-500/10 border border-amber-400/40 px-3 py-2 text-sm mt-2">💰先頭ペア配当目安: --</div>
@@ -3403,6 +3404,31 @@
       if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?show(tickets.selectTrifecta,15):'該当なし';
       const trioEl=document.getElementById('autoTrioPicks');
       if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('・')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
+      const verifyEl=document.getElementById('raceVerifyBar');
+      if(verifyEl){
+        const fin=parseFinish(race);
+        if(fin.length>=3){
+          const norm=t=>Array.isArray(t)?t.map(Number):String(t).split('-').map(Number);
+          const hitN=(arr,len)=> (arr||[]).some(t=>norm(t).slice(0,len).every((v,i)=>v===fin[i]));
+          const trioSets=[...new Set((tickets.trifecta||[]).map(t=>norm(t).slice(0,3).sort((a,b)=>a-b).join('-')))];
+          const trioHit=trioSets.some(s=>s===fin.slice(0,3).sort((a,b)=>a-b).join('-'));
+          const yen=n=>Number(n)>0?Number(n).toLocaleString()+'円':null;
+          const row=(label,hit,n,pay)=>{
+            if(!hit) return '<div class="flex justify-between gap-2 py-0.5"><span class="text-slate-300">'+label+'</span><span class="text-slate-400">不的中'+(n?'（'+n+'点）':'')+'</span></div>';
+            const bal=pay!=null?(' 収支 '+((pay-n*100)>=0?'+':'')+(pay-n*100).toLocaleString()+'円'):'';
+            return '<div class="flex justify-between gap-2 py-0.5"><span class="font-bold text-emerald-200">'+label+'</span><span class="font-mono-code text-emerald-100">的中'+(pay!=null?' 払戻 '+pay.toLocaleString()+'円':'')+bal+'</span></div>';
+          };
+          const winHit=(tickets.win||[]).some(t=>norm(t)[0]===fin[0]);
+          verifyEl.innerHTML='<div class="font-bold text-emerald-100 mb-1">✅ 結果検証 ｜ 確定着順 '+fin.join('-')+(yen(race.exactaPayout)?' ｜ 2車単 '+yen(race.exactaPayout):'')+(yen(race.payout)?' ｜ 3連単 '+yen(race.payout):'')+'</div>'
+            + row('単勝', winHit, (tickets.win||[]).length, null)
+            + row('本線2車単', hitN(tickets.exacta,2), (tickets.exacta||[]).length, Number(race.exactaPayout)>0?Number(race.exactaPayout):null)
+            + row('本線3連単', hitN(tickets.trifecta,3), (tickets.trifecta||[]).length, Number(race.payout)>0?Number(race.payout):null)
+            + row('本線3連複', trioHit, trioSets.length, null)
+            + row('厳選2車単', hitN(tickets.selectExacta,2), (tickets.selectExacta||[]).length, Number(race.exactaPayout)>0?Number(race.exactaPayout):null)
+            + row('厳選3連単', hitN(tickets.selectTrifecta,3), (tickets.selectTrifecta||[]).length, Number(race.payout)>0?Number(race.payout):null);
+          verifyEl.classList.remove('hidden');
+        } else { verifyEl.innerHTML=''; verifyEl.classList.add('hidden'); }
+      }
       try {
         const isGirlsLab = (race.entries||[]).length>0 && (race.lines||[]).length===(race.entries||[]).length && (race.lines||[]).every(g=>g.length===1);
         const res = analyzeRace(race);
@@ -3707,8 +3733,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.70-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.70';
+    const APP_RELEASE_VERSION = '3.71-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.71';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
