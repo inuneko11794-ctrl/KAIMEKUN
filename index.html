@@ -196,12 +196,12 @@
         <div class="space-y-2"><div class="text-sm font-bold">期間指定成績</div><div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><select id="betStatsDateBasis" class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm"><option value="event">開催日で検索</option><option value="entry" selected>データ入力日で検索</option></select><label class="text-xs text-slate-300">開始日<input id="betStatsFrom" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label><label class="text-xs text-slate-300">終了日<input id="betStatsTo" type="date" class="block w-full mt-1 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm"></label></div><div class="flex justify-end"><button id="clearBetStatsRangeBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs">期間をクリア</button></div></div>
         <div id="betStatsSummary" class="text-xs text-slate-200">結果・配当を登録すると集計します。</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="betStatsRows"></tbody></table></div>
-        <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">洛書フィルター別成績（各条件1点・100円）</div>
+        <details class="pt-3"><summary class="text-sm font-bold text-amber-200 mb-2 cursor-pointer select-none">洛書フィルター別成績（各条件1点・100円）</summary>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">条件</th><th>発動R</th><th>的中R</th><th>的中率</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="rakushoStatsRows"></tbody></table></div>
-        <div id="rakushoStatsSummary" class="text-xs text-slate-400 mt-2">洛書条件の発動データを集計します。</div></div>
-        <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">会場別成績（自動買い目全体）</div>
+        <div id="rakushoStatsSummary" class="text-xs text-slate-400 mt-2">洛書条件の発動データを集計します。</div></details>
+        <details class="pt-3"><summary class="text-sm font-bold text-amber-200 mb-2 cursor-pointer select-none">会場別成績（自動買い目全体）</summary>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">会場</th><th>対象R</th><th>2車単的中率</th><th>2車単回収率</th><th>3連単的中率</th><th>3連単回収率</th></tr></thead><tbody id="venueStatsRows"></tbody></table></div>
-        <div id="venueStatsSummary" class="text-xs text-slate-400 mt-2">会場ごとの集計を表示します。</div></div>
+        <div id="venueStatsSummary" class="text-xs text-slate-400 mt-2">会場ごとの集計を表示します。</div></details>
         <div class="pt-3"><div class="text-sm font-bold text-cyan-200 mb-2">厳選 成績（別表）</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-cyan-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>平均点数</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="selectStatsRows"></tbody></table></div>
         <div id="selectStatsSummary" class="text-xs text-slate-400 mt-2">厳選2車単が生成されたレースのみ集計します。</div></div>
@@ -3162,16 +3162,16 @@
       if (honP.len === 1) chaos++;
       if (chaos - wall <= -3) return { tier: -1, label: '💎 超堅', rec: ['sExa', 'sTri'], detail: '堅さ' + wall + '・散り' + chaos + '（印が長いラインに集中）' };
       if (units < 3) {
-        if (honHead && honLen >= 4) return { tier: 0, label: 'T0 堅め・◎厚壁', rec: ['sExa', 'sTri'], detail: '印ユニット' + units + '・◎が4車ラインの先頭' };
-        return { tier: 0, label: 'T0 堅め', rec: ['sExa', 'sTri'], detail: '印ユニット' + units };
+        if (honHead && honLen >= 4) return { tier: 0, label: '🛡️ T0 堅め・◎厚壁', rec: ['sExa', 'sTri'], detail: '印ユニット' + units + '・◎が4車ラインの先頭' };
+        return { tier: 0, label: '🛡️ T0 堅め', rec: ['sExa', 'sTri'], detail: '印ユニット' + units };
       }
-      if (honHeadLong) return { tier: 1, label: 'T1 印集中・◎頭長', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・◎が長いラインの先頭' };
+      if (honHeadLong) return { tier: 1, label: '🎯 T1 印集中・◎頭長', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・◎が長いラインの先頭' };
       if (tanki >= 1) {
-        if (!honHead && honLen === 2) return { tier: 3, label: 'T3 荒れ強・◎番手', rec: ['tro', 'sExa', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki + '・◎は2車ラインの番手' };
-        if (!honHead && honLen >= 3) return { tier: 3, label: 'T3 荒れ強・◎ライン中', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki + '・◎はラインの中' };
-        return { tier: 3, label: 'T3 荒れ強', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki };
+        if (!honHead && honLen === 2) return { tier: 3, label: '🔥 T3 荒れ強・◎番手', rec: ['tro', 'sExa', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki + '・◎は2車ラインの番手' };
+        if (!honHead && honLen >= 3) return { tier: 3, label: '🔥 T3 荒れ強・◎ライン中', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki + '・◎はラインの中' };
+        return { tier: 3, label: '🔥 T3 荒れ強', rec: ['tro', 'sTri'], detail: '印ユニット' + units + '・単騎' + tanki };
       }
-      return { tier: 2, label: 'T2 荒れ', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・単騎なし' };
+      return { tier: 2, label: '🌊 T2 荒れ', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・単騎なし' };
     }
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
@@ -3535,7 +3535,7 @@
       }
       const tierTarget=document.getElementById('tierStatsRows');
       if(tierTarget){
-        const TIER_DEFS=[{tier:-1,label:'💎 超堅'},{tier:0,label:'T0 堅め'},{tier:1,label:'T1 印集中・◎頭長'},{tier:2,label:'T2 荒れ'},{tier:3,label:'T3 荒れ強'}];
+        const TIER_DEFS=[{tier:-1,label:'💎 超堅'},{tier:0,label:'🛡️ T0 堅め'},{tier:1,label:'🎯 T1 印集中・◎頭長'},{tier:2,label:'🌊 T2 荒れ'},{tier:3,label:'🔥 T3 荒れ強'}];
         const tierSelOf=(r,kind)=>{ const saved=r.autoTickets[kind]; if(Array.isArray(saved)) return saved; try { const res=analyzeRace(r); return kind==='selectExacta'?buildSelectExacta(res):buildSelectTrifecta(res); } catch(e) { return []; } };
         const tierCalc=(rs,payoutKey,ticketsOf,len)=>{
           const data=rs.filter(r=>Number(r[payoutKey])>0);
@@ -3704,8 +3704,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.67-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.67';
+    const APP_RELEASE_VERSION = '3.68-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.68';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
