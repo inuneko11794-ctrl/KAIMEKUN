@@ -3247,6 +3247,17 @@
       }
       return { tier: 2, label: '🌊 T2 荒れ', rec: ['exa', 'sTri'], detail: '印ユニット' + units + '・単騎なし' };
     }
+    // 鉄板級：超堅の中でも特に堅い形（7車立てのみ・2026年検証で非万車率84.0%・◎勝率71.9%）
+    function solidLockOf(res, p) {
+      if (!res || res.isGirlsRace) return false;
+      if ((res.entries || []).length !== 7) return false;
+      if (chaosTierOf(res).tier !== -1) return false;
+      if (!(typeof p === 'number' && p <= 0.20)) return false;
+      const scoreByCar = {}; (res.entries || []).forEach((e, i) => { scoreByCar[e.car] = res.scores[i]; });
+      let tv = 0, prev = null;
+      for (const g of (res.lineSummaryList || [])) for (const m of (g.members || [])) { const s = scoreByCar[m.car]; if (typeof s === 'number') { if (prev !== null) tv += Math.abs(s - prev); prev = s; } }
+      return tv <= 5;
+    }
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
       const scored=calculateCarPointScores(res,{disabledFeature:options.disabledFeature||'',adaptiveSnapshot});
@@ -3387,6 +3398,16 @@
           }
         }
       } catch (e) {}
+      // 鉄板級（7車・超堅×波乱度低×落差平坦）は本線を◎頭だけに絞る（2026年検証: 2車単 回収37.7%→79.7%・3連単 48.3%→83.4%）
+      try {
+        if (solidLockOf(res, predictUpsetForRace(race.id, res, getDnaFreqMapCached()))) {
+          const honCar = Number(((res.entries || []).find(e => e.rawMark === '◎') || {}).car);
+          if (Number.isFinite(honCar)) {
+            const fTrim = arr => { const kept = arr.filter(t => Number(t[0]) === honCar); arr.length = 0; kept.forEach(t => arr.push(t)); };
+            fTrim(exacta); fTrim(selected);
+          }
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -3457,10 +3478,11 @@
         let badges = '';
         try {
           const res = analyzeRace(r);
-          const disp = toDisplayProb(predictUpsetForRace(r.id, res, dna));
+          const praw = predictUpsetForRace(r.id, res, dna);
+          const disp = toDisplayProb(praw);
           const sel = Array.isArray(r.autoTickets && r.autoTickets.selectExacta) ? r.autoTickets.selectExacta : buildSelectExacta(res);
           const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
-          if (!res.isGirlsRace) { const ct = chaosTierOf(res); const cc = ct.tier === -1 ? 'bg-sky-500/15 border-sky-400/60 text-sky-200' : ct.tier === 0 ? 'bg-emerald-500/15 border-emerald-400/60 text-emerald-200' : ct.tier === 1 ? 'bg-amber-500/15 border-amber-400/60 text-amber-200' : ct.tier === 2 ? 'bg-orange-500/15 border-orange-400/60 text-orange-200' : 'bg-rose-500/20 border-rose-400/60 text-rose-200'; badges += '<span class="px-2 py-0.5 rounded-full border ' + cc + ' text-[11px] font-bold">' + ct.label + '</span>'; }
+          if (!res.isGirlsRace) { const ct = chaosTierOf(res); const cc = ct.tier === -1 ? 'bg-sky-500/15 border-sky-400/60 text-sky-200' : ct.tier === 0 ? 'bg-emerald-500/15 border-emerald-400/60 text-emerald-200' : ct.tier === 1 ? 'bg-amber-500/15 border-amber-400/60 text-amber-200' : ct.tier === 2 ? 'bg-orange-500/15 border-orange-400/60 text-orange-200' : 'bg-rose-500/20 border-rose-400/60 text-rose-200'; badges += '<span class="px-2 py-0.5 rounded-full border ' + cc + ' text-[11px] font-bold">' + ct.label + '</span>'; if (solidLockOf(res, praw)) badges += '<span class="px-2 py-0.5 rounded-full bg-sky-500/25 border border-sky-300/70 text-sky-100 text-[11px] font-bold">🧊鉄板級</span>'; }
           const ov = overlapOf(r);
           if (ov.recorded && ov.sites.length >= 2) badges += '<span class="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/60 text-violet-200 text-[11px] font-bold">🤝' + ov.sites.length + 'サイト一致 ' + OVERLAP_COUNT_RATE[ov.sites.length] + '%</span>';
           if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
@@ -3526,7 +3548,7 @@
         const res = analyzeRace(race);
         const tierInfo=chaosTierOf(res);
         const banner=document.getElementById('chaosTierBanner');
-        if(banner)banner.innerHTML=isGirlsLab?'<span class="font-bold text-slate-300">荒れ度タイプ: 対象外（ガールズ）</span>':'<span class="font-bold text-rose-200">荒れ度タイプ: '+tierInfo.label+'</span> <span class="text-xs text-slate-300">（'+tierInfo.detail+'）</span>';
+        if(banner)banner.innerHTML=isGirlsLab?'<span class="font-bold text-slate-300">荒れ度タイプ: 対象外（ガールズ）</span>':'<span class="font-bold text-rose-200">荒れ度タイプ: '+tierInfo.label+'</span> <span class="text-xs text-slate-300">（'+tierInfo.detail+'）</span>'+(solidLockOf(res,predictUpsetForRace(race.id,res,getDnaFreqMapCached()))?' <span class="px-2 py-0.5 rounded-full bg-sky-500/25 border border-sky-300/70 text-sky-100 text-[11px] font-bold">🧊鉄板級</span>':'');
         const recMap={exa:'recExa',tri:'recTri',tro:'recTro',sExa:'recSExa',sTri:'recSTri'};
         Object.entries(recMap).forEach(([k,id])=>{ const el=document.getElementById(id); if(el)el.classList.toggle('hidden',!isGirlsLab&&tierInfo.rec.includes(k)); });
         const ovBanner=document.getElementById('overlapBanner');
@@ -3825,8 +3847,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.83-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.83';
+    const APP_RELEASE_VERSION = '3.84-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.84';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
