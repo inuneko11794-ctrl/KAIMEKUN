@@ -206,7 +206,7 @@
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-cyan-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>平均点数</th><th>投資額</th><th>回収率</th></tr></thead><tbody id="selectStatsRows"></tbody></table></div>
         <div id="selectStatsSummary" class="text-xs text-slate-400 mt-2">厳選2車単が生成されたレースのみ集計します。</div></div>
         <div class="pt-3"><div class="text-sm font-bold text-rose-200 mb-2">荒れ度タイプ別成績</div>
-        <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-rose-200 border-b border-slate-700"><tr><th class="py-2">タイプ</th><th>対象R</th><th>万車率</th><th>本線2車単 的中率</th><th>本線2車単 回収率</th><th>本線3連単 的中率</th><th>本線3連単 回収率</th><th>厳選2車単 的中率</th><th>厳選2車単 回収率</th><th>厳選3連単 的中率</th><th>厳選3連単 回収率</th></tr></thead><tbody id="tierStatsRows"></tbody></table></div>
+        <div id="tierStatsRows" class="space-y-2"></div>
         <div id="tierStatsSummary" class="text-xs text-slate-400 mt-2">荒れ度タイプごとの集計を表示します。</div></div>
       </div>
     </section>
@@ -3497,18 +3497,22 @@
           const rs=byTier[d.tier];
           const manData=rs.filter(r=>Number(r.payout)>0);
           const manRate=manData.length?manData.filter(r=>Number(r.payout)>=10000).length/manData.length*100:0;
-          const ex=tierCalc(rs,'exactaPayout',r=>(r.autoTickets.exacta||[]),2);
-          const tri=tierCalc(rs,'payout',r=>(r.autoTickets.trifecta||[]),3);
-          const sEx=tierCalc(rs,'exactaPayout',r=>tierSelOf(r,'selectExacta'),2);
-          const sTri=tierCalc(rs,'payout',r=>tierSelOf(r,'selectTrifecta'),3);
-          const cells=[ex,tri,sEx,sTri].filter(c=>c.n);
-          const bestRoi=cells.length?Math.max(...cells.map(c=>c.roi)):0;
-          const rateCell=c=>'<td>'+(c.n?c.rate.toFixed(1)+'%':'—')+'</td>';
-          const roiCell=c=>c.n?('<td'+(c.roi===bestRoi&&bestRoi>0?' class="font-bold text-amber-200"':'')+'>'+c.roi.toFixed(1)+'%</td>'):'<td>—</td>';
-          return '<tr class="border-b border-slate-800"><td class="py-2">'+d.label+'</td><td>'+rs.length+'</td><td>'+(manData.length?manRate.toFixed(1)+'%':'—')+'</td>'+rateCell(ex)+roiCell(ex)+rateCell(tri)+roiCell(tri)+rateCell(sEx)+roiCell(sEx)+rateCell(sTri)+roiCell(sTri)+'</tr>';
+          const rows=[
+            {label:'本線2車単',c:tierCalc(rs,'exactaPayout',r=>(r.autoTickets.exacta||[]),2)},
+            {label:'本線3連単',c:tierCalc(rs,'payout',r=>(r.autoTickets.trifecta||[]),3)},
+            {label:'厳選2車単',c:tierCalc(rs,'exactaPayout',r=>tierSelOf(r,'selectExacta'),2)},
+            {label:'厳選3連単',c:tierCalc(rs,'payout',r=>tierSelOf(r,'selectTrifecta'),3)}
+          ];
+          const valid=rows.filter(x=>x.c.n);
+          const bestRoi=valid.length?Math.max(...valid.map(x=>x.c.roi)):0;
+          const rowHtml=x=>{
+            const best=x.c.n&&x.c.roi===bestRoi&&bestRoi>0;
+            return '<div class="flex items-center justify-between gap-2 py-1 '+(best?'bg-amber-500/10 rounded px-1 -mx-1':'')+'"><span class="'+(best?'font-bold text-amber-200':'text-slate-300')+'">'+x.label+(best?' ★':'')+'</span><span class="font-mono-code">'+(x.c.n?('的中 '+x.c.rate.toFixed(1)+'% ・ 回収 '+x.c.roi.toFixed(1)+'%'):'—')+'</span></div>';
+          };
+          return '<div class="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2"><div class="flex items-center justify-between gap-2 border-b border-slate-700 pb-1 mb-1"><span class="font-bold text-rose-200">'+d.label+'</span><span class="text-slate-400">'+rs.length+'R ・ 万車率 '+(manData.length?manRate.toFixed(1)+'%':'—')+'</span></div>'+rows.map(rowHtml).join('')+'</div>';
         }).join('');
         const tSummary=document.getElementById('tierStatsSummary');
-        if(tSummary)tSummary.textContent='期間指定の対象レースを荒れ度タイプごとに集計（ガールズは対象外・1点100円）。各タイプで回収率が最も高い券種を太字で表示。';
+        if(tSummary)tSummary.textContent='期間指定の対象レースを荒れ度タイプごとに集計（ガールズは対象外・1点100円）。各タイプで回収率が最も高い券種に ★ を表示。';
       }
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
@@ -3641,8 +3645,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.62-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.62';
+    const APP_RELEASE_VERSION = '3.63-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.63';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
