@@ -3233,6 +3233,28 @@
         const rest=cars.filter(c=>!axisFirsts.has(c));
         if (axes.length) win=[...axes,...rest].slice(0,3);
       } catch (e) {}
+      // 荒れ度タイプT2・T3（6/7車・ガールズ除く）では本線3連単を中間展開する：組ごとに「各車が1着になる並び」を最低1つずつ足す。
+      // 根拠（25,477R検証）: T3 5.93点・的中9.8%・回収72.7% → 13.87点・22.7%・75.9% / T2 4.62点・11.5%・66.6% → 11.33点・21.7%・68.3%
+      try {
+        if (res.entries.length >= 6 && res.entries.length <= 7 && !(res.lineSummaryList || []).every(l => l.isTanki)) {
+          const tierNow = chaosTierOf(res).tier;
+          if (tierNow === 2 || tierNow === 3) {
+            const rankOf = c => { const i = cars.indexOf(c); return i < 0 ? 99 : i; };
+            const have = new Set(selected.map(t => t.join('-')));
+            const bySet = {};
+            selected.forEach(t => { const k = [...t].map(Number).sort((a, b) => a - b).join(','); (bySet[k] = bySet[k] || []).push(t); });
+            Object.entries(bySet).forEach(([k, tickets]) => {
+              const setCars = k.split(',').map(Number);
+              setCars.forEach(lead => {
+                if (tickets.some(t => Number(t[0]) === lead)) return;
+                const rest = setCars.filter(c => c !== lead).sort((a, b) => rankOf(a) - rankOf(b));
+                const nt = [lead, ...rest];
+                if (!have.has(nt.join('-'))) { selected.push(nt); have.add(nt.join('-')); }
+              });
+            });
+          }
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -3645,8 +3667,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.63-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.63';
+    const APP_RELEASE_VERSION = '3.64-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.64';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
