@@ -740,7 +740,7 @@
           </div>
         </div>
         <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
-          <span>※ライン①②③④は青線で結束 / 単騎(T)は独立浮遊</span>
+          <span>※ライン①②③④は青線で結束 / 単騎(T)は独立浮遊 ｜ 壁衝突 <span id="wallHitCount" class="text-purple-200 font-bold">0</span>回 ・ 伸び縮み <span id="spreadCycleCount" class="text-purple-200 font-bold">0</span>回（固定配置・1200ステップ計測）</span>
           <button id="resetGravityBtn" class="text-purple-300 hover:underline font-mono-code">↻ 再シミュレーション</button>
         </div>
       </article>
@@ -2375,13 +2375,25 @@
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('gravityCanvas の2D描画コンテキストを取得できません');
       canvas.width = width; canvas.height = height;
-      gravityParticles = res.entries.map((e, i) => ({
-        car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
-        radius: 7 + res.scores[i] * 1.6, x: canvas.width * 0.2 + Math.random() * canvas.width * 0.6,
-        y: canvas.height * 0.2 + Math.random() * canvas.height * 0.6, vx: (Math.random() - 0.5) * 2.2, vy: (Math.random() - 0.5) * 2.2,
-        color: CAR_COLORS[(e.car - 1) % 9]
-      }));
+      // 固定配置（v3.66）: 並び順に楕円配置し、初速は理論スコアから決める。同じレースは毎回同じ軌道になる
+      const nP = res.entries.length;
+      gravityParticles = res.entries.map((e, i) => {
+        const ang = (2 * Math.PI * i) / nP - Math.PI / 2;
+        return {
+          car: e.car, isTanki: e.isTanki, lineIdx: res.lines.findIndex(g => g.includes(String(e.car))),
+          radius: 7 + res.scores[i] * 1.6,
+          x: canvas.width / 2 + canvas.width * 0.30 * Math.cos(ang), y: canvas.height / 2 + canvas.height * 0.30 * Math.sin(ang),
+          vx: -Math.sin(ang) * (0.6 + res.scores[i] * 0.25), vy: Math.cos(ang) * (0.6 + res.scores[i] * 0.25),
+          color: CAR_COLORS[(e.car - 1) % 9]
+        };
+      });
       if (gravityAnimId) cancelAnimationFrame(gravityAnimId);
+      // 計測: 壁衝突回数と、系の広がり（重心からのRMS距離）の伸び縮み回数を1200ステップ数える
+      let wallHits = 0, spreadCycles = 0, stepCount = 0;
+      let spreadDir = 0, spreadPeak = null, spreadTrough = null;
+      const wallEl = document.getElementById('wallHitCount'), cycEl = document.getElementById('spreadCycleCount');
+      if (wallEl) wallEl.textContent = '0';
+      if (cycEl) cycEl.textContent = '0';
       function loop() {
         if (!canvas.isConnected) return;
         ctx.fillStyle = 'rgba(5, 11, 20, 0.35)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2394,14 +2406,28 @@
             } else if (dist < 65) { p1.vx -= (dx / dist) * 0.08; p1.vy -= (dy / dist) * 0.08; p2.vx += (dx / dist) * 0.08; p2.vy += (dy / dist) * 0.08; }
           }
         }
+        let cx = 0, cy = 0;
         gravityParticles.forEach(p => {
-          p.x += p.vx; p.y += p.vy; p.vx *= 0.985; p.vy *= 0.985;
-          if (p.x < p.radius || p.x > canvas.width - p.radius) p.vx *= -1;
-          if (p.y < p.radius || p.y > canvas.height - p.radius) p.vy *= -1;
+          p.x += p.vx; p.y += p.vy; p.vx *= 0.998; p.vy *= 0.998;
+          if (p.x < p.radius) { p.x = p.radius; p.vx *= -1; wallHits++; }
+          else if (p.x > canvas.width - p.radius) { p.x = canvas.width - p.radius; p.vx *= -1; wallHits++; }
+          if (p.y < p.radius) { p.y = p.radius; p.vy *= -1; wallHits++; }
+          else if (p.y > canvas.height - p.radius) { p.y = canvas.height - p.radius; p.vy *= -1; wallHits++; }
+          cx += p.x; cy += p.y;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
           ctx.fillStyle = [1, 5].includes(p.car) ? '#0f172a' : '#ffffff'; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.car, p.x, p.y);
         });
-        gravityAnimId = requestAnimationFrame(loop);
+        cx /= nP; cy /= nP;
+        const spread = Math.sqrt(gravityParticles.reduce((a, p) => a + (p.x - cx) ** 2 + (p.y - cy) ** 2, 0) / nP);
+        if (spreadPeak === null) { spreadPeak = spread; spreadTrough = spread; }
+        if (spreadDir >= 0) { spreadPeak = Math.max(spreadPeak, spread); if (spreadPeak - spread > 2) { spreadCycles++; spreadDir = -1; spreadTrough = spread; } }
+        if (spreadDir <= 0) { spreadTrough = Math.min(spreadTrough, spread); if (spread - spreadTrough > 2) { spreadCycles++; spreadDir = 1; spreadPeak = spread; } }
+        stepCount++;
+        if (stepCount % 30 === 0 || stepCount >= 1200) {
+          if (wallEl) wallEl.textContent = String(wallHits);
+          if (cycEl) cycEl.textContent = String(spreadCycles);
+        }
+        if (stepCount < 1200) gravityAnimId = requestAnimationFrame(loop);
       }
       loop();
     }
@@ -3668,8 +3694,8 @@
     })();
 
 
-    const APP_RELEASE_VERSION = '3.65-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.65';
+    const APP_RELEASE_VERSION = '3.66-20261122';
+    const APP_RELEASE_LABEL = '更新版 v3.66';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
