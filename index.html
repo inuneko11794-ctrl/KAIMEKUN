@@ -3733,6 +3733,13 @@
           selected.length = 0; keptSum.forEach(t => selected.push(t));
         }
       } catch (e) {}
+      // T1（帯67）は本線3連単から車番合計10以下の組み合わせを外す（25,477R検証: 17.97点・的中32.1%・回収83.5% → 10.10点・18.6%・100.1%。買い目点数の43.8%を張る低合計側の転換効率が悪いため。両期間で改善）
+      try {
+        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && chaosTierOf(res).tier === 1) {
+          const keptSum = selected.filter(t => Number(t[0]) + Number(t[1]) + Number(t[2]) >= 11);
+          selected.length = 0; keptSum.forEach(t => selected.push(t));
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -4211,7 +4218,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.108';
+    const APP_RELEASE_LABEL = '更新版 v3.109';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
