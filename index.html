@@ -1942,6 +1942,7 @@
           document.getElementById('raceSelector').value = currentRaceIdx;
           renderCurrentRace();
           refreshVerticalStockList();
+          sfx('tap');
         });
       });
       document.querySelectorAll('.del-stock-race-btn').forEach(btn => {
@@ -2004,6 +2005,7 @@
           document.getElementById('raceSelector').value = currentRaceIdx;
           renderCurrentRace();
           refreshVerticalStockList();
+          sfx('tap');
           showToast(`🔍 配当レンジ代表レース「${allRaces[currentRaceIdx].id}」を表示しました！`);
         });
       });
@@ -2967,7 +2969,7 @@
       await navigator.clipboard.writeText(document.getElementById('embedCodeInput').value);
       showToast('🔗 埋め込みコードをコピーしました');
     });
-    document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    document.getElementById('raceSelector').addEventListener('change', (e) => { currentRaceIdx = parseInt(e.target.value, 10); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); sfx('tap'); });
     let raceNoResultOnly = false;
     let raceManshaOnly = false;
     function applyRaceSearch() {
@@ -3014,9 +3016,9 @@
         }
       });
     }
-    document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
-    document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
-    document.getElementById('randomRaceBtn').addEventListener('click', () => { currentRaceIdx = Math.floor(Math.random() * allRaces.length); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    document.getElementById('prevRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx - 1 + allRaces.length) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); sfx('tap'); });
+    document.getElementById('nextRaceBtn').addEventListener('click', () => { currentRaceIdx = (currentRaceIdx + 1) % allRaces.length; renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); sfx('tap'); });
+    document.getElementById('randomRaceBtn').addEventListener('click', () => { currentRaceIdx = Math.floor(Math.random() * allRaces.length); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); sfx('tap'); });
     document.getElementById('editRaceBtn').addEventListener('click', () => {
       const panel = document.getElementById('lateResultPanel');
       if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3673,6 +3675,7 @@
         currentRaceIdx = parseInt(el.dataset.meetingIdx, 10);
         document.getElementById('raceSelector').value = currentRaceIdx;
         renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
+        sfx('tap');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }));
     }
@@ -4025,7 +4028,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.90';
+    const APP_RELEASE_LABEL = '更新版 v3.91';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -4051,6 +4054,7 @@
     function switchWorkspaceTab(tab) {
       const allowed = ['predict','analysis','input','learning','data'];
       if (!allowed.includes(tab)) return;
+      if (tab !== activeWorkspaceTab) sfx('tap');
       activeWorkspaceTab = tab;
       document.querySelectorAll('[data-workspace-panel]').forEach(panel => {
         panel.hidden = panel.dataset.workspacePanel !== tab;
