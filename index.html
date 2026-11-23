@@ -120,6 +120,37 @@
   .workspace-tab[aria-selected="true"]{background:#0abab5;border-color:#0abab5;color:#03211f;box-shadow:0 0 18px rgba(10,186,181,.5)}
   button[data-meeting-idx][class*="0abab5"] span{color:#03211f}
   .stock-race-item[class*="0abab5"] span{color:#03211f}
+  /* ===== ライトテーマ ===== */
+  html.light-theme{color-scheme:light}
+  html.light-theme body{background-color:#e9f6f4!important;background-image:linear-gradient(180deg,#e3f5f2 0%,#f4f8fb 45%,#edf1ff 100%)!important;color:#1e293b}
+  html.light-theme .glass-panel{background:rgba(255,255,255,.9);border-color:rgba(10,186,181,.35);box-shadow:0 8px 24px rgba(15,80,76,.12)}
+  html.light-theme [class*="bg-slate-950"],html.light-theme [class*="bg-slate-900"],html.light-theme [class*="bg-slate-800"]{background-color:rgba(255,255,255,.86)!important}
+  html.light-theme [class*="bg-slate-700"]{background-color:#e2e8f0!important}
+  html.light-theme [class*="text-white"],html.light-theme [class*="text-slate-100"],html.light-theme [class*="text-slate-200"],html.light-theme [class*="text-slate-300"]{color:#1e293b!important}
+  html.light-theme [class*="text-slate-400"],html.light-theme [class*="text-slate-500"]{color:#5b6b82!important}
+  html.light-theme [class*="border-slate-"]{border-color:#c3cedd!important}
+  html.light-theme [class*="text-cyan-100"],html.light-theme [class*="text-cyan-200"],html.light-theme [class*="text-cyan-300"]{color:#0e7490!important}
+  html.light-theme [class*="text-sky-200"],html.light-theme [class*="text-sky-300"]{color:#0369a1!important}
+  html.light-theme [class*="text-blue-200"],html.light-theme [class*="text-blue-300"]{color:#1d4ed8!important}
+  html.light-theme [class*="text-amber-100"],html.light-theme [class*="text-amber-200"],html.light-theme [class*="text-amber-300"]{color:#b45309!important}
+  html.light-theme [class*="text-yellow-200"],html.light-theme [class*="text-yellow-300"]{color:#a16207!important}
+  html.light-theme [class*="text-emerald-200"],html.light-theme [class*="text-emerald-300"]{color:#047857!important}
+  html.light-theme [class*="text-green-200"],html.light-theme [class*="text-green-300"]{color:#15803d!important}
+  html.light-theme [class*="text-rose-200"],html.light-theme [class*="text-rose-300"]{color:#be123c!important}
+  html.light-theme [class*="text-red-200"],html.light-theme [class*="text-red-300"]{color:#b91c1c!important}
+  html.light-theme [class*="text-violet-200"],html.light-theme [class*="text-violet-300"]{color:#6d28d9!important}
+  html.light-theme [class*="text-purple-200"],html.light-theme [class*="text-purple-300"]{color:#7e22ce!important}
+  html.light-theme [class*="text-fuchsia-200"],html.light-theme [class*="text-fuchsia-300"]{color:#a21caf!important}
+  html.light-theme [class*="text-pink-200"],html.light-theme [class*="text-pink-300"]{color:#be185d!important}
+  html.light-theme [class*="text-indigo-200"],html.light-theme [class*="text-indigo-300"]{color:#4338ca!important}
+  html.light-theme [class*="text-orange-200"],html.light-theme [class*="text-orange-300"]{color:#c2410c!important}
+  html.light-theme [class*="text-lime-200"],html.light-theme [class*="text-lime-300"]{color:#4d7c0f!important}
+  html.light-theme [class*="text-teal-200"],html.light-theme [class*="text-teal-300"]{color:#0f766e!important}
+  html.light-theme .workspace-tabs{background:rgba(255,255,255,.92);border-color:rgba(10,186,181,.45)}
+  html.light-theme .workspace-tab{background:rgba(10,186,181,.06);border-color:rgba(10,186,181,.3);color:#0f766e}
+  html.light-theme input,html.light-theme select,html.light-theme textarea{background-color:#ffffff!important;color:#1e293b!important;border-color:#c3cedd!important}
+  html.light-theme ::-webkit-scrollbar-track{background:#e2e8f0}
+  html.light-theme ::-webkit-scrollbar-thumb{background:#94a3b8}
   .workspace-panel{display:flex;flex-direction:column;gap:1.5rem;min-width:0}
   html{scroll-padding-top:84px}
   @media (max-width:767px){
@@ -160,6 +191,7 @@
         <button id="chooseDataFileBtn" type="button" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-sm font-semibold transition w-full sm:w-auto">
           📂 CSV / MDファイルを選択
         </button>
+        <button id="themeToggleBtn" type="button" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/50 text-sky-200 text-sm font-semibold transition w-full sm:w-auto">🌞 ライト</button>
         <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
         <span id="dataFileReadStatus" class="text-xs text-slate-400 w-full sm:w-auto">ファイル未選択</span>
       </div>
@@ -2701,6 +2733,13 @@
     const sfxLabel = () => { if (sfxToggleBtn) sfxToggleBtn.textContent = sfxOn() ? '🔊 効果音: ON' : '🔇 効果音: OFF'; };
     if (sfxToggleBtn) { sfxLabel(); sfxToggleBtn.addEventListener('click', () => { try { localStorage.setItem('kaimekun_sfx', sfxOn() ? 'off' : 'on'); } catch (e) {} sfxLabel(); sfx('tap'); }); }
 
+    // ===== テーマ切替（ライト/ダーク） =====
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIsLight = () => { try { return localStorage.getItem('kaimekun_theme') === 'light'; } catch (e) { return false; } };
+    const applyTheme = () => { const light = themeIsLight(); document.documentElement.classList.toggle('light-theme', light); if (themeToggleBtn) themeToggleBtn.textContent = light ? '🌙 ダーク' : '🌞 ライト'; };
+    applyTheme();
+    if (themeToggleBtn) themeToggleBtn.addEventListener('click', () => { try { localStorage.setItem('kaimekun_theme', themeIsLight() ? 'dark' : 'light'); } catch (e) {} applyTheme(); sfx('tap'); });
+
     // ===== マイミュージック（IndexedDBにファイルを保存して後から再生） =====
     const musicState = { tracks: [], current: -1, urls: new Map() };
     function musicDb() {
@@ -4030,7 +4069,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.94';
+    const APP_RELEASE_LABEL = '更新版 v3.95';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
