@@ -3693,7 +3693,7 @@
       const selTriEl=document.getElementById('autoSelectTrifectaPicks');
       if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?show(tickets.selectTrifecta,15):'該当なし';
       const trioEl=document.getElementById('autoTrioPicks');
-      if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('・')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
+      if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('=')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
       const verifyEl=document.getElementById('raceVerifyBar');
       if(verifyEl){
         const fin=parseFinish(race);
@@ -4025,7 +4025,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.89';
+    const APP_RELEASE_LABEL = '更新版 v3.90';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
