@@ -3702,6 +3702,30 @@
           }
         }
       } catch (e) {}
+      // 6車立て本線3連単は方式X''に置き換える（25,477R検証: 従来 10.37点・的中30.0%・回収67.8% → 9.75点・30.9%・87.1%）:
+      // 本線2車単の表示順・上位3ペア×3着流し。3着から6番車は原則外すが、ペアが同ラインの先頭→番手で6番車がそのラインの3番手にいるペアでのみ6番車を残す（隊列がそのまま残る形）。
+      try {
+        if (res.entries.length === 6 && !res.isGirlsRace) {
+          const info6 = {};
+          (res.lineSummaryList || []).forEach((g, gi) => { (g.members || []).forEach((m, idx) => { info6[Number(m.car)] = { g: gi, pos: idx }; }); });
+          const six6 = info6[6];
+          const cond6 = p => { const a = info6[Number(p[0])], b = info6[Number(p[1])]; return !!(a && b && six6 && a.g === b.g && a.pos === 0 && b.pos === 1 && six6.g === a.g && six6.pos === 2); };
+          const allCars6 = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
+          const wheel6 = [], seen6 = new Set();
+          exacta.slice(0, 3).forEach(p => {
+            const p0 = Number(p[0]), p1 = Number(p[1]);
+            const keep6 = p0 === 6 || p1 === 6 || cond6(p);
+            allCars6.forEach(c => {
+              if (c === p0 || c === p1) return;
+              if (!keep6 && c === 6) return;
+              const t = [p0, p1, c], key = t.join('-');
+              if (!seen6.has(key)) { seen6.add(key); wheel6.push(t); }
+            });
+          });
+          selected.length = 0;
+          wheel6.forEach(t => selected.push(t));
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -4180,7 +4204,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.105';
+    const APP_RELEASE_LABEL = '更新版 v3.106';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
