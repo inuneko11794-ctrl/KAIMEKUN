@@ -1027,6 +1027,8 @@
       '✖': 0.99, 'T': 0.81, '☆': 0.87, '★': 0.84, '☽': 0.39, '☾': 0.39, '星': 0.45, '無': 0.2
     };
     function getScore(convertedMark) { return CONVERTED_SCORES[String(convertedMark).trim()] ?? 0.5; }
+    // 本印→変換印の対応（変換処理・印関係判定・隣接ペア追加で共用）
+    const CONVERTED_OF = { '◎': '⑳', '◯': '●', '△': '▲', '✕': '✖' };
 
     function applyLineAndMarkRules(race) {
       const carToEntry = {};
@@ -1060,7 +1062,7 @@
         lineCounter++;
         const rawMarks = carsInGrp.map(c => normalizeRawMark(carToEntry[c].rawMark ?? carToEntry[c].mark));
         const convMarks = [...rawMarks];
-        const convertedFor = { '◎': '⑳', '◯': '●', '△': '▲', '✕': '✖' };
+        const convertedFor = CONVERTED_OF;
         const claimedUnmarked = new Set();
         const baseIndices = rawMarks.map((mark, idx) => convertedFor[mark] ? idx : -1).filter(idx => idx >= 0);
 
@@ -2233,10 +2235,10 @@
       },
       rider: {
         lineRole: { front: 0.101, second: 0.050, rear: -0.213, tanki: -0.201 },
-        lineOrder: { '1': 0.114, '2': -0.064, '3': -0.120, '4': -0.155, scale: 0.5,
+        lineOrder: { '1': 0.114, '2': -0.064, '3': -0.120, scale: 0.5,
           trainWeighted: { '1': 1.1243, '2': 0.7683, '3': 0.6563 },
           validationWeighted: { '1': 1.1256, '2': 0.7616, '3': 0.6576 } },
-        markRelation: { higher: 0.647, news: 0.568, conv: -0.445, other: -0.771, normal: -0.278, secondMarkHigher: 0.278, scale: 1.0,
+        markRelation: { higher: 0.647, news: 0.568, conv: -0.445, other: -0.771, scale: 1.0,
           trainHigherWeighted: 1.3027, trainNewsWeighted: 1.2036, trainConvWeighted: 0.4371, trainOtherWeighted: 0.3156,
           validationHigherWeighted: 1.2483, validationNewsWeighted: 1.2005, validationConvWeighted: 0.4249, validationOtherWeighted: 0.3365 }
       },
@@ -2335,7 +2337,7 @@
         if(line.isTanki||line.members.length<2)return;
         const front=line.members[0],second=line.members[1],row=byCar.get(Number(second.car));if(!row)return;
         const secondMarkHigher=getEmpiricalMarkPoints(second.convertedMark)>getEmpiricalMarkPoints(front.convertedMark);
-        const relationGroup=secondMarkHigher?'higher':({ '◎':'⑳','◯':'●','△':'▲','✕':'✖' }[front.convertedMark]===second.convertedMark?'conv':['◎','◯','△','✕'].includes(second.convertedMark)?'news':'other');
+        const relationGroup=secondMarkHigher?'higher':(CONVERTED_OF[front.convertedMark]===second.convertedMark?'conv':['◎','◯','△','✕'].includes(second.convertedMark)?'news':'other');
         const relationBase=res.entries.length!==7?0:FEATURE_POINT_BASELINE.rider.markRelation[relationGroup];
         const relationLearned=disabled==='markRelation'?0:relationBase*Number(adaptive.markRelation||0)*0.5;
         row.featureContributions.markRelation=disabled==='markRelation'?0:relationBase+relationLearned;
@@ -3370,7 +3372,7 @@
         if (bucket.some(t => t.key === key)) return;
         const head = ticket[0];
         if (n === 7) score += head === 1 ? 1.2 : head === 6 ? -1.6 : 0;
-        else if (n === 9) score += [1, 2, 5, 7, 9].includes(head) ? 0.8 : [4, 6, 8].includes(head) ? -1.2 : 0;
+        else if (n === 9) score += PATTERN_BASELINE.cars9strong.includes(head) ? 0.8 : PATTERN_BASELINE.cars9weak.includes(head) ? -1.2 : 0;
         const bonus = pointByCar ? ticket.reduce((s, c) => s + (Number(pointByCar[Number(c)]) || 0), 0) : 0;
         bucket.push({ key, ticket: ticket.slice(), reason, score, bonus });
       };
@@ -3434,10 +3436,7 @@
       let mainEx = take(main, 2, 3), mainTri = take(main, 3, triCapMain), holeEx = take(hole, 2, 2), holeTri = take(hole, 3, triCapHole);
       if (!mainTri.length) { mainTri = holeTri.slice(0, triCapMain); holeTri = []; mainEx = holeEx.slice(0, 3); holeEx = holeEx.slice(3); }
       const exacta = mainEx.concat(holeEx), trifecta = mainTri.concat(holeTri);
-      const heads = [];
-      trifecta.concat(exacta).forEach(t => { if (!heads.includes(t.ticket[0])) heads.push(t.ticket[0]); });
-      ['◎', '◯', '△', '✕'].forEach(m => of(m).forEach(c => { if (!heads.includes(c)) heads.push(c); }));
-      return { win: heads.slice(0, 2), exacta, trifecta, mode: sujiMain ? 'スジ王道' : splitMain ? '別線・細切れ' : '混合' };
+      return { exacta, trifecta, mode: sujiMain ? 'スジ王道' : splitMain ? '別線・細切れ' : '混合' };
     }
     // AUTO BET MATRIX: 印の1着決着パターンで本線と狙いを作り、洛書は追加する。
     let __dnaFreqCache = { len: -1, map: null };
@@ -3495,7 +3494,6 @@
         if (am + '→' + pm === '◎→△' || am + '→' + pm === '◯→△') return;
         if (pm === '▲' && (p === 8 || (p === 9 && !bigField))) return;
         if (pm === '◯' && p === 9) return;
-        if ((a === 5 && p === 7) || (a === 7 && p === 5)) return;
         cars.forEach(x => {
           if (x === a || x === p) return;
           if (x === 8 || (x === 9 && !bigField)) return;
@@ -3592,6 +3590,11 @@
       const pattern=buildPatternTickets(race,res,pointByCar);
       const selectExacta=buildSelectExacta(res);
       const selectTrifecta=buildSelectTrifecta(res);
+      // 波乱度表示・荒れ度タイプ・印→車番表はこの生成中は不変なので、複数ブロックで使い回す（従来は各ブロックが再計算していた）
+      const dispProbShared=(()=>{try{return toDisplayProb(predictUpset(extractFeatures(res,getDnaFreqMapCached())));}catch(e){return null;}})();
+      const tierOfRace=(()=>{try{return chaosTierOf(res).tier;}catch(e){return null;}})();
+      const carByMarkShared={};
+      (res.entries||[]).forEach(e=>{if(e.mark&&!(e.mark in carByMarkShared))carByMarkShared[e.mark]=Number(e.car);});
       if(cars.length<3&&!pattern.trifecta.length)return {win:[],exacta:[],trifecta:[],selectExacta,selectTrifecta,rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,predictionSnapshot:scored};
       let win=cars.slice(0,3);
       const exacta=pattern.exacta.map(x=>x.ticket);
@@ -3601,13 +3604,14 @@
       rakushoPicks.filter(p=>p.type==='trifecta').forEach(p=>{if(!selected.some(t=>t.join('-')===p.ticket.join('-')))selected.push(p.ticket);});
       // 波乱帯別の点数キャップ（直近1年半の実績で検証済みの範囲のみ）
       try {
-        const dispProb = toDisplayProb(predictUpset(extractFeatures(res, getDnaFreqMapCached())));
-        if (dispProb < 22) { exacta.splice(2); selected.splice(4); }
-        else if (dispProb >= 60 && dispProb < 78) { selected.splice(4); }
+        if (dispProbShared != null) {
+          if (dispProbShared < 22) { exacta.splice(2); selected.splice(4); }
+          else if (dispProbShared >= 60 && dispProbShared < 78) { selected.splice(4); }
+        }
       } catch (e) {}
       // 隣接ペアの2車単（本印→その変換印、☆→★）を追加する。実測で単体回収75〜83%あり、従来の買い目にはほぼ含まれていなかった組み合わせ
       try {
-        const convOf = { '◎': '⑳', '◯': '●', '△': '▲', '✕': '✖' };
+        const convOf = CONVERTED_OF;
         const carByMark = {};
         (res.lineSummaryList || []).forEach(line => (line.members || []).forEach(m => { if (m.convertedMark && !(m.convertedMark in carByMark)) carByMark[m.convertedMark] = Number(m.car); }));
         Object.keys(convOf).forEach(base => {
@@ -3628,9 +3632,8 @@
       // 堅い帯（表示22未満）では◎軸の相手に△✕を足す。B5は◎が勝って△✕が2着に滑る形が構造的に漏れていた
       // （25,477R検証: B5 627Rで的中61.4%→71.8%・回収50.8%→55.7%、全体2車単の回収は不変）。
       try {
-        if (toDisplayProb(predictUpset(extractFeatures(res, getDnaFreqMapCached()))) < 22) {
-          const carByMark2 = {};
-          for (const e of res.entries) { if (e.mark && !(e.mark in carByMark2)) carByMark2[e.mark] = Number(e.car); }
+        if (dispProbShared != null && dispProbShared < 22) {
+          const carByMark2 = carByMarkShared;
           const has = t => exacta.some(x => Number(x[0]) === t[0] && Number(x[1]) === t[1]);
           const add = (m1, m2) => { const a = carByMark2[m1], b = carByMark2[m2]; if (a && b && a !== b && !has([a, b])) exacta.push([a, b]); };
           add('◎', '△'); add('◎', '✕');
@@ -3639,10 +3642,9 @@
       // 荒れ帯（表示60以上）では「2着に△✕☆が来る形」の2車単を足す。従来の本線はこの形を構造的に買っておらず、
       // 荒れ帯でのみ単体回収が立つ（◯→✕82%・✕→◯79%・◎→☆78%・◯→△76%・△→◯74%、堅め帯では62〜67%に落ちる）
       try {
-        const dispProb2 = toDisplayProb(predictUpset(extractFeatures(res, getDnaFreqMapCached())));
-        if (dispProb2 >= 60) {
-          const carByMark2 = {};
-          (res.entries || []).forEach(e => { if (e.mark && !(e.mark in carByMark2)) carByMark2[e.mark] = Number(e.car); });
+        const dispProb2 = dispProbShared;
+        if (dispProb2 != null && dispProb2 >= 60) {
+          const carByMark2 = carByMarkShared;
           [['◯', '✕'], ['✕', '◯'], ['◎', '☆'], ['◯', '△'], ['△', '◯']].forEach(([a, b]) => {
             const c1 = carByMark2[a], c2 = carByMark2[b];
             if (c1 && c2 && c1 !== c2) { const t = [c1, c2]; if (!exacta.some(x => x.join('-') === t.join('-'))) exacta.push(t); }
@@ -3668,7 +3670,7 @@
       // 根拠（25,477R検証）: T3 5.93点・的中9.8%・回収72.7% → 13.87点・22.7%・75.9% / T2 4.62点・11.5%・66.6% → 11.33点・21.7%・68.3%
       try {
         if (res.entries.length >= 6 && res.entries.length <= 7 && !(res.lineSummaryList || []).every(l => l.isTanki)) {
-          const tierNow = chaosTierOf(res).tier;
+          const tierNow = tierOfRace;
           if (tierNow === 2 || tierNow === 3) {
             const rankOf = c => { const i = cars.indexOf(c); return i < 0 ? 99 : i; };
             const have = new Set(selected.map(t => t.join('-')));
@@ -3690,7 +3692,7 @@
       // T2は厳選ペア×3着5流し（8.4点・的中18.9%・回収76.4%）に置き換える。T0・T3・超堅・8/9車は従来通り（T3は中間展開が上）。
       try {
         if (res.entries.length <= 7 && !(res.lineSummaryList || []).every(l => l.isTanki)) {
-          const tierW = chaosTierOf(res).tier;
+          const tierW = tierOfRace;
           if (tierW === 1 || tierW === 2) {
             const scoreByCar = {};
             (res.entries || []).forEach((e, i) => { scoreByCar[Number(e.car)] = res.scores[i] || 0; });
@@ -3719,10 +3721,7 @@
                 const a = Object.keys(liG).map(Number).find(c => liG[c].headCar === p && liG[c].pos === 1);
                 if (a == null || !infoG[a] || infoG[a].conv !== '✕') return;
                 if (a < 1 || a > 5) return;
-                const keyG = '✕×' + a + '→✖×' + p;
-                if (SELECT_BAD_PAIRS.has(keyG)) return;
                 if (a + p === 12) return;
-                if (SELECT_EXA_CUT.has(keyG)) return;
                 if (curKeysG.has(a + '-' + p)) return;
                 if (!gPairs.some(x => x[0] === a && x[1] === p)) gPairs.push([a, p]);
               });
@@ -3769,14 +3768,14 @@
       } catch (e) {}
       // 超堅（帯67）は本線3連単から車番合計11以上の組み合わせを外す（25,477R検証: 8.02点・的中42.6%・回収54.7% → 4.28点・27.8%・73.4%。失う的中245件は払戻中央値390円の激安のみ）
       try {
-        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && chaosTierOf(res).tier === -1) {
+        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && tierOfRace === -1) {
           const keptSum = selected.filter(t => Number(t[0]) + Number(t[1]) + Number(t[2]) <= 10);
           selected.length = 0; keptSum.forEach(t => selected.push(t));
         }
       } catch (e) {}
       // T1（帯67）は本線3連単から車番合計10以下の組み合わせを外す（25,477R検証: 17.97点・的中32.1%・回収83.5% → 10.10点・18.6%・100.1%。買い目点数の43.8%を張る低合計側の転換効率が悪いため。両期間で改善）
       try {
-        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && chaosTierOf(res).tier === 1) {
+        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && tierOfRace === 1) {
           const keptSum = selected.filter(t => Number(t[0]) + Number(t[1]) + Number(t[2]) >= 11);
           selected.length = 0; keptSum.forEach(t => selected.push(t));
         }
@@ -4287,7 +4286,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.115';
+    const APP_RELEASE_LABEL = '更新版 v3.116';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
