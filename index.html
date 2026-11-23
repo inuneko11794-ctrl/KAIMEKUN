@@ -118,8 +118,8 @@
   .workspace-tabs{position:sticky;top:0;z-index:40;display:flex;gap:.45rem;overflow-x:auto;padding:.65rem;background:rgba(24,10,48,.92);backdrop-filter:blur(14px);border:1px solid rgba(192,132,252,.35);border-radius:1rem;scrollbar-width:thin}
   .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(192,132,252,.25);border-radius:.75rem;background:rgba(46,26,92,.85);color:#e9d5ff;font-size:.78rem;font-weight:700;transition:.18s}
   .workspace-tab[aria-selected="true"]{background:#f59e0b;border-color:#f59e0b;color:#231a03;box-shadow:0 0 18px rgba(245,158,11,.5)}
-  button[data-meeting-idx][class*="f59e0b"] span{color:#231a03}
-  .stock-race-item[class*="f59e0b"] span{color:#231a03}
+  button[data-meeting-idx][class*="f59e0b"] span{color:#231a03!important}
+  .stock-race-item[class*="f59e0b"] span{color:#231a03!important}
   /* ===== ライトテーマ ===== */
   html.light-theme{color-scheme:light}
   html.light-theme body{background-color:#e9f6f4!important;background-image:linear-gradient(180deg,#e3f5f2 0%,#f4f8fb 45%,#edf1ff 100%)!important;color:#1e293b}
@@ -3730,20 +3730,20 @@
       group.sort((a, b) => numOf(a.r) - numOf(b.r));
       const dna = getDnaFreqMapCached();
       panel.innerHTML = group.map(({ r, i }) => {
-        let badges = '';
+        let badges = ''; const selRow = i === currentRaceIdx; const darkPill = 'bg-black/15 border-[#231a03]/60 text-[#231a03]';
         try {
           const res = analyzeRace(r);
           const praw = predictUpsetForRace(r.id, res, dna);
           const disp = toDisplayProb(praw);
           const sel = Array.isArray(r.autoTickets && r.autoTickets.selectExacta) ? r.autoTickets.selectExacta : buildSelectExacta(res);
           const selT = Array.isArray(r.autoTickets && r.autoTickets.selectTrifecta) ? r.autoTickets.selectTrifecta : buildSelectTrifecta(res);
-          if (!res.isGirlsRace) { const ct = chaosTierOf(res); const cc = ct.tier === -1 ? 'bg-sky-500/15 border-sky-400/60 text-sky-200' : ct.tier === 0 ? 'bg-emerald-500/15 border-emerald-400/60 text-emerald-200' : ct.tier === 1 ? 'bg-amber-500/15 border-amber-400/60 text-amber-200' : ct.tier === 2 ? 'bg-orange-500/15 border-orange-400/60 text-orange-200' : 'bg-rose-500/20 border-rose-400/60 text-rose-200'; badges += '<span class="px-2 py-0.5 rounded-full border ' + cc + ' text-[11px] font-bold">' + ct.label + '</span>'; if (solidLockOf(res, praw)) badges += '<span class="px-2 py-0.5 rounded-full bg-sky-500/25 border border-sky-300/70 text-sky-100 text-[11px] font-bold">🧊鉄板級</span>'; }
+          if (!res.isGirlsRace) { const ct = chaosTierOf(res); const cc = ct.tier === -1 ? 'bg-sky-500/15 border-sky-400/60 text-sky-200' : ct.tier === 0 ? 'bg-emerald-500/15 border-emerald-400/60 text-emerald-200' : ct.tier === 1 ? 'bg-amber-500/15 border-amber-400/60 text-amber-200' : ct.tier === 2 ? 'bg-orange-500/15 border-orange-400/60 text-orange-200' : 'bg-rose-500/20 border-rose-400/60 text-rose-200'; badges += '<span class="px-2 py-0.5 rounded-full border ' + (selRow ? darkPill : cc) + ' text-[11px] font-bold">' + ct.label + '</span>'; if (solidLockOf(res, praw)) badges += '<span class="px-2 py-0.5 rounded-full border ' + (selRow ? darkPill : 'bg-sky-500/25 border-sky-300/70 text-sky-100') + ' text-[11px] font-bold">🧊鉄板級</span>'; }
           const ov = overlapOf(r);
-          if (ov.recorded && ov.sites.length >= 2) badges += '<span class="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/60 text-violet-200 text-[11px] font-bold">🤝' + ov.sites.length + 'サイト一致 ' + OVERLAP_COUNT_RATE[ov.sites.length] + '%</span>';
-          if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
-          if (sel.length) badges += '<span class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold">厳選2車単あります！（' + sel.length + '点）</span>';
-          if (!res.isGirlsRace) badges += '<span class="text-[11px] text-slate-400">波乱度' + Math.round(disp) + '%</span>';
-          if (r.payout || r.resultOrder) badges += '<span class="text-[11px] text-emerald-300">結果あり</span>';
+          if (ov.recorded && ov.sites.length >= 2) badges += '<span class="px-2 py-0.5 rounded-full border ' + (selRow ? darkPill : 'bg-violet-500/20 border-violet-400/60 text-violet-200') + ' text-[11px] font-bold">🤝' + ov.sites.length + 'サイト一致 ' + OVERLAP_COUNT_RATE[ov.sites.length] + '%</span>';
+          if (selT.length) badges += '<span class="px-2 py-0.5 rounded-full border ' + (selRow ? darkPill : 'bg-cyan-500/15 border-cyan-500/60 text-cyan-200') + ' text-[11px] font-bold">厳選3連単あります！（' + selT.length + '点）</span>';
+          if (sel.length) badges += '<span class="px-2 py-0.5 rounded-full border ' + (selRow ? darkPill : 'bg-cyan-500/15 border-cyan-500/60 text-cyan-200') + ' text-[11px] font-bold">厳選2車単あります！（' + sel.length + '点）</span>';
+          if (!res.isGirlsRace) badges += '<span class="text-[11px] ' + (selRow ? 'text-[#231a03] font-bold' : 'text-slate-400') + '">波乱度' + Math.round(disp) + '%</span>';
+          if (r.payout || r.resultOrder) badges += '<span class="text-[11px] ' + (selRow ? 'text-[#231a03] font-bold' : 'text-emerald-300') + '">結果あり</span>';
         } catch (e) {}
         return '<button data-meeting-idx="' + i + '" class="w-full text-left rounded-xl border ' + (i === currentRaceIdx ? 'border-[#f59e0b] bg-[#f59e0b]' : 'border-slate-700 bg-slate-950/60') + ' px-3 py-2 flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold ' + (i === currentRaceIdx ? 'text-[#231a03]' : 'text-white') + '">' + r.id + '</span>' + badges + '</button>';
       }).join('');
@@ -4104,7 +4104,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.98';
+    const APP_RELEASE_LABEL = '更新版 v3.99';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
