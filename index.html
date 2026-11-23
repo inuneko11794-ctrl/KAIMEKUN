@@ -1010,8 +1010,8 @@
     }
 
     const CONVERTED_SCORES = {
-      '◎': 5.0, '⑳': 4.5, '◯': 4.0, '●': 4.0, '▲': 3.0, '△': 2.5, '✕': 1.8,
-      '✖': 1.8, 'T': 2.0, '☆': 1.2, '★': 0.9, '星': 0.6, '無': 0.2
+      '◎': 5.0, '⑳': 1.22, '◯': 3.75, '●': 1.11, '▲': 1.03, '△': 2.46, '✕': 1.83,
+      '✖': 0.99, 'T': 0.81, '☆': 0.87, '★': 0.84, '星': 0.45, '無': 0.2
     };
     function getScore(convertedMark) { return CONVERTED_SCORES[String(convertedMark).trim()] ?? 0.5; }
 
@@ -4168,7 +4168,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.102';
+    const APP_RELEASE_LABEL = '更新版 v3.103';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
