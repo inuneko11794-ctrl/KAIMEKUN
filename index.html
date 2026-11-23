@@ -3550,7 +3550,7 @@
       const scoreByCar = {}; (res.entries || []).forEach((e, i) => { scoreByCar[e.car] = res.scores[i]; });
       let tv = 0, prev = null;
       for (const g of (res.lineSummaryList || [])) for (const m of (g.members || [])) { const s = scoreByCar[m.car]; if (typeof s === 'number') { if (prev !== null) tv += Math.abs(s - prev); prev = s; } }
-      return tv <= 5;
+      return tv <= 6.5;
     }
     function buildAutoTickets(race,options={}) {
       const res=analyzeRace(race),adaptiveSnapshot=options.adaptiveSnapshot||{...adaptiveReasonPoints.tri};
@@ -4204,7 +4204,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.106';
+    const APP_RELEASE_LABEL = '更新版 v3.107';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
