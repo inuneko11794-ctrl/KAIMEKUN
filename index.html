@@ -1024,7 +1024,7 @@
 
     const CONVERTED_SCORES = {
       '◎': 5.0, '⑳': 1.22, '◯': 3.75, '●': 1.11, '▲': 1.03, '△': 2.46, '✕': 1.83,
-      '✖': 0.99, 'T': 0.81, '☆': 0.87, '★': 0.84, '星': 0.45, '無': 0.2
+      '✖': 0.99, 'T': 0.81, '☆': 0.87, '★': 0.84, '☽': 0.39, '☾': 0.39, '星': 0.45, '無': 0.2
     };
     function getScore(convertedMark) { return CONVERTED_SCORES[String(convertedMark).trim()] ?? 0.5; }
 
@@ -1094,7 +1094,8 @@
           if (touchesConverted) {
             run.forEach(idx => { convMarks[idx] = '☆'; });
           } else {
-            const seq = ['☆', '★', '星'];
+            // 8/9車立ては無印の連鎖が長いため、☆★の次に月セット（☽=非変換側・☾=変換印側）を1段追加し、星はその先にずらす。6/7車立ては従来どおり。
+            const seq = race.entries.length >= 8 ? ['☆', '★', '☽', '☾', '星'] : ['☆', '★', '星'];
             run.forEach((idx, k) => { convMarks[idx] = seq[k] || '星'; });
           }
         }
@@ -2217,7 +2218,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261124-v12-WINHEADS1',
+      version: 'CSV-BASELINE-20261124-v13-MOON89',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2228,7 +2229,7 @@
       markPoints: {
         '◎': 5.000, '◯': 3.744, '△': 2.441, '✕': 1.838,
         '⑳': 1.199, '●': 1.111, '▲': 1.013, '✖': 0.995,
-        'T': 0.949, '☆': 0.905, '★': 0.826, '星': 0.479
+        'T': 0.949, '☆': 0.905, '★': 0.826, '☽': 0.392, '☾': 0.392, '星': 0.479
       },
       rider: {
         lineRole: { front: 0.101, second: 0.050, rear: -0.213, tanki: -0.201 },
@@ -2241,6 +2242,7 @@
       },
       notes: {
         markTarget: '的中した2車・3車の組合せへの出現率。1着/2着/3着別の加点ではない',
+        moonMarks: '☽☾は8/9車立て専用の月セット（v3.114）。☽は新規則を全25,477Rに適用した着順指数フィット（出現484台・全て☽側）、☾は出現0件のため☽と同値',
         unsupported: '5車立てはデータなし。8車立てと少数カテゴリは保守的に0点扱い'
       }
     };
@@ -2455,7 +2457,7 @@
         </tr>`;
       }).join('');
       const calibGrid = document.getElementById('carMarkCalibrationGrid');
-      if (calibGrid) calibGrid.innerHTML = ['◎','◯','△','✕','⑳','●','▲','✖','☆','T','★','星'].map(m => `<span>${m} ${(EMPIRICAL_MARK_POINTS[m] ?? 0).toFixed(2)}</span>`).join('');
+      if (calibGrid) calibGrid.innerHTML = ['◎','◯','△','✕','⑳','●','▲','✖','☆','T','★','☽','☾','星'].map(m => `<span>${m} ${(EMPIRICAL_MARK_POINTS[m] ?? 0).toFixed(2)}</span>`).join('');
       document.getElementById('carPointContext').textContent =
         `レース全体の参考指標：不協和度 ${res.dissonance} ／ カオス指数 ${res.chaosIndex} ／ 重心偏り ${res.gravityBias} ／ 下剋上 ${res.coupScore} ／ ちぎれ懸念 ${res.abandonScore}。これらは現段階では車番別の根拠に分解できないため、ランキング点には加算していません。`;
       const fanoStats = calculateFanoPlaneStats(res);
@@ -4271,7 +4273,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.113';
+    const APP_RELEASE_LABEL = '更新版 v3.114';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
