@@ -3726,6 +3726,13 @@
           wheel6.forEach(t => selected.push(t));
         }
       } catch (e) {}
+      // 超堅（帯67）は本線3連単から車番合計11以上の組み合わせを外す（25,477R検証: 8.02点・的中42.6%・回収54.7% → 4.28点・27.8%・73.4%。失う的中245件は払戻中央値390円の激安のみ）
+      try {
+        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && chaosTierOf(res).tier === -1) {
+          const keptSum = selected.filter(t => Number(t[0]) + Number(t[1]) + Number(t[2]) <= 10);
+          selected.length = 0; keptSum.forEach(t => selected.push(t));
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -4204,7 +4211,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.107';
+    const APP_RELEASE_LABEL = '更新版 v3.108';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
