@@ -3785,7 +3785,7 @@
           const row=(label,hit,n,pay)=>{
             if(!hit) return '<div class="flex justify-between gap-2 py-0.5"><span class="text-slate-300">'+label+'</span><span class="text-slate-400">不的中'+(n?'（'+n+'点）':'')+'</span></div>';
             const bal=pay!=null?(' 収支 '+((pay-n*100)>=0?'+':'')+(pay-n*100).toLocaleString()+'円'):'';
-            return '<div class="flex justify-between gap-2 py-0.5"><span class="font-bold text-emerald-200">'+label+'</span><span class="font-mono-code text-emerald-100">的中'+(pay!=null?' 払戻 '+pay.toLocaleString()+'円':'')+bal+'</span></div>';
+            return '<div class="flex justify-between gap-2 py-0.5"><span class="font-bold text-emerald-200">'+label+'</span><span class="font-mono-code text-emerald-100">的中'+(n?'（'+n+'点）':'')+(pay!=null?' 払戻 '+pay.toLocaleString()+'円':'')+bal+'</span></div>';
           };
           const winHit=(tickets.win||[]).some(t=>norm(t)[0]===fin[0]);
           verifyEl.innerHTML='<div class="font-bold text-emerald-100 mb-1">✅ 結果検証 ｜ 確定着順 '+fin.join('-')+(yen(race.exactaPayout)?' ｜ 2車単 '+yen(race.exactaPayout):'')+(yen(race.payout)?' ｜ 3連単 '+yen(race.payout):'')+'</div>'
@@ -4104,7 +4104,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.97';
+    const APP_RELEASE_LABEL = '更新版 v3.98';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
