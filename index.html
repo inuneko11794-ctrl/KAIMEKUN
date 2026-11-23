@@ -3334,9 +3334,6 @@
       res.entries.forEach(e => { marks[e.car] = e.mark; });
       const groups = (res.lineSummaryList || []).map(l => l.members.map(m => m.car)).filter(g => g.length);
       const n = res.entries.length;
-      const title = `${race.id || ''} ${race.seg || ''} ${race.raceClass || ''}`;
-      const challenge = /チャレンジ|A級|チ/.test(title);
-      const sclass = /S級/.test(title);
       const numbered = groups.filter(g => g.length >= 2);
       const shape = groups.slice().sort((a, b) => b.length - a.length).map(g => g.length).join('-');
       const of = m => Object.keys(marks).map(Number).filter(c => marks[c] === m);
@@ -3354,8 +3351,6 @@
         const head = ticket[0];
         if (n === 7) score += head === 1 ? 1.2 : head === 6 ? -1.6 : 0;
         else if (n === 9) score += [1, 2, 5, 7, 9].includes(head) ? 0.8 : [4, 6, 8].includes(head) ? -1.2 : 0;
-        if (sclass && locate(head)[1] === 1) score += 0.8;
-        if (challenge && head === hon && locate(head)[1] === 0) score += 0.4;
         const bonus = pointByCar ? ticket.reduce((s, c) => s + (Number(pointByCar[Number(c)]) || 0), 0) : 0;
         bucket.push({ key, ticket: ticket.slice(), reason, score, bonus });
       };
@@ -3388,7 +3383,6 @@
       [['△', '▲', '△'], ['✕', '✖', '✕']].forEach(([mk, mate, label]) => {
         of(mk).forEach(h => {
           const [g, idx] = locate(h);
-          if (idx >= 2) return;
           if (hon && tai) {
             push(outside, [h, hon], lane + ': 別線' + label + '-◎', splitMain ? 1.6 : 1.1);
             push(outside, [h, hon, tai], lane + ': 別線' + label + '-◎-◯', splitMain ? 1.7 : 1);
@@ -3399,14 +3393,12 @@
       });
       of('☆').forEach(h => {
         const [g, idx] = locate(h);
-        if (idx !== 0) return;
         const star = g.filter(c => marks[c] === '★');
         if (hon && tai) push(outside, [h, hon, tai], lane + ': ☆の別線先頭', splitMain ? 1.8 : 1.1);
         if (star.length && hon) push(outside, [h, star[0], hon], '☆-★が残る', 1.3);
       });
       of('★').forEach(h => {
         const [g, idx] = locate(h);
-        if (idx !== 1) return;
         const star = g.filter(c => marks[c] === '☆');
         const tan = of('△')[0];
         if (star.length && tan) push(outside, [h, star[0], tan], '★-☆-△', 1.2);
@@ -3418,8 +3410,9 @@
         if (hon && tan) push(outside, [h, hon, tan], '単騎T-◎-△', 1.1);
       });
       const take = (bucket, len, limit) => bucket.filter(t => t.ticket.length === len).sort((a, b) => (b.score + PATTERN_LEARN_WEIGHT * (b.bonus || 0)) - (a.score + PATTERN_LEARN_WEIGHT * (a.bonus || 0))).filter((t, i, arr) => arr.findIndex(x => x.key === t.key) === i).slice(0, limit);
-      let mainEx = take(main, 2, 3), mainTri = take(main, 3, 6), holeEx = take(hole, 2, 2), holeTri = take(hole, 3, 4);
-      if (!mainTri.length) { mainTri = holeTri.slice(0, 6); holeTri = []; mainEx = holeEx.slice(0, 3); holeEx = holeEx.slice(3); }
+      const triCapMain = (n === 6 || n === 7) ? 9999 : 6, triCapHole = (n === 6 || n === 7) ? 9999 : 4;
+      let mainEx = take(main, 2, 3), mainTri = take(main, 3, triCapMain), holeEx = take(hole, 2, 2), holeTri = take(hole, 3, triCapHole);
+      if (!mainTri.length) { mainTri = holeTri.slice(0, triCapMain); holeTri = []; mainEx = holeEx.slice(0, 3); holeEx = holeEx.slice(3); }
       const exacta = mainEx.concat(holeEx), trifecta = mainTri.concat(holeTri);
       const heads = [];
       trifecta.concat(exacta).forEach(t => { if (!heads.includes(t.ticket[0])) heads.push(t.ticket[0]); });
@@ -4187,7 +4180,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.104';
+    const APP_RELEASE_LABEL = '更新版 v3.105';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
