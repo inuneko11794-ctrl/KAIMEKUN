@@ -3687,7 +3687,32 @@
               });
               return out;
             };
-            const w = tierW === 1 ? wheel(exacta, 3) : wheel(selectExacta, 5);
+            let flowPairs = selectExacta;
+            if (tierW === 2 && res.entries.length >= 6) {
+              // T2の流しにはGペア（番手の✕→先頭の✖）を足す。✖頭ラインの番手✕が勝つ形は厳選ペアでは構造的に拾えなかった
+              // （25,477R検証: 9.88点・的中20.9%・回収77.2% → 10.93点・21.5%・80.1%。標的93件の的中2件→27件、両期間で改善）
+              const infoG = selectCarInfo(res);
+              const liG = {};
+              (res.lineSummaryList || []).forEach(line => { const mem = line.members || []; const headCar = mem.length ? Number(mem[0].car) : null; mem.forEach((mm, i) => { liG[Number(mm.car)] = { pos: i, len: mem.length, headCar }; }); });
+              const curKeysG = new Set(selectExacta.map(x => x.join('-')));
+              const gPairs = [];
+              Object.keys(infoG).map(Number).forEach(p => {
+                if (infoG[p].conv !== '✖') return;
+                const lp = liG[p];
+                if (!lp || lp.pos !== 0 || lp.len < 2) return;
+                const a = Object.keys(liG).map(Number).find(c => liG[c].headCar === p && liG[c].pos === 1);
+                if (a == null || !infoG[a] || infoG[a].conv !== '✕') return;
+                if (a < 1 || a > 5) return;
+                const keyG = '✕×' + a + '→✖×' + p;
+                if (SELECT_BAD_PAIRS.has(keyG)) return;
+                if (a + p === 12) return;
+                if (SELECT_EXA_CUT.has(keyG)) return;
+                if (curKeysG.has(a + '-' + p)) return;
+                if (!gPairs.some(x => x[0] === a && x[1] === p)) gPairs.push([a, p]);
+              });
+              flowPairs = [...selectExacta, ...gPairs];
+            }
+            const w = tierW === 1 ? wheel(exacta, 3) : wheel(flowPairs, 5);
             if (w.length) { selected.length = 0; w.forEach(t => selected.push(t)); }
           }
         }
@@ -4218,7 +4243,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.109';
+    const APP_RELEASE_LABEL = '更新版 v3.110';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
