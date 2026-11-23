@@ -3066,16 +3066,20 @@
     const raceNoResultBtnEl = document.getElementById('raceNoResultBtn');
     if (raceNoResultBtnEl) raceNoResultBtnEl.addEventListener('click', () => {
       raceNoResultOnly = !raceNoResultOnly;
-      raceNoResultBtnEl.classList.toggle('bg-cyan-600/50', raceNoResultOnly);
-      raceNoResultBtnEl.classList.toggle('border-cyan-400/60', raceNoResultOnly);
+      raceNoResultBtnEl.classList.toggle('bg-[#f59e0b]', raceNoResultOnly);
+      raceNoResultBtnEl.classList.toggle('border-[#f59e0b]', raceNoResultOnly);
+      raceNoResultBtnEl.classList.toggle('text-[#231a03]', raceNoResultOnly);
+      raceNoResultBtnEl.classList.toggle('font-bold', raceNoResultOnly);
       raceNoResultBtnEl.classList.toggle('bg-slate-800', !raceNoResultOnly);
       applyRaceSearch();
     });
     const raceManshaBtnEl = document.getElementById('raceManshaBtn');
     if (raceManshaBtnEl) raceManshaBtnEl.addEventListener('click', () => {
       raceManshaOnly = !raceManshaOnly;
-      raceManshaBtnEl.classList.toggle('bg-rose-600/50', raceManshaOnly);
-      raceManshaBtnEl.classList.toggle('border-rose-400/60', raceManshaOnly);
+      raceManshaBtnEl.classList.toggle('bg-[#f59e0b]', raceManshaOnly);
+      raceManshaBtnEl.classList.toggle('border-[#f59e0b]', raceManshaOnly);
+      raceManshaBtnEl.classList.toggle('text-[#231a03]', raceManshaOnly);
+      raceManshaBtnEl.classList.toggle('font-bold', raceManshaOnly);
       raceManshaBtnEl.classList.toggle('bg-slate-800', !raceManshaOnly);
       applyRaceSearch();
     });
@@ -4104,7 +4108,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.99';
+    const APP_RELEASE_LABEL = '更新版 v3.100';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
