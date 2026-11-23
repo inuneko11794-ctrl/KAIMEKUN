@@ -236,6 +236,11 @@
     <section id="meetingListSection" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-3">
       <div><div class="text-xs font-mono-code text-rose-300 font-bold">MEETING HOT LIST</div><h2 class="text-lg font-bold">同じ開催のレース一覧</h2><p class="text-xs text-slate-400">タップでそのレースへ移動。各レースに荒れ度タイプ（💎超堅・🧊鉄板級・T0堅め・T1印集中・T2荒れ・T3荒れ強）を表示。厳選の買い目があるレースには印が付く。</p></div>
       <div id="meetingListPanel" class="space-y-2"></div>
+      <div class="flex gap-2">
+        <button id="ticketSheetBtn" type="button" class="flex-1 px-3 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 text-sm font-bold">📋 この開催の買い目一覧</button>
+        <button id="ticketSheetCopyBtn" type="button" class="hidden px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-sm font-bold">テキストコピー</button>
+      </div>
+      <div id="ticketSheetPanel" class="hidden space-y-3"></div>
     </section>
 
     <section id="kaimekunBetLab" class="glass-panel prism-border rounded-2xl p-4 sm:p-6 space-y-4">
@@ -2775,6 +2780,24 @@
     applyTheme();
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', () => { try { localStorage.setItem('kaimekun_theme', themeIsLight() ? 'dark' : 'light'); } catch (e) {} applyTheme(); sfx('tap'); });
 
+    // ===== 買い目一覧（開催まとめ） =====
+    const ticketSheetBtn = document.getElementById('ticketSheetBtn');
+    const ticketSheetCopyBtn = document.getElementById('ticketSheetCopyBtn');
+    if (ticketSheetBtn) ticketSheetBtn.addEventListener('click', () => {
+      const panel = document.getElementById('ticketSheetPanel');
+      if (!panel) return;
+      const willOpen = panel.classList.contains('hidden');
+      if (willOpen) { renderTicketSheet(); panel.classList.remove('hidden'); if (ticketSheetCopyBtn) ticketSheetCopyBtn.classList.remove('hidden'); ticketSheetBtn.textContent = '📋 買い目一覧を閉じる'; }
+      else { panel.classList.add('hidden'); if (ticketSheetCopyBtn) ticketSheetCopyBtn.classList.add('hidden'); ticketSheetBtn.textContent = '📋 この開催の買い目一覧'; }
+      sfx('tap');
+    });
+    if (ticketSheetCopyBtn) ticketSheetCopyBtn.addEventListener('click', async () => {
+      if (!ticketSheetText) renderTicketSheet();
+      if (!ticketSheetText) return;
+      try { await navigator.clipboard.writeText(ticketSheetText); showToast('📋 買い目一覧をコピーしました'); sfx('save'); }
+      catch (e) { showToast('コピーできませんでした'); }
+    });
+
     // ===== マイミュージック（IndexedDBにファイルを保存して後から再生） =====
     const musicState = { tracks: [], current: -1, urls: new Map() };
     function musicDb() {
@@ -3759,8 +3782,45 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }));
     }
+    let ticketSheetText = '';
+    function renderTicketSheet() {
+      const panel = document.getElementById('ticketSheetPanel');
+      if (!panel) return;
+      const cur = allRaces[currentRaceIdx];
+      if (!cur) { panel.innerHTML = ''; ticketSheetText = ''; return; }
+      const venueOf = r => { const m = String(r.id || '').match(/^(.+?)\d+R/); return m ? m[1] : String(r.id || ''); };
+      const keyOf = r => (r.eventDate || r.dataEntryDate || '') + '|' + venueOf(r);
+      const key = keyOf(cur);
+      const group = allRaces.map((r, i) => ({ r, i })).filter(x => keyOf(x.r) === key);
+      const numOf = r => { const m = String(r.id || '').match(/(\d+)R/); return m ? parseInt(m[1], 10) : 999; };
+      group.sort((a, b) => numOf(a.r) - numOf(b.r));
+      const fmt = arr => (arr || []).map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　');
+      const texts = [];
+      panel.innerHTML = group.map(({ r }) => {
+        let t = null;
+        try { t = ensureRaceTickets(r); } catch (e) {}
+        if (!t) return '';
+        const trio = [...new Set((t.trifecta || []).map(x => [...x].map(Number).sort((a, b) => a - b).join('=')))];
+        const row = (label, txt) => '<div class="flex gap-2 py-0.5"><span class="shrink-0 w-20 text-slate-400">' + label + '</span><span class="font-mono-code text-slate-100">' + (txt || '該当なし') + '</span></div>';
+        let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + '</div>';
+        h += row('3連単', fmt(t.trifecta));
+        h += row('2車単', fmt(t.exacta));
+        h += row('3連複', trio.join('　'));
+        if ((t.selectTrifecta || []).length) h += row('厳選3連単', fmt(t.selectTrifecta));
+        if ((t.selectExacta || []).length) h += row('厳選2車単', fmt(t.selectExacta));
+        h += '</div>';
+        const lines = [r.id, '3連単 ' + (fmt(t.trifecta) || '該当なし'), '2車単 ' + (fmt(t.exacta) || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
+        if ((t.selectTrifecta || []).length) lines.push('厳選3連単 ' + fmt(t.selectTrifecta));
+        if ((t.selectExacta || []).length) lines.push('厳選2車単 ' + fmt(t.selectExacta));
+        texts.push(lines.join('\n'));
+        return h;
+      }).join('');
+      ticketSheetText = texts.join('\n\n');
+    }
     function renderBetLab() {
       renderMeetingList();
+      const tsp0 = document.getElementById('ticketSheetPanel');
+      if (tsp0 && !tsp0.classList.contains('hidden')) renderTicketSheet();
       const race = allRaces[currentRaceIdx];
       if (!race) return;
       const previousVersion = race.autoTickets?.featureBaselineVersion;
@@ -4108,7 +4168,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.100';
+    const APP_RELEASE_LABEL = '更新版 v3.101';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
