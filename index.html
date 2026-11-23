@@ -2217,7 +2217,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261120-v10-MARKREL4',
+      version: 'CSV-BASELINE-20261123-v11-LINEORDER1',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -2232,6 +2232,9 @@
       },
       rider: {
         lineRole: { front: 0.101, second: 0.050, rear: -0.213, tanki: -0.201 },
+        lineOrder: { '1': 0.114, '2': -0.064, '3': -0.120, '4': -0.155, scale: 0.5,
+          trainWeighted: { '1': 1.1243, '2': 0.7683, '3': 0.6563 },
+          validationWeighted: { '1': 1.1256, '2': 0.7616, '3': 0.6576 } },
         markRelation: { higher: 0.647, news: 0.568, conv: -0.445, other: -0.771, normal: -0.278, secondMarkHigher: 0.278, scale: 1.0,
           trainHigherWeighted: 1.3027, trainNewsWeighted: 1.2036, trainConvWeighted: 0.4371, trainOtherWeighted: 0.3156,
           validationHigherWeighted: 1.2483, validationNewsWeighted: 1.2005, validationConvWeighted: 0.4249, validationOtherWeighted: 0.3365 }
@@ -2285,8 +2288,8 @@
 
     const ADAPTIVE_POINT_KEY = 'kaimekun_reason_points_v2';
     const ADAPTIVE_POINT_KEY_V1 = 'kaimekun_reason_points_v1';
-    const ADAPTIVE_FEATURES = ['mark','lineRole','markRelation'];
-    const ADAPTIVE_REASON_LABELS = {mark:'印配置',lineRole:'ライン内位置',markRelation:'番手の印関係'};
+    const ADAPTIVE_FEATURES = ['mark','lineRole','markRelation','lineOrder'];
+    const ADAPTIVE_REASON_LABELS = {mark:'印配置',lineRole:'ライン内位置',markRelation:'番手の印関係',lineOrder:'ライン番号'};
     function clampAdaptiveSet(src){return Object.fromEntries(ADAPTIVE_FEATURES.map(k=>[k,Math.max(-1.5,Math.min(1.5,Number(src&&src[k])||0))]));}
     function loadAdaptivePoints() {
       try {
@@ -2294,7 +2297,7 @@
         if (saved && (saved.exa || saved.tri)) return { exa: clampAdaptiveSet(saved.exa), tri: clampAdaptiveSet(saved.tri) };
         const legacy=clampAdaptiveSet(JSON.parse(localStorage.getItem(ADAPTIVE_POINT_KEY_V1)||'{}'));
         return { exa: {...legacy}, tri: {...legacy} };
-      } catch(e) { return { exa:{mark:0,lineRole:0,markRelation:0}, tri:{mark:0,lineRole:0,markRelation:0} }; }
+      } catch(e) { return { exa:{mark:0,lineRole:0,markRelation:0,lineOrder:0}, tri:{mark:0,lineRole:0,markRelation:0,lineOrder:0} }; }
     }
     let adaptiveReasonPoints=loadAdaptivePoints();
     function saveAdaptivePoints(){if(DEMO_MODE)return;try{localStorage.setItem(ADAPTIVE_POINT_KEY,JSON.stringify(adaptiveReasonPoints));}catch(e){}}
@@ -2306,10 +2309,12 @@
         const basePoints=disabled==='mark'?0:markBase;
         const markLearned=disabled==='mark'||!empiricalSevenCar?0:markBase*Number(adaptive.mark||0)*0.1;
         return [Number(entry.car),{...entry,basePoints,adjustment:0,reasons:[],
-          featureContributions:{mark:basePoints+markLearned,lineRole:0,markRelation:0},
-          learnedAdjustments:{mark:markLearned,lineRole:0,markRelation:0}}];
+          featureContributions:{mark:basePoints+markLearned,lineRole:0,markRelation:0,lineOrder:0},
+          learnedAdjustments:{mark:markLearned,lineRole:0,markRelation:0,lineOrder:0}}];
       }));
+      let lineOrdinal=0;
       res.lineSummaryList.forEach(line=>{
+        if(!line.isTanki)lineOrdinal++;
         line.members.forEach((member,index)=>{
           const row=byCar.get(Number(member.car));if(!row)return;
           const roleBase=FEATURE_POINT_BASELINE.rider.lineRole;
@@ -2319,6 +2324,11 @@
           row.featureContributions.lineRole=disabled==='lineRole'?0:roleValue+roleLearned;
           row.learnedAdjustments.lineRole=roleLearned;
           if(index>0||line.isTanki)row.reasons.push(line.isTanki?'単騎':'ライン内位置');
+          const orderBase=res.entries.length!==7||line.isTanki?0:(FEATURE_POINT_BASELINE.rider.lineOrder[String(Math.min(lineOrdinal,4))]||0);
+          const orderLearned=disabled==='lineOrder'?0:orderBase*Number(adaptive.lineOrder||0)*0.5;
+          row.featureContributions.lineOrder=disabled==='lineOrder'?0:orderBase+orderLearned;
+          row.learnedAdjustments.lineOrder=orderLearned;
+          if(!line.isTanki&&res.entries.length===7)row.reasons.push('ライン番号');
         });
         if(line.isTanki||line.members.length<2)return;
         const front=line.members[0],second=line.members[1],row=byCar.get(Number(second.car));if(!row)return;
@@ -2335,6 +2345,7 @@
           (Number(row.featureContributions.mark||0)-row.basePoints)
           + Number(row.featureContributions.lineRole||0)
           + Number(row.featureContributions.markRelation||0)
+          + Number(row.featureContributions.lineOrder||0)
         ).toFixed(3);
         row.totalPoints=+(row.basePoints+row.adjustment).toFixed(3);
         return row;
@@ -2687,7 +2698,7 @@
     });
     document.getElementById('resetAdaptivePointsBtn').addEventListener('click', () => {
       if (!confirm('蓄積した理由別の学習ポイントを初期化します。レース記録・CSV基準値は削除しません。よろしいですか？')) return;
-      adaptiveReasonPoints = { exa:{mark:0,lineRole:0,markRelation:0}, tri:{mark:0,lineRole:0,markRelation:0} };
+      adaptiveReasonPoints = { exa:{mark:0,lineRole:0,markRelation:0,lineOrder:0}, tri:{mark:0,lineRole:0,markRelation:0,lineOrder:0} };
       try { localStorage.removeItem(ADAPTIVE_POINT_KEY); localStorage.removeItem(ADAPTIVE_POINT_KEY_V1); } catch(e) {}
       saveAdaptivePoints();
       renderCurrentRace();
@@ -3566,12 +3577,12 @@
       const generatedAt=new Date().toISOString(),generatedAfterResult=parseFinish(race).length>=3||!!race.resultRecordedAt;
       const rakushoPicks=evaluateRakushoRules(res);
       const reasonFor=ticket=>{
-        const sums={mark:0,lineRole:0,markRelation:0};
+        const sums={mark:0,lineRole:0,markRelation:0,lineOrder:0};
         ticket.forEach(car=>{const row=scored.find(x=>Number(x.car)===Number(car));if(row)ADAPTIVE_FEATURES.forEach(k=>sums[k]+=Number(row.featureContributions[k]||0));});
         const top=ADAPTIVE_FEATURES.filter(k=>sums[k]>0.001).sort((a,b)=>sums[b]-sums[a]).slice(0,2);
         return top.length?top.map(k=>ADAPTIVE_REASON_LABELS[k]).join('・'):'印配置・ライン構成';
       };
-      const refScored=calculateCarPointScores(res,{adaptiveSnapshot:{mark:0,lineRole:0,markRelation:0}});
+      const refScored=calculateCarPointScores(res,{adaptiveSnapshot:{mark:0,lineRole:0,markRelation:0,lineOrder:0}});
       const refByCar={};
       refScored.forEach(x=>{refByCar[Number(x.car)]=Number(x.totalPoints)||0;});
       const pointByCar={};
@@ -4250,7 +4261,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.111';
+    const APP_RELEASE_LABEL = '更新版 v3.112';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
