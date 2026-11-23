@@ -2218,7 +2218,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261124-v13-MOON89',
+      version: 'CSV-BASELINE-20261124-v14-STAR89',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -3792,6 +3792,20 @@
           win=cars.filter(c=>winSet.has(c));
         }
       } catch (e) {}
+      // 8/9車立ては本線2車単から☆と★のペアを外す（25,477R検証: 帯89の☆→★は買い目の10.9%で回収51.3%と両期間とも全体未満。
+      // 除外で 9.83点・的中48.3%・回収74.5% → 8.76点・46.9%・77.4% と両期間で回収改善。同じペアは3連単では上振れ側のため3連単・厳選・単勝には触れない。
+      // 単勝は上のブロックで構築済み、3連単の流し派生も帯67専用のため、この位置の2車単だけの絞り込みで他券種は変わらない）
+      try {
+        if (res.entries.length >= 8) {
+          const markByCar89 = {};
+          (res.entries || []).forEach(e => { markByCar89[Number(e.car)] = e.mark; });
+          const kept89 = exacta.filter(t => {
+            const ma = markByCar89[Number(t[0])], mb = markByCar89[Number(t[1])];
+            return !((ma === '☆' && mb === '★') || (ma === '★' && mb === '☆'));
+          });
+          if (kept89.length !== exacta.length) { exacta.length = 0; kept89.forEach(t => exacta.push(t)); }
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -4273,7 +4287,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.114';
+    const APP_RELEASE_LABEL = '更新版 v3.115';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
