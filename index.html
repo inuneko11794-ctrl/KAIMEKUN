@@ -117,13 +117,13 @@
     }
   .workspace-tabs{position:sticky;top:0;z-index:40;display:flex;gap:.45rem;overflow-x:auto;padding:.65rem;background:rgba(24,10,48,.92);backdrop-filter:blur(14px);border:1px solid rgba(192,132,252,.35);border-radius:1rem;scrollbar-width:thin}
   .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(192,132,252,.25);border-radius:.75rem;background:rgba(46,26,92,.85);color:#e9d5ff;font-size:.78rem;font-weight:700;transition:.18s}
-  .workspace-tab[aria-selected="true"]{background:#0abab5;border-color:#0abab5;color:#03211f;box-shadow:0 0 18px rgba(10,186,181,.5)}
-  button[data-meeting-idx][class*="0abab5"] span{color:#03211f}
-  .stock-race-item[class*="0abab5"] span{color:#03211f}
+  .workspace-tab[aria-selected="true"]{background:#f59e0b;border-color:#f59e0b;color:#231a03;box-shadow:0 0 18px rgba(245,158,11,.5)}
+  button[data-meeting-idx][class*="f59e0b"] span{color:#231a03}
+  .stock-race-item[class*="f59e0b"] span{color:#231a03}
   /* ===== ライトテーマ ===== */
   html.light-theme{color-scheme:light}
   html.light-theme body{background-color:#e9f6f4!important;background-image:linear-gradient(180deg,#e3f5f2 0%,#f4f8fb 45%,#edf1ff 100%)!important;color:#1e293b}
-  html.light-theme .glass-panel{background:rgba(255,255,255,.9);border-color:rgba(10,186,181,.35);box-shadow:0 8px 24px rgba(15,80,76,.12)}
+  html.light-theme .glass-panel{background:rgba(255,255,255,.9);border-color:rgba(245,158,11,.4);box-shadow:0 8px 24px rgba(120,80,10,.12)}
   html.light-theme [class*="bg-slate-950"],html.light-theme [class*="bg-slate-900"],html.light-theme [class*="bg-slate-800"]{background-color:rgba(255,255,255,.86)!important}
   html.light-theme [class*="bg-slate-700"]{background-color:#e2e8f0!important}
   html.light-theme [class*="text-white"],html.light-theme [class*="text-slate-100"],html.light-theme [class*="text-slate-200"],html.light-theme [class*="text-slate-300"]{color:#1e293b!important}
@@ -164,8 +164,25 @@
   html.light-theme [class*="text-orange-100"]{color:#c2410c!important}
   html.light-theme [class*="text-lime-100"]{color:#4d7c0f!important}
   html.light-theme [class*="text-teal-100"]{color:#0f766e!important}
-  html.light-theme .workspace-tabs{background:rgba(255,255,255,.92);border-color:rgba(10,186,181,.45)}
-  html.light-theme .workspace-tab{background:rgba(10,186,181,.06);border-color:rgba(10,186,181,.3);color:#0f766e}
+  html.light-theme .workspace-tabs{background:rgba(255,255,255,.92);border-color:rgba(245,158,11,.5)}
+  html.light-theme .workspace-tab{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.4);color:#92400e}
+  html.light-theme [class*="border-cyan-"]{border-color:#0891b2!important}
+  html.light-theme [class*="border-sky-"]{border-color:#0284c7!important}
+  html.light-theme [class*="border-blue-"]{border-color:#2563eb!important}
+  html.light-theme [class*="border-amber-"]{border-color:#d97706!important}
+  html.light-theme [class*="border-yellow-"]{border-color:#ca8a04!important}
+  html.light-theme [class*="border-emerald-"]{border-color:#059669!important}
+  html.light-theme [class*="border-green-"]{border-color:#16a34a!important}
+  html.light-theme [class*="border-rose-"]{border-color:#e11d48!important}
+  html.light-theme [class*="border-red-"]{border-color:#dc2626!important}
+  html.light-theme [class*="border-violet-"]{border-color:#7c3aed!important}
+  html.light-theme [class*="border-purple-"]{border-color:#9333ea!important}
+  html.light-theme [class*="border-fuchsia-"]{border-color:#c026d3!important}
+  html.light-theme [class*="border-pink-"]{border-color:#db2777!important}
+  html.light-theme [class*="border-indigo-"]{border-color:#4f46e5!important}
+  html.light-theme [class*="border-orange-"]{border-color:#ea580c!important}
+  html.light-theme [class*="border-lime-"]{border-color:#65a30d!important}
+  html.light-theme [class*="border-teal-"]{border-color:#0d9488!important}
   html.light-theme input,html.light-theme select,html.light-theme textarea{background-color:#ffffff!important;color:#1e293b!important;border-color:#c3cedd!important}
   html.light-theme ::-webkit-scrollbar-track{background:#e2e8f0}
   html.light-theme ::-webkit-scrollbar-thumb{background:#94a3b8}
@@ -1985,7 +2002,7 @@
         const statusBadge = hasResult
           ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono-code">済 ${r.resultOrder || ''} ${r.payout ? Number(r.payout).toLocaleString() + '円' : ''}</span>`
           : `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono-code">未確定</span>`;
-        html += `<div class="flex items-center gap-1.5"><div data-idx="${i}" class="stock-race-item flex-1 min-w-0 cursor-pointer flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-[#0abab5] border-[#0abab5] text-[#03211f]' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-400 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div><button type="button" data-del-idx="${i}" class="del-stock-race-btn shrink-0 px-2 py-2 rounded-lg bg-slate-900 hover:bg-rose-500/30 border border-slate-800 hover:border-rose-400/50 text-slate-400 hover:text-rose-200 text-xs" title="このレースを削除">🗑️</button></div>`;
+        html += `<div class="flex items-center gap-1.5"><div data-idx="${i}" class="stock-race-item flex-1 min-w-0 cursor-pointer flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs transition ${isSelected ? 'bg-[#f59e0b] border-[#f59e0b] text-[#231a03]' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'}"><div class="truncate pr-2 font-mono-code"><span class="text-slate-400 mr-1">#${i + 1}</span>${r.id}</div><div class="shrink-0">${statusBadge}</div></div><button type="button" data-del-idx="${i}" class="del-stock-race-btn shrink-0 px-2 py-2 rounded-lg bg-slate-900 hover:bg-rose-500/30 border border-slate-800 hover:border-rose-400/50 text-slate-400 hover:text-rose-200 text-xs" title="このレースを削除">🗑️</button></div>`;
       }
       listEl.innerHTML = html;
       document.querySelectorAll('.stock-race-item').forEach(el => {
@@ -3728,7 +3745,7 @@
           if (!res.isGirlsRace) badges += '<span class="text-[11px] text-slate-400">波乱度' + Math.round(disp) + '%</span>';
           if (r.payout || r.resultOrder) badges += '<span class="text-[11px] text-emerald-300">結果あり</span>';
         } catch (e) {}
-        return '<button data-meeting-idx="' + i + '" class="w-full text-left rounded-xl border ' + (i === currentRaceIdx ? 'border-[#0abab5] bg-[#0abab5]' : 'border-slate-700 bg-slate-950/60') + ' px-3 py-2 flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold ' + (i === currentRaceIdx ? 'text-[#03211f]' : 'text-white') + '">' + r.id + '</span>' + badges + '</button>';
+        return '<button data-meeting-idx="' + i + '" class="w-full text-left rounded-xl border ' + (i === currentRaceIdx ? 'border-[#f59e0b] bg-[#f59e0b]' : 'border-slate-700 bg-slate-950/60') + ' px-3 py-2 flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold ' + (i === currentRaceIdx ? 'text-[#231a03]' : 'text-white') + '">' + r.id + '</span>' + badges + '</button>';
       }).join('');
       panel.querySelectorAll('[data-meeting-idx]').forEach(el => el.addEventListener('click', () => {
         currentRaceIdx = parseInt(el.dataset.meetingIdx, 10);
@@ -4087,7 +4104,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.96';
+    const APP_RELEASE_LABEL = '更新版 v3.97';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
