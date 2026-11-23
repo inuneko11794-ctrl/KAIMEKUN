@@ -199,6 +199,13 @@
   img,svg,video{max-width:100%}
   .workspace-panel[hidden]{display:none!important}
   .workspace-data-card{background:rgba(38,20,74,.72);border:1px solid rgba(192,132,252,.35);border-radius:1rem;padding:1rem}
+  /* データ管理カードは両テーマ共通で濃紫背景のため、ライトテーマの全域文字色上書き（明背景前提）から内側だけ守り、ダークテーマと同じ淡色文字に戻す */
+  html.light-theme .workspace-data-card [class*="text-cyan-200"],html.light-theme .workspace-data-card [class*="text-cyan-300"]{color:#a5f3fc!important}
+  html.light-theme .workspace-data-card [class*="text-slate-300"]{color:#e2e8f0!important}
+  html.light-theme .workspace-data-card [class*="text-emerald-200"]{color:#a7f3d0!important}
+  html.light-theme .workspace-data-card [class*="text-purple-200"]{color:#e9d5ff!important}
+  html.light-theme .workspace-data-card [class*="text-amber-200"]{color:#fde68a!important}
+  html.light-theme .workspace-data-card [class*="bg-slate-800"]{background-color:rgba(30,41,59,.88)!important}
   @media(max-width:640px){.workspace-tabs{margin:0 -.15rem}.workspace-tab{padding:.65rem .8rem;font-size:.74rem}.workspace-panel{gap:1rem}}
   </style>
 </head>
@@ -301,7 +308,7 @@
         </div>
         <div class="text-xs text-slate-400">予想時点のパターンの模式再現です（実際の結果・映像ではありません）。並びと予想順位は保存済みの予想スナップショットを使います。</div>
         <canvas id="paCv" width="900" height="570" class="w-full h-auto block rounded-xl" style="background:#175c2e"></canvas>
-        <div id="paTelop" class="flex items-center justify-center text-center rounded-lg font-extrabold px-3 py-2" style="min-height:46px;font-size:17px;background:linear-gradient(90deg,#7a1020,#c2273a,#7a1020)">▶ スタートボタンで発走</div>
+        <div id="paTelop" class="flex items-center justify-center text-center rounded-lg font-extrabold px-3 py-2" style="min-height:46px;font-size:17px;color:#ffffff;background:linear-gradient(90deg,#7a1020,#c2273a,#7a1020)">▶ スタートボタンで発走</div>
         <div class="flex flex-wrap gap-2 items-center">
           <button id="paPlayBtn" type="button" class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold" style="min-height:48px">▶ スタート</button>
           <button id="paSpeedBtn" type="button" class="px-4 py-2 rounded-lg bg-slate-700 text-white font-bold" style="min-height:48px">速さ：通常 ×1</button>
@@ -4243,7 +4250,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.110';
+    const APP_RELEASE_LABEL = '更新版 v3.111';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
