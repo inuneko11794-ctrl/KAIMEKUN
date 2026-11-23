@@ -207,6 +207,12 @@
   <div id="toastBox" class="fixed top-4 right-4 z-50 hidden max-w-sm rounded-xl glass-panel border-cyan-400 px-4 py-3 text-sm text-cyan-100 shadow-2xl transition-all"></div>
 
   <div class="max-w-7xl mx-auto space-y-6">
+    <div id="demoBanner" class="hidden rounded-2xl border border-[#f59e0b] bg-[#f59e0b] px-4 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-bold text-[#231a03]">🎬 デモ表示中 — 実在の開催データ（結果・払戻入り）で表示しています。このモードではデータは保存されません。</span>
+        <a href="./" class="shrink-0 rounded-lg bg-[#231a03] px-3 py-1.5 text-xs font-bold text-[#f59e0b]">通常モードで開く</a>
+      </div>
+    </div>
     <!-- ヘッダー（不要ボタン削除済・スッキリ構成） -->
     <header class="glass-panel prism-border rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
       <div>
@@ -1165,6 +1171,18 @@
     }
 
     const RACE_STORAGE_KEY = 'kaimekun_races_v1';
+    const DEMO_MODE = (() => { try { return new URLSearchParams(location.search).has('demo'); } catch (e) { return false; } })();
+    let DEMO_RACES = null;
+    if (DEMO_MODE) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'demo.json', false);
+        xhr.send();
+        if (xhr.status === 200) { const d = JSON.parse(xhr.responseText); if (Array.isArray(d) && d.length) DEMO_RACES = d; }
+      } catch (e) { console.warn('デモデータ読込失敗', e); }
+      const db = document.getElementById('demoBanner');
+      if (db) db.classList.remove('hidden');
+    }
     const defaultRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
     function loadSavedRaces() {
       try {
@@ -1174,10 +1192,11 @@
       } catch (err) { console.warn('保存データ読込失敗', err); return null; }
     }
     function persistRaces() {
+      if (DEMO_MODE) return true;
       try { localStorage.setItem(RACE_STORAGE_KEY, JSON.stringify(allRaces)); return true; }
       catch (err) { console.error('レース保存失敗', err); showToast('⚠️ 保存容量またはブラウザ設定を確認してください'); return false; }
     }
-    let allRaces = loadSavedRaces() || defaultRaces;
+    let allRaces = (DEMO_MODE && DEMO_RACES) || loadSavedRaces() || defaultRaces;
     let currentRaceIdx = 0, gravityParticles = [], gravityAnimId = null;
 
     // ライン初期並びの車番差分比率。ライン内の隣接車番のみを対象にする。
@@ -1315,7 +1334,7 @@
     };
     // 波乱度モデルの保存（v3.61）: 学習・キャリブレーション結果を端末に残し、再読み込み後も継続する
     const AI_MODEL_KEY = 'kaimekun_ai_model_v1';
-    function saveAiModel(){try{localStorage.setItem(AI_MODEL_KEY,JSON.stringify({weights:aiModel.weights,bias:aiModel.bias,epochs:aiModel.epochs,trainedSamples:aiModel.trainedSamples,accuracy:aiModel.accuracy,trainedWithPayout:!!aiModel.trainedWithPayout,calibrated:!!aiModel.calibrated}));}catch(e){}}
+    function saveAiModel(){if(DEMO_MODE)return;try{localStorage.setItem(AI_MODEL_KEY,JSON.stringify({weights:aiModel.weights,bias:aiModel.bias,epochs:aiModel.epochs,trainedSamples:aiModel.trainedSamples,accuracy:aiModel.accuracy,trainedWithPayout:!!aiModel.trainedWithPayout,calibrated:!!aiModel.calibrated}));}catch(e){}}
     function applyAiModel(saved){
       if (!saved || !Array.isArray(saved.weights) || !saved.weights.length || !saved.weights.every(w => isFinite(Number(w))) || !isFinite(Number(saved.bias))) return false;
       aiModel.weights = saved.weights.map(Number);
@@ -2271,7 +2290,7 @@
       } catch(e) { return { exa:{mark:0,lineRole:0,markRelation:0}, tri:{mark:0,lineRole:0,markRelation:0} }; }
     }
     let adaptiveReasonPoints=loadAdaptivePoints();
-    function saveAdaptivePoints(){try{localStorage.setItem(ADAPTIVE_POINT_KEY,JSON.stringify(adaptiveReasonPoints));}catch(e){}}
+    function saveAdaptivePoints(){if(DEMO_MODE)return;try{localStorage.setItem(ADAPTIVE_POINT_KEY,JSON.stringify(adaptiveReasonPoints));}catch(e){}}
     function calculateCarPointScores(res,options={}) {
       const disabled=options.disabledFeature||'',adaptive=options.adaptiveSnapshot||adaptiveReasonPoints.tri;
       const byCar=new Map(res.entries.map(entry=>{
@@ -4168,7 +4187,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.103';
+    const APP_RELEASE_LABEL = '更新版 v3.104';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
