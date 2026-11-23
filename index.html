@@ -117,7 +117,7 @@
     }
   .workspace-tabs{position:sticky;top:0;z-index:40;display:flex;gap:.45rem;overflow-x:auto;padding:.65rem;background:rgba(24,10,48,.92);backdrop-filter:blur(14px);border:1px solid rgba(192,132,252,.35);border-radius:1rem;scrollbar-width:thin}
   .workspace-tab{flex:1 0 auto;min-width:max-content;padding:.7rem .95rem;border:1px solid rgba(192,132,252,.25);border-radius:.75rem;background:rgba(46,26,92,.85);color:#e9d5ff;font-size:.78rem;font-weight:700;transition:.18s}
-  .workspace-tab[aria-selected="true"]{background:linear-gradient(120deg,rgba(147,51,234,.45),rgba(250,204,21,.22));border-color:rgba(250,204,21,.65);color:#fff;box-shadow:0 0 18px rgba(168,85,247,.35)}
+  .workspace-tab[aria-selected="true"]{background:#0abab5;border-color:#0abab5;color:#03211f;box-shadow:0 0 18px rgba(10,186,181,.5)}
   .workspace-panel{display:flex;flex-direction:column;gap:1.5rem;min-width:0}
   html{scroll-padding-top:84px}
   @media (max-width:767px){
@@ -4028,7 +4028,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.91';
+    const APP_RELEASE_LABEL = '更新版 v3.92';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
