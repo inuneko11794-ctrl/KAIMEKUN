@@ -373,7 +373,6 @@
           <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">2車単</div><div id="instantExactaPicks" class="text-sm font-mono-code">--</div></div>
           <div class="rounded-lg border border-slate-700 bg-slate-900/80 p-3"><div class="text-xs font-bold text-amber-200 mb-2">3連単</div><div id="instantTrifectaPicks" class="text-sm font-mono-code">--</div></div>
         </div>
-        <div id="instantTicketReasons" class="text-xs text-cyan-200 space-y-1">買い目の根拠は出走表の認識後に表示します。</div>
       </section>
       <section id="numberLorePanel" class="rounded-xl border border-violet-400/35 bg-slate-950/90 p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2"><div><div class="text-xs font-mono-code text-violet-300 font-bold">TETRACTYS × ENNEAGRAM</div><h3 class="text-base font-bold text-violet-100">数理構造・15フィルター判定</h3></div><span id="numberLoreStatus" class="text-xs text-slate-400">7車立て出走表を認識すると判定</span></div>
@@ -1631,7 +1630,6 @@
         importBtn.disabled = true;
         ['instantWinPicks','instantExactaPicks','instantTrifectaPicks'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='--'; });
         const ticketStatus=document.getElementById('instantTicketStatus'); if(ticketStatus) ticketStatus.textContent='出走表を読み込むと表示';
-        const ticketReasons=document.getElementById('instantTicketReasons'); if(ticketReasons) ticketReasons.textContent='買い目の根拠は出走表の認識後に表示します。';
         return;
       }
 
@@ -1644,11 +1642,8 @@
         document.getElementById('instantExactaPicks').textContent = showPreview(previewTickets.exacta);
         document.getElementById('instantTrifectaPicks').textContent = showPreview(previewTickets.trifecta);
         document.getElementById('instantTicketStatus').textContent = parsed.entries.length + '車立・仮予想';
-        const reasons = (previewTickets.exactaReasons || []).slice(0,4).map(x => x.ticket + '：' + x.reason);
-        document.getElementById('instantTicketReasons').textContent = reasons.length ? '2車単の主な根拠：' + reasons.join(' ／ ') : '印配置・ライン構成をもとに算出';
       } catch (ticketError) {
         document.getElementById('instantTicketStatus').textContent = '買い目の算出エラー';
-        document.getElementById('instantTicketReasons').textContent = String(ticketError.message || ticketError);
       }
       const prob = toDisplayProb(predictUpsetForRace((parsed && parsed.id) || '', res, null));
       const meta = getUpsetJudgeMeta(prob);
@@ -3691,9 +3686,8 @@
       const selectedCars=new Set((tickets.rakushoPicks||[]).flatMap(p=>p.ticket.map(Number)));
       const glowTicket=raw=>String(raw).split(/([1-7])/).map(part=>/^[1-7]$/.test(part)&&selectedCars.has(Number(part))?'<span class="inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-amber-300 text-slate-950 font-extrabold rakusho-selected-car">'+part+'</span>':part).join('');
       const show = (arr, n) => arr.map(t => glowTicket(Array.isArray(t) ? t.join('-') : String(t))).join('　') || '--';
-      const renderReasons=(rows,fallback)=>rows?.length?rows.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-xs text-cyan-300">理由: '+x.reason+'</div></div>').join(''):fallback;
-      document.getElementById('autoWinPicks').innerHTML=tickets.winReasons?.map(x=>'<div class="py-1 border-b border-slate-800"><div>'+glowTicket(x.ticket)+'</div><div class="text-xs text-cyan-300">理由: '+x.reason+'</div></div>').join('')||show(tickets.win,4);
-      document.getElementById('autoExactaPicks').innerHTML=renderReasons(tickets.exactaReasons,show(tickets.exacta,4));
+      document.getElementById('autoWinPicks').innerHTML=show(tickets.win,4);
+      document.getElementById('autoExactaPicks').innerHTML=show(tickets.exacta,4);
       const selEl=document.getElementById('autoSelectExactaPicks');
       if(selEl)selEl.innerHTML=(tickets.selectExacta&&tickets.selectExacta.length)?show(tickets.selectExacta,4):'該当なし';
       const selTriEl=document.getElementById('autoSelectTrifectaPicks');
@@ -3763,7 +3757,7 @@
           }
         }
       } catch(e) {}
-      document.getElementById('autoTrifectaPicks').innerHTML=renderReasons(tickets.trifectaReasons,show(tickets.trifecta,15));
+      document.getElementById('autoTrifectaPicks').innerHTML=show(tickets.trifecta,15);
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
       const baseNote=document.getElementById('patternBaselineNote');
       if(baseNote)baseNote.textContent=`基準値 ${PATTERN_BASELINE.verifiedRaces.toLocaleString()}R照合済: ◎1着${PATTERN_BASELINE.marks['◎'].win}%・スジ${PATTERN_BASELINE.marks['◎'].suji}% ／ 二分戦スジ${PATTERN_BASELINE.lineSuji['二分戦']}% ／ 2-2-2-1は${PATTERN_BASELINE.lineSuji['2-2-2-1']}% ／ この買い目は2連単 的中${PATTERN_BASELINE.formation.exactaHit}%・回収${PATTERN_BASELINE.formation.exactaRoi}%、3連単 的中${PATTERN_BASELINE.formation.trifectaHit}%・回収${PATTERN_BASELINE.formation.trifectaRoi}%（見立て: ${tickets.patternMode||'--'}）` + (tickets.generatedAfterResult ? ' ｜ ※この買い目は結果登録後に静的情報だけで遡及生成したものです' : '');
@@ -4031,7 +4025,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.88';
+    const APP_RELEASE_LABEL = '更新版 v3.89';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
