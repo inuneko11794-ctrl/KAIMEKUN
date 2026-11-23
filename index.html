@@ -3089,21 +3089,21 @@
     const raceNoResultBtnEl = document.getElementById('raceNoResultBtn');
     if (raceNoResultBtnEl) raceNoResultBtnEl.addEventListener('click', () => {
       raceNoResultOnly = !raceNoResultOnly;
-      raceNoResultBtnEl.classList.toggle('bg-[#f59e0b]', raceNoResultOnly);
-      raceNoResultBtnEl.classList.toggle('border-[#f59e0b]', raceNoResultOnly);
-      raceNoResultBtnEl.classList.toggle('text-[#231a03]', raceNoResultOnly);
-      raceNoResultBtnEl.classList.toggle('font-bold', raceNoResultOnly);
       raceNoResultBtnEl.classList.toggle('bg-slate-800', !raceNoResultOnly);
+      raceNoResultBtnEl.style.background = raceNoResultOnly ? '#f59e0b' : '';
+      raceNoResultBtnEl.style.borderColor = raceNoResultOnly ? '#f59e0b' : '';
+      raceNoResultBtnEl.style.color = raceNoResultOnly ? '#231a03' : '';
+      raceNoResultBtnEl.style.fontWeight = raceNoResultOnly ? '700' : '';
       applyRaceSearch();
     });
     const raceManshaBtnEl = document.getElementById('raceManshaBtn');
     if (raceManshaBtnEl) raceManshaBtnEl.addEventListener('click', () => {
       raceManshaOnly = !raceManshaOnly;
-      raceManshaBtnEl.classList.toggle('bg-[#f59e0b]', raceManshaOnly);
-      raceManshaBtnEl.classList.toggle('border-[#f59e0b]', raceManshaOnly);
-      raceManshaBtnEl.classList.toggle('text-[#231a03]', raceManshaOnly);
-      raceManshaBtnEl.classList.toggle('font-bold', raceManshaOnly);
       raceManshaBtnEl.classList.toggle('bg-slate-800', !raceManshaOnly);
+      raceManshaBtnEl.style.background = raceManshaOnly ? '#f59e0b' : '';
+      raceManshaBtnEl.style.borderColor = raceManshaOnly ? '#f59e0b' : '';
+      raceManshaBtnEl.style.color = raceManshaOnly ? '#231a03' : '';
+      raceManshaBtnEl.style.fontWeight = raceManshaOnly ? '700' : '';
       applyRaceSearch();
     });
     const raceSearchInputEl = document.getElementById('raceSearchInput');
@@ -4168,7 +4168,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.101';
+    const APP_RELEASE_LABEL = '更新版 v3.102';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
