@@ -4003,6 +4003,66 @@
       }
       return list.map(t => Array.isArray(t) ? t.join('-') : String(t));
     }
+    // ===== 3連複フォーメーション合体表記（表示専用） =====
+    // 本線3連単の集合から導出される3連複（順不同の3車組）を、合体できる部分は
+    // 軸2頭「12=34567」／軸1頭「1=2345」／ボックス「1234 BOX」にまとめ、余りは従来の「1=2=3」で出す。
+    // 抽出は貪欲（大きいピース順、同点はボックス＞軸1頭＞軸2頭、次いで表記文字列順）で決定的に動作する。
+    // 1点しか表せないピース（3車ボックス・相手2車の軸1頭・相手1車の軸2頭）は合体対象にしない。
+    function trioFormationTokens(trifecta) {
+      const sort3 = t => [...t].map(Number).sort((a, b) => a - b);
+      const keyOf = c => c.join(',');
+      const tokens = []; // { idx, str } 最後に初出順（最小の元インデックス）で並べる
+      const remaining = new Map(); // 'a,b,c' -> { c, idx }
+      const seen = new Set();
+      (trifecta || []).forEach((t, i) => {
+        if (!Array.isArray(t) || t.length !== 3) { tokens.push({ idx: i, str: Array.isArray(t) ? sort3(t).join('=') : String(t) }); return; }
+        const c = sort3(t);
+        if (c[0] === c[1] || c[1] === c[2]) { tokens.push({ idx: i, str: c.join('=') }); return; } // 同一車番を含む組は合体対象外（従来表示のまま）
+        const k = keyOf(c);
+        if (!seen.has(k)) { seen.add(k); remaining.set(k, { c, idx: i }); }
+      });
+      const combosOf = S => { const out = []; for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++) for (let l = j + 1; l < S.length; l++) out.push([S[i], S[j], S[l]]); return out; };
+      const labelOf = f => f.type === 'box' ? f.S.join('') + ' BOX' : f.type === 'jiku1' ? f.a + '=' + f.B.join('') : f.pair.join('') + '=' + f.B.join('');
+      const typeRank = f => f.type === 'box' ? 0 : f.type === 'jiku1' ? 1 : 2;
+      const findCands = () => {
+        const U = [...new Set([...remaining.values()].flatMap(o => o.c))].sort((a, b) => a - b);
+        const cands = [];
+        for (let mask = 1; mask < (1 << U.length); mask++) {
+          const S = U.filter((_, i) => mask & (1 << i));
+          if (S.length < 4) continue; // 3車ボックスは1点のみ
+          const cs = combosOf(S);
+          if (cs.every(c => remaining.has(keyOf(c)))) cands.push({ type: 'box', S, keys: cs.map(keyOf), size: cs.length });
+        }
+        for (const a of U) {
+          const others = U.filter(x => x !== a);
+          for (let mask = 1; mask < (1 << others.length); mask++) {
+            const B = others.filter((_, i) => mask & (1 << i));
+            if (B.length < 3) continue; // 相手2車では1点のみ
+            let ok = true; const ks = [];
+            for (let i = 0; i < B.length && ok; i++) for (let j = i + 1; j < B.length; j++) { const c = sort3([a, B[i], B[j]]); if (!remaining.has(keyOf(c))) { ok = false; break; } ks.push(keyOf(c)); }
+            if (ok) cands.push({ type: 'jiku1', a, B, keys: ks, size: ks.length });
+          }
+        }
+        for (let i = 0; i < U.length; i++) for (let j = i + 1; j < U.length; j++) {
+          const a = U[i], b = U[j];
+          const B = U.filter(x => x !== a && x !== b && remaining.has(keyOf(sort3([a, b, x]))));
+          if (B.length >= 2) cands.push({ type: 'jiku2', pair: [a, b], B, keys: B.map(x => keyOf(sort3([a, b, x]))), size: B.length });
+        }
+        return cands;
+      };
+      while (remaining.size) {
+        const cands = findCands();
+        if (!cands.length) break;
+        cands.sort((p, q) => q.size - p.size || typeRank(p) - typeRank(q) || (labelOf(p) < labelOf(q) ? -1 : labelOf(p) > labelOf(q) ? 1 : 0));
+        const best = cands[0];
+        const minIdx = Math.min(...best.keys.map(k => remaining.get(k).idx));
+        for (const k of best.keys) remaining.delete(k);
+        tokens.push({ idx: minIdx, str: labelOf(best) });
+      }
+      for (const o of remaining.values()) tokens.push({ idx: o.idx, str: o.c.join('=') });
+      tokens.sort((p, q) => p.idx - q.idx);
+      return tokens.map(t => t.str);
+    }
     // ===== 波乱度・荒れ度タイプの買い目表示用サマリ（表示専用：既存バナーと同じ計算値を使う） =====
     // 返り値: { girls:false, text:'波乱度62・T2', disp:62, tier:2, solid:false } / ガールズは { girls:true } / 取得できない場合は null
     function chaosSummaryForRace(r) {
@@ -4055,7 +4115,7 @@
             dispSum += cs.disp; dispCount++;
           }
         }
-        const trio = [...new Set((t.trifecta || []).map(x => [...x].map(Number).sort((a, b) => a - b).join('=')))];
+        const trio = trioFormationTokens(t.trifecta);
         const row = (label, txt) => '<div class="flex gap-2 py-0.5"><span class="shrink-0 w-20 text-slate-400">' + label + '</span><span class="font-mono-code text-slate-100">' + (txt || '該当なし') + '</span></div>';
         let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + '</div>';
         h += row('3連単', fmt(t.trifecta, 'tri'));
@@ -4115,7 +4175,7 @@
       const selTriEl=document.getElementById('autoSelectTrifectaPicks');
       if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?showC(tickets.selectTrifecta,'tri'):'該当なし';
       const trioEl=document.getElementById('autoTrioPicks');
-      if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('=')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
+      if(trioEl){ const sets=trioFormationTokens(tickets.trifecta); trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
       const verifyEl=document.getElementById('raceVerifyBar');
       if(verifyEl){
         const fin=parseFinish(race);
@@ -4447,7 +4507,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.121';
+    const APP_RELEASE_LABEL = '更新版 v3.122';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
