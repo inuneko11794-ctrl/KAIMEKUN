@@ -3902,21 +3902,89 @@
       }));
     }
     // ===== 買い目表示の圧縮（表示専用：買い目データ自体は変更しない） =====
-    // 3連単: 1着・2着が同じ買い目をまとめ、3着の車番を昇順に連結（例 1-2-3,1-2-4,1-2-7 → 1-2-347）。並びは初出順
+    // 3連単: フォーメーション（1着候補A×2着候補B×3着候補C、3車は全て異なる）として過不足なく表せる部分を「A-B-C」に合体
+    //   （例 1-2-3,1-2-4,2-1-3,2-1-4 → 12-12-34／片方向のみ 1-2-3,1-2-4 → 1-2-34）。合体は点数の大きい順・同点は初出順に繰り返し抽出
     // 2車単: 裏表ペアが両方あるときだけ圧縮（例 2-7,7-2 → 27-72）。片方向のみはそのまま。圧縮トークンは初出位置に出す
     function compactTicketTokens(arr, kind) {
       const list = arr || [];
       if (kind === 'tri') {
-        const order = []; const groups = new Map();
-        for (const t of list) {
-          if (!Array.isArray(t) || t.length !== 3) { order.push({ raw: Array.isArray(t) ? t.join('-') : String(t) }); continue; }
+        const tokens = []; // { idx, str } 最後に初出順（最小の元インデックス）で並べる
+        const seen = new Set(); const remaining = new Map(); // 'a-b-c' -> { a, b, c, idx }
+        list.forEach((t, i) => {
+          if (!Array.isArray(t) || t.length !== 3) { tokens.push({ idx: i, str: Array.isArray(t) ? t.join('-') : String(t) }); return; }
           const a = Number(t[0]), b = Number(t[1]), c = Number(t[2]);
-          const key = a + '-' + b;
-          if (!groups.has(key)) { const g = { a, b, cs: [] }; groups.set(key, g); order.push({ grp: g }); }
-          const g = groups.get(key);
-          if (!g.cs.includes(c)) g.cs.push(c);
+          const key = a + '-' + b + '-' + c;
+          if (!seen.has(key)) { seen.add(key); remaining.set(key, { a, b, c, idx: i }); }
+        });
+        const digitsOf = set => [...set].sort((x, y) => x - y).join('');
+        while (remaining.size) {
+          const pairMap = new Map(); // 'a-b' -> { a, b, cs:Set }
+          for (const tr of remaining.values()) {
+            const pk = tr.a + '-' + tr.b;
+            if (!pairMap.has(pk)) pairMap.set(pk, { a: tr.a, b: tr.b, cs: new Set() });
+            pairMap.get(pk).cs.add(tr.c);
+          }
+          const firsts = [...new Set([...remaining.values()].map(t => t.a))].sort((x, y) => x - y);
+          let best = null;
+          for (let maskA = 1; maskA < (1 << firsts.length); maskA++) {
+            const A = firsts.filter((_, i) => maskA & (1 << i));
+            let bmax = null;
+            for (const a of A) {
+              const secs = new Set([a]);
+              for (const g of pairMap.values()) if (g.a === a) secs.add(g.b);
+              bmax = bmax === null ? secs : new Set([...bmax].filter(x => secs.has(x)));
+            }
+            const bList = [...bmax].sort((x, y) => x - y);
+            for (let maskB = 1; maskB < (1 << bList.length); maskB++) {
+              const B = bList.filter((_, i) => maskB & (1 << i));
+              if (best && A.length * B.length * 9 < best.cov) continue; // 上限でも best に届かない
+              let C = null; let ok = true; const rect = [];
+              for (const a of A) {
+                for (const b of B) {
+                  if (a === b) continue;
+                  const g = pairMap.get(a + '-' + b);
+                  if (!g) { ok = false; break; }
+                  rect.push(g);
+                  const sup = new Set([...g.cs, a, b]);
+                  C = C === null ? sup : new Set([...C].filter(x => sup.has(x)));
+                }
+                if (!ok) break;
+              }
+              if (!ok || !rect.length || C === null) continue;
+              const consumed = [];
+              for (const g of rect) for (const c of C) if (c !== g.a && c !== g.b) consumed.push(g.a + '-' + g.b + '-' + c);
+              if (!consumed.length) continue;
+              // 展開が変わらない車番（全ペアに含まれる3着候補／消費に寄与しない1・2着候補）は落として表記を素直にする
+              const cSet = new Set(C);
+              for (const x of [...cSet]) if (rect.every(g => g.a === x || g.b === x)) cSet.delete(x);
+              const contribA = new Set(), contribB = new Set();
+              for (const key of consumed) { const p = key.split('-'); contribA.add(Number(p[0])); contribB.add(Number(p[1])); }
+              const aSet = new Set(A.filter(x => contribA.has(x)));
+              const bSet = new Set(B.filter(x => contribB.has(x)));
+              if (!aSet.size || !bSet.size || !cSet.size) continue;
+              const minIdx = Math.min(...consumed.map(k => remaining.get(k).idx));
+              const tok = digitsOf(aSet) + '-' + digitsOf(bSet) + '-' + digitsOf(cSet);
+              const cand = { cov: consumed.length, minIdx, size: aSet.size + bSet.size + cSet.size, tok, consumed };
+              if (!best || cand.cov > best.cov || (cand.cov === best.cov && (cand.minIdx < best.minIdx || (cand.minIdx === best.minIdx && (cand.size < best.size || (cand.size === best.size && cand.tok < best.tok)))))) best = cand;
+            }
+          }
+          if (!best) break; // 自明なフォーメーション（単一ペア）が常にあるため通常は起きない
+          for (const k of best.consumed) remaining.delete(k);
+          tokens.push({ idx: best.minIdx, str: best.tok });
         }
-        return order.map(o => o.grp ? (o.grp.a + '-' + o.grp.b + '-' + o.grp.cs.slice().sort((x, y) => x - y).join('')) : o.raw);
+        // フォーメーションに乗らない残り（同一車番を含む組など）は従来の「1着・2着グループ＋3着連結」で出す
+        if (remaining.size) {
+          const groups = new Map();
+          for (const tr of remaining.values()) {
+            const pk = tr.a + '-' + tr.b;
+            if (!groups.has(pk)) groups.set(pk, { a: tr.a, b: tr.b, cs: new Set(), idx: tr.idx });
+            const g = groups.get(pk);
+            g.cs.add(tr.c); if (tr.idx < g.idx) g.idx = tr.idx;
+          }
+          for (const g of groups.values()) tokens.push({ idx: g.idx, str: g.a + '-' + g.b + '-' + digitsOf(g.cs) });
+        }
+        tokens.sort((p, q) => p.idx - q.idx);
+        return tokens.map(t => t.str);
       }
       if (kind === 'exa') {
         const keys = new Set(list.filter(t => Array.isArray(t) && t.length === 2).map(t => Number(t[0]) + '-' + Number(t[1])));
@@ -4372,7 +4440,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.119';
+    const APP_RELEASE_LABEL = '更新版 v3.120';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
