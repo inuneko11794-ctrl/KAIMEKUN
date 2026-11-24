@@ -4036,13 +4036,18 @@
       // 末尾まとめ行用の集計（表示専用）
       let shownCount = 0, girlsCount = 0, solidCount = 0, dispSum = 0, dispCount = 0;
       const tierCounts = {};
-      const cardsHtml = group.map(({ r }) => {
+      // 末尾ブロック用：全レース分の波乱度・荒れ度タイプを1レース1行で並べる（表示専用）
+      const chaosLines = [];
+      const cardsHtml = group.map(({ r }, gi) => {
         let t = null;
         try { t = ensureRaceTickets(r); } catch (e) {}
         if (!t) return '';
         const cs = chaosSummaryForRace(r);
         shownCount++;
         if (cs) {
+          const rn = numOf(r);
+          const rLabel = (rn !== 999 ? rn : gi + 1) + 'R';
+          chaosLines.push(rLabel + ' ' + (cs.girls ? '対象外' : cs.text));
           if (cs.girls) girlsCount++;
           else {
             tierCounts[cs.tier] = (tierCounts[cs.tier] || 0) + 1;
@@ -4050,17 +4055,16 @@
             dispSum += cs.disp; dispCount++;
           }
         }
-        const suffix = !cs ? '' : cs.girls ? '（対象外）' : '（' + cs.text + '）';
         const trio = [...new Set((t.trifecta || []).map(x => [...x].map(Number).sort((a, b) => a - b).join('=')))];
         const row = (label, txt) => '<div class="flex gap-2 py-0.5"><span class="shrink-0 w-20 text-slate-400">' + label + '</span><span class="font-mono-code text-slate-100">' + (txt || '該当なし') + '</span></div>';
-        let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + suffix + '</div>';
+        let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + '</div>';
         h += row('3連単', fmt(t.trifecta, 'tri'));
         h += row('2車単', fmt(t.exacta, 'exa'));
         h += row('3連複', trio.join('　'));
         if ((t.selectTrifecta || []).length) h += row('厳選3連単', fmt(t.selectTrifecta, 'tri'));
         if ((t.selectExacta || []).length) h += row('厳選2車単', fmt(t.selectExacta, 'exa'));
         h += '</div>';
-        const lines = [r.id + suffix, '3連単 ' + (fmt(t.trifecta, 'tri') || '該当なし'), '2車単 ' + (fmt(t.exacta, 'exa') || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
+        const lines = [r.id, '3連単 ' + (fmt(t.trifecta, 'tri') || '該当なし'), '2車単 ' + (fmt(t.exacta, 'exa') || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
         if ((t.selectTrifecta || []).length) lines.push('厳選3連単 ' + fmt(t.selectTrifecta, 'tri'));
         if ((t.selectExacta || []).length) lines.push('厳選2車単 ' + fmt(t.selectExacta, 'exa'));
         texts.push(lines.join('\n'));
@@ -4075,7 +4079,10 @@
         if (girlsCount) parts.push('対象外×' + girlsCount);
         summaryLine = '全' + shownCount + 'レース｜' + parts.join('・') + '｜波乱度 平均' + Math.round(dispSum / dispCount);
       }
-      panel.innerHTML = cardsHtml + (summaryLine ? '<div class="rounded-xl border border-amber-700/60 bg-slate-950/60 px-3 py-2 font-bold text-amber-100">' + summaryLine + '</div>' : '');
+      // ===== 末尾ブロック（表示専用）：各レースの波乱度・荒れ度タイプ → まとめ行 =====
+      const chaosHtml = chaosLines.length ? '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 font-mono-code text-slate-100">' + chaosLines.map(l => '<div class="py-0.5">' + l + '</div>').join('') + '</div>' : '';
+      panel.innerHTML = cardsHtml + chaosHtml + (summaryLine ? '<div class="rounded-xl border border-amber-700/60 bg-slate-950/60 px-3 py-2 font-bold text-amber-100">' + summaryLine + '</div>' : '');
+      if (chaosLines.length) texts.push(chaosLines.join('\n'));
       if (summaryLine) texts.push(summaryLine);
       ticketSheetText = texts.join('\n\n');
     }
@@ -4440,7 +4447,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.120';
+    const APP_RELEASE_LABEL = '更新版 v3.121';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
