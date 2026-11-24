@@ -302,6 +302,9 @@
         <div class="pt-3"><div class="text-sm font-bold text-pink-200 mb-2">ガールズ成績</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-pink-200 border-b border-slate-700"><tr><th class="py-2">券種</th><th>対象R</th><th>的中R</th><th>的中率</th><th>合計点数</th><th>合計払戻</th><th>回収率</th></tr></thead><tbody id="girlsStatsRows"></tbody></table></div>
         <div id="girlsStatsSummary" class="text-xs text-slate-400 mt-2">ガールズのレースがあると集計します。</div></div>
+        <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">帯別 過去最高配当</div>
+        <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">帯</th><th>券種</th><th>的中の最高</th><th>不的中の最高</th></tr></thead><tbody id="maxPayoutRows"></tbody></table></div>
+        <div id="maxPayoutSummary" class="text-xs text-slate-400 mt-2">保存済みレース全体から集計します。</div></div>
       </div>
     </section>
 
@@ -4532,6 +4535,38 @@
         const gSummary=document.getElementById('girlsStatsSummary');
         if(gSummary)gSummary.textContent='ガールズのレースのみを集計（期間指定は上の設定と共通・1点100円）。単勝・3連複は払戻データがないため的中率のみ表示。';
       }
+      // 帯別 過去最高配当：保存済みレース全体（期間指定の対象外・ガールズ除く）から、帯×券種ごとに「本線が的中した中での最高」と「不的中だった中での最高」を表示するだけの集計。
+      const maxTarget=document.getElementById('maxPayoutRows');
+      if(maxTarget){
+        const escHtml=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const maxOf=(band,payoutKey,ticketKey,len,hitWanted)=>{
+          let best=null;
+          allRaces.forEach(r=>{
+            if(isGirlsSavedRace(r))return;
+            const nCars=(r.entries||[]).length;
+            if(!nCars||(nCars<=7?'67':'89')!==band)return;
+            const fin=parseFinish(r);
+            if(fin.length<3)return;
+            const v=Number(r[payoutKey]);
+            if(!Number.isFinite(v)||v<=0)return;
+            const tickets=r.autoTickets?r.autoTickets[ticketKey]:null;
+            if(!Array.isArray(tickets))return;
+            const hit=tickets.some(t=>Array.isArray(t)&&t.slice(0,len).every((x,i)=>Number(x)===fin[i]));
+            if(hit!==hitWanted)return;
+            if(!best||v>best.v)best={v,id:r.id||'',date:r.eventDate||'',combo:fin.slice(0,len).join('-')};
+          });
+          return best;
+        };
+        const maxCell=best=>best?'<div class="font-bold text-slate-100">'+best.v.toLocaleString()+'円</div><div class="text-slate-400">'+escHtml(best.id)+(best.date?'（'+best.date+'）':'')+' '+best.combo+'</div>':'—';
+        const maxRow=(band,bandLabel,betLabel,payoutKey,ticketKey,len)=>'<tr class="border-b border-slate-800"><td class="py-2">'+bandLabel+'</td><td>'+betLabel+'</td><td>'+maxCell(maxOf(band,payoutKey,ticketKey,len,true))+'</td><td>'+maxCell(maxOf(band,payoutKey,ticketKey,len,false))+'</td></tr>';
+        maxTarget.innerHTML=
+          maxRow('67','6/7車','3連単','payout','trifecta',3)
+          +maxRow('67','6/7車','2車単','exactaPayout','exacta',2)
+          +maxRow('89','8/9車','3連単','payout','trifecta',3)
+          +maxRow('89','8/9車','2車単','exactaPayout','exacta',2);
+        const mpSummary=document.getElementById('maxPayoutSummary');
+        if(mpSummary)mpSummary.textContent='保存済みレース全体（期間指定の対象外・ガールズ除く）。的中判定は本線の保存買い目による。レース名の後ろは開催日と確定着順。';
+      }
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
       const race = allRaces[currentRaceIdx]; if (!race) return;
@@ -4664,7 +4699,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.127';
+    const APP_RELEASE_LABEL = '更新版 v3.128';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
