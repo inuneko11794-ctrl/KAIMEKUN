@@ -240,6 +240,8 @@
           📂 CSV / MDファイルを選択
         </button>
         <button id="themeToggleBtn" type="button" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/50 text-sky-200 text-sm font-semibold transition w-full sm:w-auto">🌞 ライト</button>
+        <button id="themeBgmBtn" type="button" class="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/50 text-pink-200 text-sm font-semibold transition w-full sm:w-auto" aria-pressed="false">🎵 テーマ曲: OFF</button>
+        <audio id="themeBgmPlayer" src="unstoppable_pursuit.mp3" loop preload="none" class="hidden"></audio>
         <input type="file" id="dataFileInput" accept=".csv,.md,.txt" class="hidden" />
         <span id="dataFileReadStatus" class="text-xs text-slate-400 w-full sm:w-auto">ファイル未選択</span>
       </div>
@@ -2958,6 +2960,44 @@
       musicLoadAll().then(ts => { musicState.tracks = ts; renderMusicList(); }).catch(() => {});
     })();
 
+    // ===== テーマ曲BGM（サイト同梱・デフォルト停止、自動再生はしない） =====
+    const themeBgmPlayerEl = document.getElementById('themeBgmPlayer');
+    const themeBgmBtnEl = document.getElementById('themeBgmBtn');
+    function themeBgmSyncLabel() {
+      if (!themeBgmBtnEl || !themeBgmPlayerEl) return;
+      const on = !themeBgmPlayerEl.paused;
+      themeBgmBtnEl.textContent = on ? '🎵 テーマ曲: ON' : '🎵 テーマ曲: OFF';
+      themeBgmBtnEl.setAttribute('aria-pressed', String(on));
+    }
+    function pauseThemeBgm() {
+      if (themeBgmPlayerEl && !themeBgmPlayerEl.paused) themeBgmPlayerEl.pause();
+      themeBgmSyncLabel();
+    }
+    if (themeBgmBtnEl && themeBgmPlayerEl) {
+      themeBgmBtnEl.addEventListener('click', async () => {
+        if (!themeBgmPlayerEl.paused) {
+          themeBgmPlayerEl.pause();
+          try { localStorage.setItem('kaimekun_theme_bgm', 'off'); } catch (e) {}
+          themeBgmSyncLabel();
+          return;
+        }
+        // 他の音源（ソニフィケーション／マイミュージック）とは相互排他
+        try { stopSonificationLoop(); } catch (e) {}
+        const mp = document.getElementById('musicPlayer');
+        if (mp && !mp.paused) mp.pause();
+        try {
+          await themeBgmPlayerEl.play();
+          try { localStorage.setItem('kaimekun_theme_bgm', 'on'); } catch (e) {}
+        } catch (err) { showToast('テーマ曲: ' + (err.message || '再生を開始できません')); }
+        themeBgmSyncLabel();
+      });
+      themeBgmPlayerEl.addEventListener('play', themeBgmSyncLabel);
+      themeBgmPlayerEl.addEventListener('pause', themeBgmSyncLabel);
+      const musicPlayerEl = document.getElementById('musicPlayer');
+      if (musicPlayerEl) musicPlayerEl.addEventListener('play', () => pauseThemeBgm());
+      themeBgmSyncLabel();
+    }
+
 
     document.getElementById('exportCustomCsvBtn').addEventListener('click', () => {
       const csvRows = [['レースID', '車番', '選手名', 'AI印', '変換後印', '所属ライン', '並び予想', '確定着順', '3連単配当']];
@@ -3203,6 +3243,7 @@
       setLoopButtonState(false);
     }
     async function playSonificationOnce() {
+      pauseThemeBgm();
       const race = currentSonificationRace();
       ensureAudioCtx();
       if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -3222,6 +3263,7 @@
     document.getElementById('loopBgmBtn').addEventListener('click', async () => {
       if (sonificationLoopOn) { stopSonificationLoop(); return; }
       try {
+        pauseThemeBgm();
         const race = currentSonificationRace();
         ensureAudioCtx();
         if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -4622,7 +4664,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.126';
+    const APP_RELEASE_LABEL = '更新版 v3.127';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
