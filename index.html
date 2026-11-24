@@ -1480,8 +1480,14 @@
       return Math.min(90, Math.max(20, 20 + (rawProb - 0.1726) * 271.78));
     }
 
+    // 保存レースのガールズ判定（全員単騎）。通常集計・学習からはガールズを除外し、ガールズ専用成績欄でのみ使う。
+    function isGirlsSavedRace(r) {
+      const lines = r.lines || [];
+      return lines.length > 0 && lines.length === (r.entries || []).length && lines.every(g => g.length === 1);
+    }
+
     function trainAiModel() {
-      const analyzedAll = allRaces.map(r => ({ race: r, res: analyzeRace(r) }));
+      const analyzedAll = allRaces.map(r => ({ race: r, res: analyzeRace(r) })).filter(item => !item.res.isGirlsRace);
       const dnaFreqMap = {};
       analyzedAll.forEach(item => {
         dnaFreqMap[item.res.raceDna] = (dnaFreqMap[item.res.raceDna] || 0) + 1;
@@ -1534,7 +1540,7 @@
     }
 
     function calibrateToMansha70(silent = false) {
-      const analyzedAll = allRaces.map(r => ({ race: r, res: analyzeRace(r) }));
+      const analyzedAll = allRaces.map(r => ({ race: r, res: analyzeRace(r) })).filter(item => !item.res.isGirlsRace);
       const dnaFreqMap = {};
       analyzedAll.forEach(item => {
         dnaFreqMap[item.res.raceDna] = (dnaFreqMap[item.res.raceDna] || 0) + 1;
@@ -2071,7 +2077,7 @@
         item.prob = toDisplayProb(predictUpsetForRace(item.race.id, item.res, dnaFreqMap));
         item.payNum = item.race.payout ? Number(item.race.payout) : null;
       });
-      const withPayout = analyzedAll.filter(it => it.payNum !== null && !isNaN(it.payNum) && it.payNum > 0);
+      const withPayout = analyzedAll.filter(it => it.payNum !== null && !isNaN(it.payNum) && it.payNum > 0 && !it.res.isGirlsRace);
       if (withPayout.length === 0) {
         const presetTiers = [
           { label: '① 本命・堅実 (〜2,999円)', countStr: '基準 42%', dis: '3.35', chaos: '5.45', coup: '21%', bias: '0.295', prob: '46.6%', badge: 'text-cyan-300' },
@@ -2118,7 +2124,7 @@
       });
     }
     function updateBatchStats() {
-      const analyzed = allRaces.map(r => analyzeRace(r));
+      const analyzed = allRaces.map(r => analyzeRace(r)).filter(a => !a.isGirlsRace);
       document.getElementById('totalRacesCount').textContent = analyzed.length.toLocaleString();
       document.getElementById('baselineStatusLabel').textContent = `📌 適用中の基準値ソース: ${activeBaseline.sourceName}`;
       const avgDis = analyzed.reduce((a, b) => a + b.dissonance, 0) / analyzed.length;
@@ -3826,6 +3832,7 @@
     }
     function ticketContains(list,target){return (list||[]).some(t=>Array.isArray(t)&&t.length===target.length&&t.every((v,i)=>Number(v)===Number(target[i])));}
     function learnAdaptiveReasonPoints(race) {
+      if (isGirlsSavedRace(race)) return false;
       const saved=race.autoTickets,finish=parseFinish(race);
       if(!saved||!saved.generatedAt||saved.learningAppliedAt||finish.length<3)return false;
       if(!Number.isFinite(new Date(saved.generatedAt).getTime()))return false;
@@ -4212,26 +4219,28 @@
         if (to && (!dateValue || dateValue > to)) return false;
         return true;
       });
+      // 通常集計はガールズを除外する（ガールズは専用欄でのみ集計）。
+      const eligibleNormal = eligible.filter(r => !isGirlsSavedRace(r));
       const configs = [
         {key:'win',label:'単勝',rateOnly:true,payout:'winPayout',hit:r=>(r.autoTickets.win||[]).includes(parseFinish(r)[0])},
         {key:'exacta',label:'2車単',tickets:r=>(r.autoTickets.exacta||[]).length,payout:'exactaPayout',hit:r=>r.autoTickets.exacta.some(t=>t[0]===parseFinish(r)[0]&&t[1]===parseFinish(r)[1])},
         {key:'trifecta',label:'3連単',tickets:r=>(r.autoTickets.trifecta||[]).length,payout:'payout',hit:r=>r.autoTickets.trifecta.some(t=>t.join('-')===parseFinish(r).join('-'))}
       ];
       const rows = configs.map(c => {
-        const data = c.rateOnly ? eligible : eligible.filter(r => Number.isFinite(Number(r[c.payout])) && Number(r[c.payout]) > 0);
+        const data = c.rateOnly ? eligibleNormal : eligibleNormal.filter(r => Number.isFinite(Number(r[c.payout])) && Number(r[c.payout]) > 0);
         const hits = data.filter(c.hit).length;
         if (c.rateOnly) return {label:c.label,n:data.length,hits,rate:data.length?hits/data.length*100:0,investment:null,roi:null};
         const investment = data.reduce((sum,r)=>sum+Number(c.tickets(r)||0)*100,0);
         const returned = data.filter(c.hit).reduce((sum,r)=>sum+Number(r[c.payout]),0);
         return {label:c.label,n:data.length,hits,rate:data.length?hits/data.length*100:0,investment,roi:investment?returned/investment*100:0};
       });
-      const retroCount = eligible.filter(r => r.autoTickets.generatedAfterResult).length;
+      const retroCount = eligibleNormal.filter(r => r.autoTickets.generatedAfterResult).length;
       document.getElementById('betStatsSummary').textContent = '買い目を固定して集計: ' + Math.max(...rows.map(x=>x.n),0) + 'R / 1点100円' + (retroCount ? `（うち遡及生成 ${retroCount}R）` : '');
       document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+(x.investment==null?'—':x.investment.toLocaleString()+'円')+'</td><td>'+(x.roi==null?'—':x.roi.toFixed(2)+'%')+'</td></tr>').join('');
       const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5','Q1','Q2','Q3'];
       const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5',Q1:'並び宮Q1',Q2:'並び宮Q2',Q3:'並び宮Q3'};
       const ruleRows=ruleIds.map(id=>{
-        const triggered=eligible.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id));
+        const triggered=eligibleNormal.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id));
         const data=triggered.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id)&&Number(r[id==='L5'||id==='L6'||id==='Q3'?'payout':'exactaPayout'])>0);
         const hit=data.filter(r=>{
           const p=(r.autoTickets.rakushoPicks||[]).find(x=>x.id===id);const finish=parseFinish(r);
@@ -4250,7 +4259,7 @@
       const VENUE_LIST=['函館','青森','いわき平','弥彦','前橋','取手','宇都宮','大宮','西武園','京王閣','立川','松戸','千葉','川崎','平塚','小田原','伊東温泉','静岡','名古屋','岐阜','大垣','豊橋','富山','松阪','四日市','福井','京都向日町','奈良','和歌山','岸和田','玉野','広島','防府','高松','小松島','高知','松山','小倉','久留米','武雄','佐世保','別府','熊本'];
       const venueOf=r=>{const t=String(r.id||'');for(const v of VENUE_LIST){if(t.startsWith(v))return v;}for(const v of VENUE_LIST){if(t.includes(v))return v;}return 'その他';};
       const byVenue={};
-      eligible.forEach(r=>{const v=venueOf(r);(byVenue[v]=byVenue[v]||[]).push(r);});
+      eligibleNormal.forEach(r=>{const v=venueOf(r);(byVenue[v]=byVenue[v]||[]).push(r);});
       const venueCalc=(rs,payoutKey,ticketsOf,hitOf)=>{
         const data=rs.filter(r=>Number(r[payoutKey])>0);
         const hits=data.filter(hitOf).length;
@@ -4271,7 +4280,7 @@
       if(selTarget){
         const selTicketsOf=(r,kind)=>{ const saved=r.autoTickets[kind]; if(Array.isArray(saved)) return saved; try { const res=analyzeRace(r); return kind==='selectExacta'?buildSelectExacta(res):buildSelectTrifecta(res); } catch(e) { return []; } };
         const selRow=(label,kind,payoutKey,len)=>{
-          const data=eligible.filter(r=>Number(r[payoutKey])>0);
+          const data=eligibleNormal.filter(r=>Number(r[payoutKey])>0);
           const hitOf=r=>selTicketsOf(r,kind).some(t=>t.slice(0,len).every((v,i)=>Number(v)===parseFinish(r)[i]));
           const hits=data.filter(hitOf).length;
           const inv=data.reduce((s,r)=>s+selTicketsOf(r,kind).length*100,0);
@@ -4326,8 +4335,7 @@
       }
       const girlsTarget=document.getElementById('girlsStatsRows');
       if(girlsTarget){
-        const isGirlsSaved=r=>{ const lines=r.lines||[]; return lines.length>0 && lines.length===(r.entries||[]).length && lines.every(g=>g.length===1); };
-        const girlsRaces=eligible.filter(isGirlsSaved);
+        const girlsRaces=eligible.filter(isGirlsSavedRace);
         const girlsSelOf=(r,kind)=>{ const saved=r.autoTickets[kind]; if(Array.isArray(saved)) return saved; try { const res=analyzeRace(r); return kind==='selectExacta'?buildSelectExacta(res):buildSelectTrifecta(res); } catch(e) { return []; } };
         const hitLen=(list,r,len)=>{ const fin=parseFinish(r); return (list||[]).some(t=>t.slice(0,len).every((v,i)=>Number(v)===fin[i])); };
         const trioSetsOf=r=>[...new Set((r.autoTickets.trifecta||[]).map(t=>t.map(Number).slice(0,3).sort((a,b)=>a-b).join('-')))];
@@ -4480,7 +4488,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.124';
+    const APP_RELEASE_LABEL = '更新版 v3.125';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
