@@ -3914,7 +3914,8 @@
     // ===== 買い目表示の圧縮（表示専用：買い目データ自体は変更しない） =====
     // 3連単: フォーメーション（1着候補A×2着候補B×3着候補C、3車は全て異なる）として過不足なく表せる部分を「A-B-C」に合体
     //   （例 1-2-3,1-2-4,2-1-3,2-1-4 → 12-12-34／片方向のみ 1-2-3,1-2-4 → 1-2-34）。合体は点数の大きい順・同点は初出順に繰り返し抽出
-    // 2車単: 裏表ペアが両方あるときだけ圧縮（例 2-7,7-2 → 27-72）。片方向のみはそのまま。圧縮トークンは初出位置に出す
+    // 2車単: まず裏表ペアを合体（例 2-7,7-2 → 27-72、優先）。残りはフォーメーション（1着候補A×2着候補B、AとBは重ならない）として
+    //   過不足なく表せる部分を「A-B」に合体（例 1-2,1-3 → 1-23）。合体は点数の大きい順・同点は初出順に繰り返し抽出し、残りはそのまま。トークンは初出位置に出す
     function compactTicketTokens(arr, kind) {
       const list = arr || [];
       if (kind === 'tri') {
@@ -3997,27 +3998,160 @@
         return tokens.map(t => t.str);
       }
       if (kind === 'exa') {
-        const keys = new Set(list.filter(t => Array.isArray(t) && t.length === 2).map(t => Number(t[0]) + '-' + Number(t[1])));
-        const done = new Set(); const out = [];
-        for (const t of list) {
-          if (!Array.isArray(t) || t.length !== 2) { out.push(Array.isArray(t) ? t.join('-') : String(t)); continue; }
+        const tokens = []; // { idx, str } 最後に初出順（最小の元インデックス）で並べる
+        const remaining = new Map(); // 'a-b' -> { a, b, idx }
+        list.forEach((t, i) => {
+          if (!Array.isArray(t) || t.length !== 2) { tokens.push({ idx: i, str: Array.isArray(t) ? t.join('-') : String(t) }); return; }
           const a = Number(t[0]), b = Number(t[1]);
-          if (a !== b && keys.has(b + '-' + a)) {
-            const lo = Math.min(a, b), hi = Math.max(a, b), pk = lo + '-' + hi;
-            if (done.has(pk)) continue;
-            done.add(pk);
-            out.push('' + lo + hi + '-' + hi + lo);
-          } else out.push(a + '-' + b);
+          const key = a + '-' + b;
+          if (!remaining.has(key)) remaining.set(key, { a, b, idx: i });
+        });
+        const digitsOf = set => [...set].sort((x, y) => x - y).join('');
+        // 1) 裏表合体（優先）: {a-b, b-a} の両方があるとき「ab-ba」に合体
+        const revDone = new Set();
+        for (const p of [...remaining.values()]) {
+          if (p.a === p.b) continue;
+          const q = remaining.get(p.b + '-' + p.a);
+          if (!q) continue;
+          const lo = Math.min(p.a, p.b), hi = Math.max(p.a, p.b), pk = lo + '-' + hi;
+          if (revDone.has(pk)) continue;
+          revDone.add(pk);
+          tokens.push({ idx: Math.min(p.idx, q.idx), str: '' + lo + hi + '-' + hi + lo });
+          remaining.delete(p.a + '-' + p.b);
+          remaining.delete(p.b + '-' + p.a);
         }
-        return out;
+        // 2) フォーメーション合体: A×B（A∩B=∅、|A|≧1・|B|≧2 または |A|≧2・|B|≧1）として過不足なく表せる部分を「A-B」に合体。
+        //    点数の大きい順・同点は初出順に繰り返し抽出（3連単と同じ作法）
+        while (remaining.size) {
+          const secs = new Map(); // a -> Set(b)
+          for (const p of remaining.values()) {
+            if (!secs.has(p.a)) secs.set(p.a, new Set());
+            secs.get(p.a).add(p.b);
+          }
+          const firsts = [...secs.keys()].sort((x, y) => x - y);
+          let best = null;
+          for (let maskA = 1; maskA < (1 << firsts.length); maskA++) {
+            const A = firsts.filter((_, i) => maskA & (1 << i));
+            let inter = null;
+            for (const a of A) inter = inter === null ? new Set(secs.get(a)) : new Set([...inter].filter(x => secs.get(a).has(x)));
+            const B = [...inter].filter(x => !A.includes(x)).sort((x, y) => x - y);
+            if (!((A.length >= 1 && B.length >= 2) || (A.length >= 2 && B.length >= 1))) continue;
+            const consumed = [];
+            for (const a of A) for (const b of B) consumed.push(a + '-' + b);
+            const minIdx = Math.min(...consumed.map(k => remaining.get(k).idx));
+            const tok = digitsOf(A) + '-' + digitsOf(B);
+            const cand = { cov: consumed.length, minIdx, size: A.length + B.length, tok, consumed };
+            if (!best || cand.cov > best.cov || (cand.cov === best.cov && (cand.minIdx < best.minIdx || (cand.minIdx === best.minIdx && (cand.size < best.size || (cand.size === best.size && cand.tok < best.tok)))))) best = cand;
+          }
+          if (!best) break;
+          for (const k of best.consumed) remaining.delete(k);
+          tokens.push({ idx: best.minIdx, str: best.tok });
+        }
+        // 3) 合体できない残りはそのまま
+        for (const p of remaining.values()) tokens.push({ idx: p.idx, str: p.a + '-' + p.b });
+        tokens.sort((p, q) => p.idx - q.idx);
+        return tokens.map(t => t.str);
       }
       return list.map(t => Array.isArray(t) ? t.join('-') : String(t));
     }
     // ===== 3連複表記（表示専用） =====
-    // 3連複は、そのレースの3連単の圧縮トークン（compactTicketTokens 'tri'、フォーメーション合体込み）を
-    // そのまま使い、区切り文字「-」を「=」に置き換えたものとする（例：17-17-234 → 17=17=234、1-23-4567 → 1=23=4567）。
-    function trioTokensFromTrifecta(trifecta) {
-      return compactTicketTokens(trifecta, 'tri').map(s => String(s).replace(/-/g, '='));
+    // 3連複は順不同の3車組み合わせの集合（本線3連単の各組を昇順に直して重複を除いたもの）。
+    // その集合そのものから、どの組み合わせもちょうど1つのトークンにだけ属する分配として「A=B=C」トークンを構築する
+    // （トークンの意味は「各グループから1車ずつ・全て異なる車の組み合わせ」）。合体は点数の大きい順・同点は初出順に
+    // 貪欲に抽出し、合体できない残りは単品「1=2=3」形式で出す（例：1=7=234、1=23=4567）。
+    function trioTokens(trifecta) {
+      const remaining = new Map(); // 'a-b-c'（昇順） -> { c:[a,b,c], idx }
+      (trifecta || []).forEach((t, i) => {
+        if (!Array.isArray(t) || t.length !== 3) return;
+        const c = t.map(Number).slice(0, 3).sort((x, y) => x - y);
+        if (c[0] === c[1] || c[1] === c[2]) return;
+        const key = c.join('-');
+        if (!remaining.has(key)) remaining.set(key, { c, idx: i });
+      });
+      const tokens = []; // { idx, str }
+      // 車番を 0..n-1 のビット位置に対応づけ、グループ・組み合わせをビットマスクで扱う（列挙を高速化するため）
+      const carList = [...new Set([...remaining.values()].flatMap(e => e.c))].sort((a, b) => a - b);
+      const bitOf = new Map(carList.map((c, i) => [c, i]));
+      const maskDigits = [];
+      for (let m = 0; m < (1 << carList.length); m++) {
+        let s = '';
+        for (let i = 0; i < carList.length; i++) if (m & (1 << i)) s += carList[i];
+        maskDigits.push(s);
+      }
+      const popcnt = m => { let c = 0; while (m) { m &= m - 1; c++; } return c; };
+      const remMask = new Map(); // 組み合わせビットマスク -> { key, idx }
+      for (const [key, e] of remaining) remMask.set(e.c.reduce((acc, c) => acc | (1 << bitOf.get(c)), 0), { key, idx: e.idx });
+      const n = carList.length;
+      const minBit = m => { for (let i = 0; i < n; i++) if (m & (1 << i)) return i; return 99; };
+      while (remMask.size) {
+        // ペア（ビット位置 i<j）→ そのペアを含む組み合わせの3車目のビットマスク／rowMask[i] = i とペアになる車の集合
+        const pairThirds = new Map();
+        const rowMask = new Array(n).fill(0);
+        for (const cm of remMask.keys()) {
+          const bits = [];
+          for (let i = 0; i < n; i++) if (cm & (1 << i)) bits.push(i);
+          for (const [p, q, r] of [[0, 1, 2], [0, 2, 1], [1, 2, 0]]) {
+            const pk = bits[p] * 16 + bits[q];
+            pairThirds.set(pk, (pairThirds.get(pk) || 0) | (1 << bits[r]));
+            rowMask[bits[p]] |= 1 << bits[q];
+            rowMask[bits[q]] |= 1 << bits[p];
+          }
+        }
+        let best = null;
+        for (let m1 = 1; m1 < (1 << n); m1++) {
+          const s1 = popcnt(m1), mb1 = minBit(m1);
+          // G2 の候補 = G1 の全車（自分自身を除く）とペアになる車だけに絞る（跨ぎペアが1つでも欠けたら不成立のため）
+          let pStar = 0;
+          for (let b = 0; b < n; b++) if ((m1 & ~rowMask[b] & ~(1 << b)) === 0) pStar |= 1 << b;
+          if (!pStar) continue;
+          for (let m2 = pStar; m2; m2 = (m2 - 1) & pStar) {
+            const s2 = popcnt(m2), mb2 = minBit(m2);
+            if (mb1 > mb2 || (mb1 === mb2 && s1 > s2)) continue; // (G1,G2) と (G2,G1) は同一候補なので片方だけ
+            // C = 全ての跨ぎペア (a∈G1, b∈G2, a≠b) に共通する3車目。ペアが集合に無い場合は 0 ＝不成立
+            let cMask = -1; let ok = true;
+            for (let a = 0; a < n && ok; a++) {
+              if (!(m1 & (1 << a))) continue;
+              for (let b = 0; b < n; b++) {
+                if (!(m2 & (1 << b)) || a === b) continue;
+                const T = pairThirds.get(Math.min(a, b) * 16 + Math.max(a, b)) || 0;
+                cMask = cMask === -1 ? T : (cMask & T);
+                if (!cMask) { ok = false; break; }
+              }
+            }
+            if (!ok || cMask === -1 || !cMask) continue;
+            if (s1 * s2 * popcnt(cMask) < 2) continue;
+            if (best && s1 * s2 * popcnt(cMask) < best.cov) continue; // 上限でも best に届かない
+            const covered = new Set();
+            let dupIn = false; // グループ同士が重なると同じ組み合わせが2通りの割り当てで生まれることがある。その候補は不成立
+            for (let a = 0; a < n && !dupIn; a++) {
+              if (!(m1 & (1 << a))) continue;
+              for (let b = 0; b < n && !dupIn; b++) {
+                if (!(m2 & (1 << b)) || a === b) continue;
+                for (let c = 0; c < n; c++) {
+                  if (!(cMask & (1 << c)) || c === a || c === b) continue;
+                  const mk = (1 << a) | (1 << b) | (1 << c);
+                  if (covered.has(mk)) { dupIn = true; break; }
+                  covered.add(mk);
+                }
+              }
+            }
+            if (dupIn || covered.size < 2) continue; // 単品は合体扱いにしない
+            let minIdx = Infinity;
+            for (const cm of covered) minIdx = Math.min(minIdx, remMask.get(cm).idx);
+            const grpStrs = [maskDigits[m1], maskDigits[m2], maskDigits[cMask]]
+              .sort((s, t) => s.length - t.length || (s < t ? -1 : s > t ? 1 : 0));
+            const tok = grpStrs.join('=');
+            const cand = { cov: covered.size, minIdx, size: s1 + s2 + popcnt(cMask), tok, covered };
+            if (!best || cand.cov > best.cov || (cand.cov === best.cov && (cand.minIdx < best.minIdx || (cand.minIdx === best.minIdx && (cand.size < best.size || (cand.size === best.size && cand.tok < best.tok)))))) best = cand;
+          }
+        }
+        if (!best) break;
+        for (const cm of best.covered) remMask.delete(cm);
+        tokens.push({ idx: best.minIdx, str: best.tok });
+      }
+      for (const e of remMask.values()) tokens.push({ idx: e.idx, str: e.key.replace(/-/g, '=') });
+      tokens.sort((p, q) => p.idx - q.idx);
+      return tokens.map(t => t.str);
     }
     // ===== 波乱度・荒れ度タイプの買い目表示用サマリ（表示専用：既存バナーと同じ計算値を使う） =====
     // 返り値: { girls:false, text:'波乱度62・T2', disp:62, tier:2, solid:false } / ガールズは { girls:true } / 取得できない場合は null
@@ -4071,7 +4205,7 @@
             dispSum += cs.disp; dispCount++;
           }
         }
-        const trio = trioTokensFromTrifecta(t.trifecta);
+        const trio = trioTokens(t.trifecta);
         const row = (label, txt) => '<div class="flex gap-2 py-0.5"><span class="shrink-0 w-20 text-slate-400">' + label + '</span><span class="font-mono-code text-slate-100">' + (txt || '該当なし') + '</span></div>';
         let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + '</div>';
         h += row('3連単', fmt(t.trifecta, 'tri'));
@@ -4131,7 +4265,7 @@
       const selTriEl=document.getElementById('autoSelectTrifectaPicks');
       if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?showC(tickets.selectTrifecta,'tri'):'該当なし';
       const trioEl=document.getElementById('autoTrioPicks');
-      if(trioEl){ const sets=trioTokensFromTrifecta(tickets.trifecta); trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
+      if(trioEl){ const sets=trioTokens(tickets.trifecta); trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
       const verifyEl=document.getElementById('raceVerifyBar');
       if(verifyEl){
         const fin=parseFinish(race);
@@ -4488,7 +4622,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.125';
+    const APP_RELEASE_LABEL = '更新版 v3.126';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
