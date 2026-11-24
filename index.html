@@ -270,6 +270,7 @@
       <div id="chaosTierBanner" class="rounded-xl bg-rose-500/10 border border-rose-400/40 px-3 py-2 text-sm">荒れ度タイプ: --</div>
       <div id="overlapBanner" class="rounded-xl bg-violet-500/10 border border-violet-400/40 px-3 py-2 text-sm mt-2">🤝被り予報: --</div>
       <div id="pairPayoutBanner" class="rounded-xl bg-amber-500/10 border border-amber-400/40 px-3 py-2 text-sm mt-2">💰先頭ペア配当目安: --</div>
+      <div id="ticketChaosLine" class="hidden rounded-xl bg-slate-950/70 border border-slate-700 px-3 py-2 text-sm mt-3 mb-3 font-bold text-slate-100"></div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="text-xs text-amber-200 font-bold mb-2">単勝</div><div id="autoWinPicks" class="font-mono-code text-sm">--</div></div>
         <div class="rounded-xl bg-slate-950/70 border border-slate-700 p-3"><div class="mb-2"><div class="text-xs text-amber-200 font-bold">2車単 本線2〜3点＋狙い1〜2点</div><span id="recExa" class="hidden mt-1 px-1.5 py-0.5 rounded bg-rose-500/25 border border-rose-400/60 text-rose-200 text-[10px]">このタイプのおすすめ</span></div><div id="autoExactaPicks" class="font-mono-code text-sm max-h-52 overflow-y-auto">--</div></div>
@@ -3934,6 +3935,20 @@
       }
       return list.map(t => Array.isArray(t) ? t.join('-') : String(t));
     }
+    // ===== 波乱度・荒れ度タイプの買い目表示用サマリ（表示専用：既存バナーと同じ計算値を使う） =====
+    // 返り値: { girls:false, text:'波乱度62・T2' } / ガールズは { girls:true } / 取得できない場合は null
+    function chaosSummaryForRace(r) {
+      try {
+        const res = analyzeRace(r);
+        if (res.isGirlsRace) return { girls: true, text: '' };
+        const praw = predictUpsetForRace(r.id, res, getDnaFreqMapCached());
+        const ct = chaosTierOf(res);
+        const typeLabel = ct.tier === -1 ? '超堅' : 'T' + ct.tier;
+        let text = '波乱度' + Math.round(toDisplayProb(praw)) + '・' + typeLabel;
+        if (solidLockOf(res, praw)) text += '・🧊鉄板級';
+        return { girls: false, text };
+      } catch (e) { return null; }
+    }
     let ticketSheetText = '';
     function renderTicketSheet() {
       const panel = document.getElementById('ticketSheetPanel');
@@ -3952,16 +3967,18 @@
         let t = null;
         try { t = ensureRaceTickets(r); } catch (e) {}
         if (!t) return '';
+        const cs = chaosSummaryForRace(r);
+        const suffix = !cs ? '' : cs.girls ? '（対象外）' : '（' + cs.text + '）';
         const trio = [...new Set((t.trifecta || []).map(x => [...x].map(Number).sort((a, b) => a - b).join('=')))];
         const row = (label, txt) => '<div class="flex gap-2 py-0.5"><span class="shrink-0 w-20 text-slate-400">' + label + '</span><span class="font-mono-code text-slate-100">' + (txt || '該当なし') + '</span></div>';
-        let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + '</div>';
+        let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + suffix + '</div>';
         h += row('3連単', fmt(t.trifecta, 'tri'));
         h += row('2車単', fmt(t.exacta, 'exa'));
         h += row('3連複', trio.join('　'));
         if ((t.selectTrifecta || []).length) h += row('厳選3連単', fmt(t.selectTrifecta, 'tri'));
         if ((t.selectExacta || []).length) h += row('厳選2車単', fmt(t.selectExacta, 'exa'));
         h += '</div>';
-        const lines = [r.id, '3連単 ' + (fmt(t.trifecta, 'tri') || '該当なし'), '2車単 ' + (fmt(t.exacta, 'exa') || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
+        const lines = [r.id + suffix, '3連単 ' + (fmt(t.trifecta, 'tri') || '該当なし'), '2車単 ' + (fmt(t.exacta, 'exa') || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
         if ((t.selectTrifecta || []).length) lines.push('厳選3連単 ' + fmt(t.selectTrifecta, 'tri'));
         if ((t.selectExacta || []).length) lines.push('厳選2車単 ' + fmt(t.selectExacta, 'exa'));
         texts.push(lines.join('\n'));
@@ -3978,6 +3995,15 @@
       const previousVersion = race.autoTickets?.featureBaselineVersion;
       const tickets = ensureRaceTickets(race);
       if (tickets.generatedAt && (!previousVersion || (!tickets.generatedAfterResult && previousVersion !== tickets.featureBaselineVersion))) persistRaces();
+      const chaosLineEl = document.getElementById('ticketChaosLine');
+      if (chaosLineEl) {
+        const cs = chaosSummaryForRace(race);
+        if (!cs) chaosLineEl.classList.add('hidden');
+        else {
+          chaosLineEl.classList.remove('hidden');
+          chaosLineEl.textContent = cs.girls ? '波乱度・荒れ度タイプ: 対象外（ガールズ）' : cs.text;
+        }
+      }
       const selectedCars=new Set((tickets.rakushoPicks||[]).flatMap(p=>p.ticket.map(Number)));
       const glowTicket=raw=>String(raw).split(/([1-7])/).map(part=>/^[1-7]$/.test(part)&&selectedCars.has(Number(part))?'<span class="inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-amber-300 text-slate-950 font-extrabold rakusho-selected-car">'+part+'</span>':part).join('');
       const show = (arr, n) => arr.map(t => glowTicket(Array.isArray(t) ? t.join('-') : String(t))).join('　') || '--';
@@ -4321,7 +4347,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.117';
+    const APP_RELEASE_LABEL = '更新版 v3.118';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
