@@ -3900,6 +3900,40 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }));
     }
+    // ===== 買い目表示の圧縮（表示専用：買い目データ自体は変更しない） =====
+    // 3連単: 1着・2着が同じ買い目をまとめ、3着の車番を昇順に連結（例 1-2-3,1-2-4,1-2-7 → 1-2-347）。並びは初出順
+    // 2車単: 裏表ペアが両方あるときだけ圧縮（例 2-7,7-2 → 27-72）。片方向のみはそのまま。圧縮トークンは初出位置に出す
+    function compactTicketTokens(arr, kind) {
+      const list = arr || [];
+      if (kind === 'tri') {
+        const order = []; const groups = new Map();
+        for (const t of list) {
+          if (!Array.isArray(t) || t.length !== 3) { order.push({ raw: Array.isArray(t) ? t.join('-') : String(t) }); continue; }
+          const a = Number(t[0]), b = Number(t[1]), c = Number(t[2]);
+          const key = a + '-' + b;
+          if (!groups.has(key)) { const g = { a, b, cs: [] }; groups.set(key, g); order.push({ grp: g }); }
+          const g = groups.get(key);
+          if (!g.cs.includes(c)) g.cs.push(c);
+        }
+        return order.map(o => o.grp ? (o.grp.a + '-' + o.grp.b + '-' + o.grp.cs.slice().sort((x, y) => x - y).join('')) : o.raw);
+      }
+      if (kind === 'exa') {
+        const keys = new Set(list.filter(t => Array.isArray(t) && t.length === 2).map(t => Number(t[0]) + '-' + Number(t[1])));
+        const done = new Set(); const out = [];
+        for (const t of list) {
+          if (!Array.isArray(t) || t.length !== 2) { out.push(Array.isArray(t) ? t.join('-') : String(t)); continue; }
+          const a = Number(t[0]), b = Number(t[1]);
+          if (a !== b && keys.has(b + '-' + a)) {
+            const lo = Math.min(a, b), hi = Math.max(a, b), pk = lo + '-' + hi;
+            if (done.has(pk)) continue;
+            done.add(pk);
+            out.push('' + lo + hi + '-' + hi + lo);
+          } else out.push(a + '-' + b);
+        }
+        return out;
+      }
+      return list.map(t => Array.isArray(t) ? t.join('-') : String(t));
+    }
     let ticketSheetText = '';
     function renderTicketSheet() {
       const panel = document.getElementById('ticketSheetPanel');
@@ -3912,7 +3946,7 @@
       const group = allRaces.map((r, i) => ({ r, i })).filter(x => keyOf(x.r) === key);
       const numOf = r => { const m = String(r.id || '').match(/(\d+)R/); return m ? parseInt(m[1], 10) : 999; };
       group.sort((a, b) => numOf(a.r) - numOf(b.r));
-      const fmt = arr => (arr || []).map(t => Array.isArray(t) ? t.join('-') : String(t)).join('　');
+      const fmt = (arr, kind) => compactTicketTokens(arr, kind).join('　');
       const texts = [];
       panel.innerHTML = group.map(({ r }) => {
         let t = null;
@@ -3921,15 +3955,15 @@
         const trio = [...new Set((t.trifecta || []).map(x => [...x].map(Number).sort((a, b) => a - b).join('=')))];
         const row = (label, txt) => '<div class="flex gap-2 py-0.5"><span class="shrink-0 w-20 text-slate-400">' + label + '</span><span class="font-mono-code text-slate-100">' + (txt || '該当なし') + '</span></div>';
         let h = '<div class="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2"><div class="font-bold text-white mb-1">' + r.id + '</div>';
-        h += row('3連単', fmt(t.trifecta));
-        h += row('2車単', fmt(t.exacta));
+        h += row('3連単', fmt(t.trifecta, 'tri'));
+        h += row('2車単', fmt(t.exacta, 'exa'));
         h += row('3連複', trio.join('　'));
-        if ((t.selectTrifecta || []).length) h += row('厳選3連単', fmt(t.selectTrifecta));
-        if ((t.selectExacta || []).length) h += row('厳選2車単', fmt(t.selectExacta));
+        if ((t.selectTrifecta || []).length) h += row('厳選3連単', fmt(t.selectTrifecta, 'tri'));
+        if ((t.selectExacta || []).length) h += row('厳選2車単', fmt(t.selectExacta, 'exa'));
         h += '</div>';
-        const lines = [r.id, '3連単 ' + (fmt(t.trifecta) || '該当なし'), '2車単 ' + (fmt(t.exacta) || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
-        if ((t.selectTrifecta || []).length) lines.push('厳選3連単 ' + fmt(t.selectTrifecta));
-        if ((t.selectExacta || []).length) lines.push('厳選2車単 ' + fmt(t.selectExacta));
+        const lines = [r.id, '3連単 ' + (fmt(t.trifecta, 'tri') || '該当なし'), '2車単 ' + (fmt(t.exacta, 'exa') || '該当なし'), '3連複 ' + (trio.join(' ') || '該当なし')];
+        if ((t.selectTrifecta || []).length) lines.push('厳選3連単 ' + fmt(t.selectTrifecta, 'tri'));
+        if ((t.selectExacta || []).length) lines.push('厳選2車単 ' + fmt(t.selectExacta, 'exa'));
         texts.push(lines.join('\n'));
         return h;
       }).join('');
@@ -3947,12 +3981,13 @@
       const selectedCars=new Set((tickets.rakushoPicks||[]).flatMap(p=>p.ticket.map(Number)));
       const glowTicket=raw=>String(raw).split(/([1-7])/).map(part=>/^[1-7]$/.test(part)&&selectedCars.has(Number(part))?'<span class="inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-amber-300 text-slate-950 font-extrabold rakusho-selected-car">'+part+'</span>':part).join('');
       const show = (arr, n) => arr.map(t => glowTicket(Array.isArray(t) ? t.join('-') : String(t))).join('　') || '--';
+      const showC = (arr, kind) => compactTicketTokens(arr, kind).map(tok => glowTicket(tok)).join('　') || '--';
       document.getElementById('autoWinPicks').innerHTML=show(tickets.win,4);
-      document.getElementById('autoExactaPicks').innerHTML=show(tickets.exacta,4);
+      document.getElementById('autoExactaPicks').innerHTML=showC(tickets.exacta,'exa');
       const selEl=document.getElementById('autoSelectExactaPicks');
-      if(selEl)selEl.innerHTML=(tickets.selectExacta&&tickets.selectExacta.length)?show(tickets.selectExacta,4):'該当なし';
+      if(selEl)selEl.innerHTML=(tickets.selectExacta&&tickets.selectExacta.length)?showC(tickets.selectExacta,'exa'):'該当なし';
       const selTriEl=document.getElementById('autoSelectTrifectaPicks');
-      if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?show(tickets.selectTrifecta,15):'該当なし';
+      if(selTriEl)selTriEl.innerHTML=(tickets.selectTrifecta&&tickets.selectTrifecta.length)?showC(tickets.selectTrifecta,'tri'):'該当なし';
       const trioEl=document.getElementById('autoTrioPicks');
       if(trioEl){ const sets=[...new Set((tickets.trifecta||[]).map(t=>[...t].map(Number).sort((a,b)=>a-b).join('=')))]; trioEl.innerHTML=sets.length?sets.map(s=>'<span class="inline-block mr-2 mb-1 px-1.5 py-0.5 rounded bg-slate-800/80">'+s+'</span>').join(''):'該当なし'; }
       const verifyEl=document.getElementById('raceVerifyBar');
@@ -4018,7 +4053,7 @@
           }
         }
       } catch(e) {}
-      document.getElementById('autoTrifectaPicks').innerHTML=show(tickets.trifecta,15);
+      document.getElementById('autoTrifectaPicks').innerHTML=showC(tickets.trifecta,'tri');
       document.getElementById('autoFirstCandidates').textContent='1着候補: '+[...new Set(tickets.trifecta.map(t=>t[0]))].join('・')+'番';
       const baseNote=document.getElementById('patternBaselineNote');
       if(baseNote)baseNote.textContent=`基準値 ${PATTERN_BASELINE.verifiedRaces.toLocaleString()}R照合済: ◎1着${PATTERN_BASELINE.marks['◎'].win}%・スジ${PATTERN_BASELINE.marks['◎'].suji}% ／ 二分戦スジ${PATTERN_BASELINE.lineSuji['二分戦']}% ／ 2-2-2-1は${PATTERN_BASELINE.lineSuji['2-2-2-1']}% ／ この買い目は2連単 的中${PATTERN_BASELINE.formation.exactaHit}%・回収${PATTERN_BASELINE.formation.exactaRoi}%、3連単 的中${PATTERN_BASELINE.formation.trifectaHit}%・回収${PATTERN_BASELINE.formation.trifectaRoi}%（見立て: ${tickets.patternMode||'--'}）` + (tickets.generatedAfterResult ? ' ｜ ※この買い目は結果登録後に静的情報だけで遡及生成したものです' : '');
@@ -4286,7 +4321,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.116';
+    const APP_RELEASE_LABEL = '更新版 v3.117';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
