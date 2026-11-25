@@ -2312,7 +2312,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v21-T2FLOW',
+      version: 'CSV-BASELINE-20261125-v22-T0PRUNE',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4089,6 +4089,13 @@
               const pool3D = new Set([...partnersD, ...setTD]);
               additionsD.push(...genAddD(taiCarD, partnersD, p => [...pool3D].filter(c => c !== taiCarD && c !== p).sort((a, b) => a - b)));
             }
+            // v3.143: 帯67のT0では、頭追加の相手が▲・✖（△・✕の変換印）の券を足さない（25,477R検証・帯67 T0 14,852R:
+            // その層は9,886点・的中27件・回収29.6%（前期30.4%／2026 28.1%と両期間とも本体72.4%から40pt超低い）、万車的中は9件のみ。
+            // 相手が●（125.6%）・⑳（61.1%）の券は残す。T0以外・帯89は未測定のため対象外）
+            if ((res.entries || []).length <= 7 && tierOfRace === 0) {
+              const keptD = additionsD.filter(t => !['▲', '✖'].includes(markByCarD[Number(t[1])]));
+              additionsD.length = 0; keptD.forEach(t => additionsD.push(t));
+            }
             additionsD.forEach(t => selected.push(t));
           }
         }
@@ -4116,8 +4123,13 @@
             // （超堅の最終集合の20.4%）持ち込み、その層の回収は29.0%（最大抜き20.3%、両期間とも悪い）と突出して低かった。
             // 塞ぐと超堅 71.0%→81.8%・全体 73.7%→73.9%、失うのは的中9件・万車的中1件のみ（25,477R検証）。合計<11の追加と他レースの☆★追加は不変
             const solidSumGateS = (res.entries.length === 6 || res.entries.length === 7) && tierOfRace === -1;
+            // v3.143: 帯67のT0では、ペアの頭が⑳・●・▲（◎・◯・△の変換印）のペアには☆★を足さない（25,477R検証・帯67 T0 14,852R:
+            // その層は9,555点・的中21件・回収22.1%（前期31.7%／2026 7.3%と両期間とも突出して低い）、万車的中は7件のみ。
+            // 頭がT（単騎）のペアは2026が77.7%と健全、✖頭も70.9%のため対象外。T0以外・帯89は未測定のため対象外）
+            const convHeadGateS = (res.entries.length === 6 || res.entries.length === 7) && tierOfRace === 0;
             const additionsS = [];
             pairThirdsS.forEach(({ a, b, thirds }) => {
+              if (convHeadGateS && ['⑳', '●', '▲'].includes(markByCarS[a])) return;
               starCarsS.forEach(x => {
                 if (x === a || x === b || thirds.has(x)) return;
                 if (solidSumGateS && a + b + x >= 11) return;
@@ -5161,7 +5173,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.143';
+    const APP_RELEASE_LABEL = '更新版 v3.144';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
