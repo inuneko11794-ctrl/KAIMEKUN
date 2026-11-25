@@ -2240,7 +2240,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261124-v14-STAR89',
+      version: 'CSV-BASELINE-20261125-v15-D1P',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -3891,6 +3891,58 @@
           selected.length = 0; keptSum.forEach(t => selected.push(t));
         }
       } catch (e) {}
+      // ◎・◯の頭が本線3連単に1点も無いレースへ、後段フィルタを全て通した最終買い目に頭の買い目を上乗せする（D1p・25,477R検証:
+      // 現行 11.14点・的中27.1%・回収80.8% → 23.71点・42.2%・73.2%（ex-max 72.8）、万車的中 469→963件、追加分の限界回収66.4%、両期間・両帯で安定）。
+      // 追加は合計カット等の現行ルールの対象外（別枠）。パターン段に入れると後段フィルタで追加的中の約41%が消えるため、必ずこの位置（最終段）で足す。
+      // ◎頭: 形のDNAが代表型（67|3+3|K1|◎◯|HS3|HP先|T0）のときだけ既存の相手集合S・3着プールTを流用し、それ以外は相手＝星・無・☽☾以外の全車、3着＝全車（6番切りなし）。
+      // ◯頭: 相手＝同ライン全車＋他の本印（◎△✕）、3着＝相手集合＋既存T。ガールズは測定対象外（検証CSVに存在しない）のため追加しない
+      try {
+        if (!res.isGirlsRace) {
+          const allCarsD = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
+          if (allCarsD.length >= 3) {
+            const markByCarD = {};
+            (res.entries || []).forEach(e => { markByCarD[Number(e.car)] = e.mark; });
+            const honCarD = carByMarkShared['◎'];
+            const taiCarD = carByMarkShared['◯'];
+            const headSetD = new Set(selected.map(t => Number(t[0])));
+            const setSD = new Set(selected.map(t => Number(t[1])));
+            const setTD = new Set(selected.map(t => Number(t[2])));
+            const curKeysD = new Set(selected.map(t => t.map(Number).join('-')));
+            const groupOfD = {}, groupSizeD = {};
+            (res.lines || []).forEach((g, gi) => { (g || []).forEach(c => { groupOfD[Number(c)] = gi; groupSizeD[Number(c)] = (g || []).length; }); });
+            const genAddD = (h, partners, thirdsOf) => {
+              const out = [];
+              partners.forEach(p => {
+                thirdsOf(p).forEach(x => {
+                  const t = [h, p, x], k = t.join('-');
+                  if (!curKeysD.has(k)) { curKeysD.add(k); out.push(t); }
+                });
+              });
+              return out;
+            };
+            const additionsD = [];
+            if (honCarD != null && !headSetD.has(honCarD)) {
+              let repD = false;
+              try { repD = dnaShapeOf(res).key === '67|3+3|K1|◎◯|HS3|HP先|T0'; } catch (e) { repD = false; }
+              if (repD) {
+                const partnersD = [...setSD].filter(c => c !== honCarD).sort((a, b) => a - b);
+                additionsD.push(...genAddD(honCarD, partnersD, p => [...setTD].filter(c => c !== honCarD && c !== p).sort((a, b) => a - b)));
+              } else {
+                const partnersD = allCarsD.filter(c => c !== honCarD && !['星', '無', '☽', '☾'].includes(markByCarD[c]));
+                additionsD.push(...genAddD(honCarD, partnersD, p => allCarsD.filter(c => c !== honCarD && c !== p)));
+              }
+            }
+            if (taiCarD != null && !headSetD.has(taiCarD)) {
+              const sameLineD = allCarsD.filter(c => c !== taiCarD && groupOfD[c] != null && groupOfD[c] === groupOfD[taiCarD] && (groupSizeD[taiCarD] || 1) >= 2);
+              const honinD = allCarsD.filter(c => c !== taiCarD && ['◎', '△', '✕'].includes(markByCarD[c]));
+              const partnersD = [...new Set([...sameLineD, ...honinD])].sort((a, b) => a - b);
+              const pool3D = new Set([...partnersD, ...setTD]);
+              additionsD.push(...genAddD(taiCarD, partnersD, p => [...pool3D].filter(c => c !== taiCarD && c !== p).sort((a, b) => a - b)));
+            }
+            additionsD.forEach(t => selected.push(t));
+          }
+        }
+      } catch (e) {}
       // 単勝は最終の本線2車単の頭集合を本体に作る（25,477R検証: 頭集合の勝ち車カバー80.5%・平均4.47台 ＞ 現行の3台固定73.5%。
       // ランキング上位2台の追加は+9.9pt・+0.32台と効率が良く、上位3台目以降は効率が半減するため2台まで。3台未満はランキング順に補充する）
       try {
@@ -4755,7 +4807,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.130';
+    const APP_RELEASE_LABEL = '更新版 v3.131';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
