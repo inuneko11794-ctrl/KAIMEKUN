@@ -2240,7 +2240,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v16-STAR3RD',
+      version: 'CSV-BASELINE-20261125-v17-SOLIDGATE',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -3897,7 +3897,11 @@
       // ◎頭: 形のDNAが代表型（67|3+3|K1|◎◯|HS3|HP先|T0）のときだけ既存の相手集合S・3着プールTを流用し、それ以外は相手＝星・無・☽☾以外の全車、3着＝全車（6番切りなし）。
       // ◯頭: 相手＝同ライン全車＋他の本印（◎△✕）、3着＝相手集合＋既存T。ガールズは測定対象外（検証CSVに存在しない）のため追加しない
       try {
-        if (!res.isGirlsRace) {
+        // v3.133: 帯67の超堅（tier -1。鉄板級は超堅の部分集合なので同時に止まる）では頭追加を止める。堅いレースの追加は限界回収42〜45%と
+        // 両期間で安定して低く、買えている決着も中央値705〜1,380円と安い（25,477R検証: 止めると 31.12点・47.0%・71.0%・万車1,256件 →
+        // 30.03点・45.3%・72.0%・万車1,232件）。帯89の超堅は結果中央値6,235円と太く対象外。T1は追加が買う決着だけ安い食い違いがあり、別途掘り下げ中のため現行どおり残す
+        const stopHeadAddD = (res.entries || []).length <= 7 && tierOfRace === -1;
+        if (!res.isGirlsRace && !stopHeadAddD) {
           const allCarsD = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
           if (allCarsD.length >= 3) {
             const markByCarD = {};
@@ -4838,7 +4842,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.132';
+    const APP_RELEASE_LABEL = '更新版 v3.133';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
