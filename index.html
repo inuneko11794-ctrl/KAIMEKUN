@@ -3950,12 +3950,13 @@
           }
         }
       } catch (e) {}
-      // 荒れ度タイプで3連単の作り方を切り替える（25,477R検証・6/7車）: T1は現行3連単が回収55.8%に沈むため本線2車単ペア×3着スコア上位3流し（17.4点・的中28.6%・回収84.7%）に、
-      // T2は厳選ペア×3着5流し（8.4点・的中18.9%・回収76.4%）に置き換える。T0・T3・超堅・8/9車は従来通り（T3は中間展開が上）。
+      // 荒れ度タイプで3連単の作り方を切り替える（25,477R検証・6/7車）: T2は厳選ペア×3着5流し（8.4点・的中18.9%・回収76.4%）に置き換える。
+      // T0・T3・超堅・8/9車は従来通り（T3は中間展開が上）。T1は後段のF1フォーメーション（v3.134）が丸ごと置き換えるためここでは扱わない
+      // （v3.143掃除: 旧T1流し置き換えはF1に全量上書きされる死にコードだったため除去。全25,477Rリプレイで差分0件を確認済み）
       try {
         if (res.entries.length <= 7 && !(res.lineSummaryList || []).every(l => l.isTanki)) {
           const tierW = tierOfRace;
-          if (tierW === 1 || tierW === 2) {
+          if (tierW === 2) {
             const scoreByCar = {};
             (res.entries || []).forEach((e, i) => { scoreByCar[Number(e.car)] = res.scores[i] || 0; });
             const wheel = (pairs, k3) => {
@@ -3989,7 +3990,7 @@
               });
               flowPairs = [...selectExacta, ...gPairs];
             }
-            const w = tierW === 1 ? wheel(exacta, 3) : wheel(flowPairs, 5);
+            const w = wheel(flowPairs, 5);
             if (w.length) { selected.length = 0; w.forEach(t => selected.push(t)); }
           }
         }
@@ -4035,13 +4036,7 @@
           selected.length = 0; keptSum.forEach(t => selected.push(t));
         }
       } catch (e) {}
-      // T1（帯67）は本線3連単から車番合計10以下の組み合わせを外す（25,477R検証: 17.97点・的中32.1%・回収83.5% → 10.10点・18.6%・100.1%。買い目点数の43.8%を張る低合計側の転換効率が悪いため。両期間で改善）
-      try {
-        if ((res.entries.length === 6 || res.entries.length === 7) && !res.isGirlsRace && tierOfRace === 1) {
-          const keptSum = selected.filter(t => Number(t[0]) + Number(t[1]) + Number(t[2]) >= 11);
-          selected.length = 0; keptSum.forEach(t => selected.push(t));
-        }
-      } catch (e) {}
+      // （v3.143掃除: 旧「T1は合計10以下を外す」カットは、後段のF1置き換え（v3.134）が合計を見ずに全量差し替えるため最終買い目に一切効いていない死にコードだった。除去し、全25,477Rリプレイで差分0件を確認済み）
       // ◎・◯の頭が本線3連単に1点も無いレースへ、後段フィルタを全て通した最終買い目に頭の買い目を上乗せする（D1p・25,477R検証:
       // 現行 11.14点・的中27.1%・回収80.8% → 23.71点・42.2%・73.2%（ex-max 72.8）、万車的中 469→963件、追加分の限界回収66.4%、両期間・両帯で安定）。
       // 追加は合計カット等の現行ルールの対象外（別枠）。パターン段に入れると後段フィルタで追加的中の約41%が消えるため、必ずこの位置（最終段）で足す。
@@ -5166,7 +5161,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.142';
+    const APP_RELEASE_LABEL = '更新版 v3.143';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
