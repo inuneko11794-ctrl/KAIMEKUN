@@ -2240,7 +2240,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v18-T1F1',
+      version: 'CSV-BASELINE-20261125-v19-T3VB',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4003,6 +4003,45 @@
           selected.length = 0; setF.forEach(t => selected.push(t));
         }
       } catch (e) {}
+      // v3.135: 帯67のT3（荒れ強）は本線3連単に条件付きでV-bフォーメーションを合体する（25,477R検証・帯67 T3 2,884R:
+      // 現行 20.89点・的中30.4%・回収71.8%・万車107件（万車捕捉11.3%）→ 条件付き合体 34.68点・的中37.7%・回収78.1%・万車201件（21.2%）・的中中央値3,310円、
+      // 増分の限界回収87.5%（無条件版は85.7%・35.65点・万車206件で、条件で絞っても万車はほぼ落ちず点数が約1点/R軽くなる）。
+      // V-bは頭＝◎・△・✕、相手＝◎・▲・✖（いずれも変換後印）、3着＝現行プール（この時点の最終集合に3着として現れる車の集合）。
+      // 発動条件は「△と✕が別々のラインにいて、▲か✖のいずれかが実際に生まれている」レースのみ（発動2,089R＝72.4%）。
+      // T3は単騎ありで印がライン別々に散らばるのが素の形のため条件が良い部分を濃縮する（印が集中するT0では同じ条件が逆選抜になるため対象外）。
+      // 合体は最終集合への和集合で、合計カット等の再適用はしない。帯89は対象外。ガールズは従来どおり対象外
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length <= 7 && tierOfRace === 3 && selected.length) {
+          const markByCarV = {};
+          (res.entries || []).forEach(e => { markByCarV[Number(e.car)] = e.mark; });
+          const allCarsV = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
+          const groupOfV = {};
+          (res.lines || []).forEach((g, gi) => { (g || []).forEach(c => { groupOfV[Number(c)] = gi; }); });
+          const daiCarV = allCarsV.find(c => markByCarV[c] === '△');
+          const batsuCarV = allCarsV.find(c => markByCarV[c] === '✕');
+          const condV = daiCarV != null && batsuCarV != null && groupOfV[daiCarV] != null && groupOfV[batsuCarV] != null
+            && groupOfV[daiCarV] !== groupOfV[batsuCarV]
+            && allCarsV.some(c => markByCarV[c] === '▲' || markByCarV[c] === '✖');
+          if (condV) {
+            const poolV = [...new Set(selected.map(t => Number(t[2])))];
+            const headsV = allCarsV.filter(c => ['◎', '△', '✕'].includes(markByCarV[c]));
+            const partnersV = allCarsV.filter(c => ['◎', '▲', '✖'].includes(markByCarV[c]));
+            const curKeysV = new Set(selected.map(t => t.map(Number).join('-')));
+            const additionsV = [];
+            headsV.forEach(h => {
+              partnersV.forEach(p => {
+                if (p === h) return;
+                poolV.forEach(x => {
+                  if (x === h || x === p) return;
+                  const t = [h, p, x], k = t.join('-');
+                  if (!curKeysV.has(k)) { curKeysV.add(k); additionsV.push(t); }
+                });
+              });
+            });
+            additionsV.forEach(t => selected.push(t));
+          }
+        }
+      } catch (e) {}
       // 単勝は最終の本線2車単の頭集合を本体に作る（25,477R検証: 頭集合の勝ち車カバー80.5%・平均4.47台 ＞ 現行の3台固定73.5%。
       // ランキング上位2台の追加は+9.9pt・+0.32台と効率が良く、上位3台目以降は効率が半減するため2台まで。3台未満はランキング順に補充する）
       try {
@@ -4867,7 +4906,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.134';
+    const APP_RELEASE_LABEL = '更新版 v3.135';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
