@@ -2315,7 +2315,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v22-T0PRUNE',
+      version: 'CSV-BASELINE-20261125-v23-BSOLIDFLOW',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4235,6 +4235,43 @@
           additionsW.forEach(t => selected.push(t));
         }
       } catch (e) {}
+      // v3.146: 帯67の超堅かつ血液型B型（戦線ユニット3以下で◎◯が別ライン）のレースは、本線3連単に
+      // 「本線2車単のペア×3着全流し」を合体する（25,477R検証・対象137R: 現行 4.71点・的中2.2%・回収9.9%・万車捕捉0/34件。
+      // パターン段は◎頭を◎◯同ラインブロックでしか生まず、B型は定義上◎◯が別ラインで、超堅ではD1p頭追加も停止されるため、
+      // ◎勝ち53件・◯勝ち36件がすべて構造的に届いていなかった。同じ超堅でもA型は31.6%・87.5%と健全で、壊れているのはこのセルだけ）。
+      // 追加分は超堅の既存ルールに従い3車合計<11のみ（合計カットなしの素の流しは限界50.6%で未達）。
+      // 合体で 10.88点・的中10.2%・回収71.7%・万車捕捉3/34件、増分の限界回収119.0%（前期100.2%／2026 151.9%）。
+      // 合体は最終集合への和集合で、既存券には触らない。帯89・他タイプ・A/O/AB型・ガールズは対象外
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length <= 7 && tierOfRace === -1) {
+          const linesBs = res.lines || [];
+          if (linesBs.length && linesBs.length <= 3) {
+            const markByCarBs = {};
+            (res.entries || []).forEach(e => { markByCarBs[Number(e.car)] = e.mark; });
+            const groupOfBs = {};
+            linesBs.forEach((g, gi) => { (g || []).forEach(c => { groupOfBs[Number(c)] = gi; }); });
+            const allCarsBs = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
+            const honCarBs = allCarsBs.find(c => markByCarBs[c] === '◎');
+            const taiCarBs = allCarsBs.find(c => markByCarBs[c] === '◯');
+            const gHonBs = honCarBs != null && groupOfBs[honCarBs] != null ? groupOfBs[honCarBs] : null;
+            const gTaiBs = taiCarBs != null && groupOfBs[taiCarBs] != null ? groupOfBs[taiCarBs] : null;
+            if (gHonBs !== gTaiBs) {
+              const curKeysBs = new Set(selected.map(t => t.map(Number).join('-')));
+              const additionsBs = [];
+              (exacta || []).forEach(pair => {
+                const a = Number(pair[0]), b = Number(pair[1]);
+                allCarsBs.forEach(x => {
+                  if (x === a || x === b) return;
+                  if (a + b + x >= 11) return;
+                  const t = [a, b, x], k = t.join('-');
+                  if (!curKeysBs.has(k)) { curKeysBs.add(k); additionsBs.push(t); }
+                });
+              });
+              additionsBs.forEach(t => selected.push(t));
+            }
+          }
+        }
+      } catch (e) {}
       // 単勝は最終の本線2車単の頭集合を本体に作る（25,477R検証: 頭集合の勝ち車カバー80.5%・平均4.47台 ＞ 現行の3台固定73.5%。
       // ランキング上位2台の追加は+9.9pt・+0.32台と効率が良く、上位3台目以降は効率が半減するため2台まで。3台未満はランキング順に補充する）
       try {
@@ -5176,7 +5213,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.145';
+    const APP_RELEASE_LABEL = '更新版 v3.146';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
