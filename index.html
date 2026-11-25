@@ -1018,6 +1018,9 @@
           <span id="drillAiScoreBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-violet-200">🤖 AI: 診断 0 / 0 ・ 指名 0 / 0</span>
         </span>
       </div>
+      <div class="flex justify-end">
+        <button id="drillResetBtn" type="button" class="text-xs px-3 py-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-600 text-slate-300">↩ 最初からやり直す（リセット）</button>
+      </div>
       <div id="drillChart" class="rounded-xl border border-teal-400/30 bg-slate-950/80 p-3 space-y-2"></div>
       <div id="drillAnswerRow" class="flex flex-wrap gap-2">
         <button id="drillColdBtn" type="button" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/40 text-sky-100 font-bold">🌡 風邪（堅い）</button>
@@ -5213,7 +5216,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.146';
+    const APP_RELEASE_LABEL = '更新版 v3.147';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -5351,6 +5354,7 @@
         const coldBtn = document.getElementById('drillColdBtn');
         const sickBtn = document.getElementById('drillSickBtn');
         const nextBtn = document.getElementById('drillNextBtn');
+        const resetBtn = document.getElementById('drillResetBtn');
         if (!chartEl || !DRILL_DATA.length) return;
         function renderScore() {
           if (scoreEl) scoreEl.textContent = 'スコア: ' + st.ok + ' / ' + st.total + (st.total ? '（正解率 ' + Math.round(100 * st.ok / st.total) + '%）' : '');
@@ -5420,6 +5424,28 @@
         coldBtn.addEventListener('click', () => answer('cold'));
         sickBtn.addEventListener('click', () => answer('sick'));
         nextBtn.addEventListener('click', pickNext);
+        // v3.147: 途中リセット（2段階タップで誤爆防止）。スコア・AI成績・出題済みを全消去して1問目から。
+        // 問題プールは同じ150症例で、出題順は従来どおり未出題からのランダム抽選（リセット後は順番が変わる）。
+        if (resetBtn) {
+          let resetArm = false, resetTimer = null;
+          const resetLabel = '↩ 最初からやり直す（リセット）';
+          resetBtn.addEventListener('click', () => {
+            if (!resetArm) {
+              resetArm = true;
+              resetBtn.textContent = '⚠ 本当に最初から？ スコアとAI成績が消えます（もう一度タップで実行）';
+              resetBtn.classList.add('border-rose-400/60', 'text-rose-200');
+              resetTimer = setTimeout(() => { resetArm = false; resetBtn.textContent = resetLabel; resetBtn.classList.remove('border-rose-400/60', 'text-rose-200'); }, 4000);
+              return;
+            }
+            if (resetTimer) clearTimeout(resetTimer);
+            resetArm = false;
+            resetBtn.textContent = resetLabel;
+            resetBtn.classList.remove('border-rose-400/60', 'text-rose-200');
+            st = { ok: 0, total: 0, seen: [], cur: -1, ans: '', aiOk: 0, aiTotal: 0, aiWinOk: 0, aiWinTotal: 0 };
+            save();
+            pickNext();
+          });
+        }
         if (st.cur >= 0 && st.cur < DRILL_DATA.length && DRILL_DATA[st.cur]) {
           if (st.ans) { renderChart(DRILL_DATA[st.cur]); reveal(st.ans); }
           else showQuestion();
