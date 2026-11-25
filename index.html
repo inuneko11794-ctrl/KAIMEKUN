@@ -2240,7 +2240,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v17-SOLIDGATE',
+      version: 'CSV-BASELINE-20261125-v18-T1F1',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -3978,6 +3978,31 @@
           }
         }
       } catch (e) {}
+      // v3.134: 帯67のT1（印集中・◎が3車以上ラインの先頭）は本線3連単を専用フォーメーションF1に丸ごと置き換える（25,477R検証・帯67 T1 1,195R:
+      // 現行 21.77点・的中34.6%・回収71.6%・万車51件（万車326件の15.6%）・的中中央値1,810円 → F1 21.78点・的中13.6%・回収82.1%・万車60件（18.4%）・中央値7,520円）。
+      // 現行のT1は堅い核しか買えておらず（万車の84%が外）、太さは△✕の勝ち（万車129件）と頭の外の変換印勝ちにある。F1は頭＝◎・△・✕、相手＝◎・▲（いずれも変換後印）、
+      // 3着＝全流し。土台・頭追加・☆★追加との合体ではなく置き換えで、的中率は落とす代わりに万車軸では同コストで現行を上回る「あえて的中を狙わない」設計。
+      // 帯89のT1は未測定のため対象外。ガールズは従来どおり対象外
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length <= 7 && tierOfRace === 1) {
+          const markByCarF = {};
+          (res.entries || []).forEach(e => { markByCarF[Number(e.car)] = e.mark; });
+          const allCarsF = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
+          const headsF = allCarsF.filter(c => ['◎', '△', '✕'].includes(markByCarF[c]));
+          const partnersF = allCarsF.filter(c => ['◎', '▲'].includes(markByCarF[c]));
+          const setF = [];
+          headsF.forEach(h => {
+            partnersF.forEach(p => {
+              if (p === h) return;
+              allCarsF.forEach(x => {
+                if (x === h || x === p) return;
+                setF.push([h, p, x]);
+              });
+            });
+          });
+          selected.length = 0; setF.forEach(t => selected.push(t));
+        }
+      } catch (e) {}
       // 単勝は最終の本線2車単の頭集合を本体に作る（25,477R検証: 頭集合の勝ち車カバー80.5%・平均4.47台 ＞ 現行の3台固定73.5%。
       // ランキング上位2台の追加は+9.9pt・+0.32台と効率が良く、上位3台目以降は効率が半減するため2台まで。3台未満はランキング順に補充する）
       try {
@@ -4842,7 +4867,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.133';
+    const APP_RELEASE_LABEL = '更新版 v3.134';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
