@@ -2292,7 +2292,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v19-T3VB',
+      version: 'CSV-BASELINE-20261125-v20-SUMGATE',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4097,10 +4097,15 @@
               pairThirdsS.get(k).thirds.add(Number(t[2]));
             });
             const curKeysS = new Set(selected.map(t => t.map(Number).join('-')));
+            // v3.140: 帯67の超堅では、☆★追加でも既存の合計カット（合計≥11を外す）に従う。別枠追加が合計≥11の券を2,232点
+            // （超堅の最終集合の20.4%）持ち込み、その層の回収は29.0%（最大抜き20.3%、両期間とも悪い）と突出して低かった。
+            // 塞ぐと超堅 71.0%→81.8%・全体 73.7%→73.9%、失うのは的中9件・万車的中1件のみ（25,477R検証）。合計<11の追加と他レースの☆★追加は不変
+            const solidSumGateS = (res.entries.length === 6 || res.entries.length === 7) && tierOfRace === -1;
             const additionsS = [];
             pairThirdsS.forEach(({ a, b, thirds }) => {
               starCarsS.forEach(x => {
                 if (x === a || x === b || thirds.has(x)) return;
+                if (solidSumGateS && a + b + x >= 11) return;
                 const t = [a, b, x], k = t.join('-');
                 if (!curKeysS.has(k)) { curKeysS.add(k); additionsS.push(t); }
               });
@@ -5114,7 +5119,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.139';
+    const APP_RELEASE_LABEL = '更新版 v3.140';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
