@@ -888,6 +888,11 @@
           </div>
         </div>
         <div id="dnaMatchList" class="mt-4 text-xs text-slate-300 space-y-1.5 max-h-24 overflow-y-auto bg-slate-900/50 p-2.5 rounded-xl border border-slate-800"></div>
+        <div class="mt-4 rounded-xl border border-teal-400/30 bg-slate-950/70 p-3 space-y-1.5">
+          <div class="text-xs font-bold text-teal-200">形のDNA // SHAPE DNA</div>
+          <div id="dnaShapeText" class="text-sm font-bold text-teal-100 font-mono-code break-all">--</div>
+          <div id="dnaShapeStats" class="text-xs text-slate-300">--</div>
+        </div>
 
         <div class="mt-4 rounded-xl border border-amber-400/30 bg-slate-950/70 p-3 space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -2371,6 +2376,49 @@
       }).sort((a,b)=>b.totalPoints-a.totalPoints||a.car-b.car);
     }
 
+    // 形のDNA（的中/不的中DNA）：レース前の静的情報だけの符号化。統計は brain CSV 25,477R・学習ゼロの本線3連単実績（n>=30の型のみ）。
+    const DNA_SHAPE_STATS = {"67|3+3|K1|◯変|HS3|HP後|T0":[525,41.9,25.0,"pair",55.7],"67|3+2+2|K0|◯✕☆|HS3|HP後|T0":[721,39.1,27.2,"pair",51.7],"67|3+2+2|K0|◎△☆|HS2|HP先|T0":[292,25.3,26.0,"pair",37.2],"67|3+2+2|K0|◎変☆|HS3|HP先|T0":[668,50.1,21.9,"pair",47.1],"67|2+2+2|K1|◎◯☆|HS2|HP先|T0":[163,5.5,30.7,"head",71.4],"67|3+2+2|K0|◎△☆|HS3|HP先|T0":[838,37.4,22.1,"pair",46.3],"67|3+2+2|K0|◯◎✕|HS2|HP先|T2":[48,18.8,22.9,"head",43.6],"67|3+2+2|K0|◎変変|HS2|HP先|T2":[253,28.5,27.7,"head",47.5],"67|3+2|K2|◯変|HS3|HP後|T0":[123,45.5,28.5,"pair",50.7],"67|2+2+2|K1|◯△☆|HS2|HP後|T0":[63,25.4,36.5,"pair",66.0],"67|3+3|K1|◯✕|HS3|HP後|T0":[389,38.3,23.7,"pair",58.3],"67|3+2+2|K0|◯✕☆|HS2|HP後|T0":[123,31.7,25.2,"pair",52.4],"67|3+3|K1|◎変|HS3|HP先|T0":[639,47.3,22.2,"pair",56.7],"67|3+2+2|K0|✕△☆|HS3|HP後|T0":[113,8.0,26.5,"head",44.2],"67|3+2+2|K0|◎変変|HS3|HP先|T1":[103,14.6,33.0,"pair",45.5],"67|4+2|K1|△☆|HS4|HP後|T0":[41,43.9,26.8,"pair",65.2],"67|4+2|K1|◯✕|HS4|HP後|超堅":[74,39.2,14.9,"pair",48.9],"67|2+2+2|K1|◎◯✕|HS2|HP先|T3":[52,19.2,40.4,"pair",47.6],"67|3+2+2|K0|◯△☆|HS3|HP後|T0":[528,28.8,28.4,"pair",52.7],"67|3+3|K1|△◎|HS3|HP先|T0":[40,12.5,32.5,"head",77.1],"67|3+2+2|K0|◎✕☆|HS2|HP先|T0":[442,23.8,27.8,"head",34.7],"67|3+2+2|K0|◎△✕|HS3|HP先|T1":[211,17.5,25.1,"pair",50.6],"67|3+3|K1|◎△|HS3|HP先|T0":[449,29.8,23.6,"third",42.5],"67|2+2+2|K1|◎変変|HS2|HP先|T3":[80,25.0,30.0,"pair",55.0],"67|3+2+2|K0|◎変△|HS3|HP先|T1":[130,16.9,29.2,"pair",44.4],"67|3+2|K2|◯△|HS3|HP後|T0":[100,29.0,31.0,"pair",43.7],"67|3+2+2|K0|◎変✕|HS2|HP先|T2":[183,25.7,37.2,"head",46.3],"67|4+2|K1|◎✕|HS4|HP先|超堅":[231,20.3,14.3,"head",55.4],"67|3+2+2|K0|◎◯△|HS2|HP先|T2":[40,20.0,20.0,"pair",40.6],"67|4+2|K1|◎☆|HS4|HP先|超堅":[139,29.5,12.2,"head",56.1],"67|2+2+2|K1|◎変✕|HS2|HP先|T3":[104,31.7,38.5,"pair",53.5],"67|4+3|K0|◯変|HS4|HP後|超堅":[98,39.8,22.4,"third",35.6],"67|3+2+2|K0|△◯✕|HS3|HP後|T2":[39,12.8,41.0,"head",52.9],"67|3+3|K1|◎☆|HS3|HP先|T0":[67,31.3,26.9,"pair",39.1],"67|3+2+2|K0|△◯☆|HS3|HP後|T0":[195,4.6,27.7,"head",70.4],"67|2+2+2|K1|◎◯変|HS2|HP先|T3":[44,25.0,22.7,"pair",57.6],"67|3+2+2|K0|◎◯☆|HS3|HP先|T0":[229,5.7,22.3,"head",74.1],"67|3+2+2|K0|◯変☆|HS3|HP後|T0":[611,48.6,25.9,"pair",45.2],"67|3+2|K2|◎✕|HS3|HP先|T0":[221,45.7,19.5,"pair",55.0],"67|2+2+2|K1|◯◎☆|HS2|HP先|T3":[34,8.8,11.8,"pair",71.0],"67|2+2+2|K1|◎△☆|HS2|HP先|T0":[163,23.9,33.1,"pair",43.5],"67|3+2+2|K0|◎変△|HS2|HP先|T2":[130,31.5,29.2,"pair",41.6],"67|3+2+2|K0|◯△✕|HS3|HP後|T2":[101,27.7,31.7,"head",46.6],"67|3+2|K1|◎△|HS3|HP先|T0":[43,44.2,9.3,"head",41.7],"67|3+2|K2|◯☆|HS3|HP後|T0":[224,40.2,27.7,"pair",53.0],"67|3+2+2|K0|◎◯✕|HS2|HP先|T2":[37,29.7,27.0,"pair",42.3],"67|3+2+2|K0|◯◎変|HS2|HP先|T2":[68,22.1,27.9,"head",54.7],"67|3+3|K1|✕△|HS3|HP後|T0":[72,11.1,16.7,"head",65.6],"67|3+2+2|K0|△◎☆|HS2|HP先|T0":[84,9.5,26.2,"head",69.7],"67|3+3|K1|◎◯|HS3|HP先|T0":[214,4.7,15.9,"head",77.9],"67|3+2+2|K0|◎△✕|HS2|HP先|T2":[53,30.2,34.0,"pair",43.2],"67|3+2|K2|△☆|HS3|HP後|T0":[44,22.7,40.9,"third",35.3],"67|4+3|K0|◎変|HS4|HP先|超堅":[282,29.4,14.5,"head",44.7],"67|3+2+2|K0|△変☆|HS3|HP後|T0":[66,24.2,36.4,"pair",38.0],"67|3+3|K1|◯変|HS3|HP後|T3":[51,35.3,33.3,"pair",51.5],"67|3+2|K2|◎△|HS3|HP先|T0":[156,39.1,21.2,"pair",47.4],"89|3+2+2+2|K0|◎△☆☆|HS3|HP先|T0":[46,13.0,30.4,"head",52.5],"67|3+2+2|K0|◎✕☆|HS3|HP先|T0":[1039,42.4,24.0,"pair",52.0],"67|3+2+2|K0|△✕☆|HS2|HP後|T0":[76,7.9,28.9,"head",68.6],"67|3+3|K1|△◯|HS3|HP後|T0":[107,2.8,18.7,"head",70.2],"67|3+2+2|K0|◯◎☆|HS2|HP先|T0":[59,6.8,23.7,"head",76.4],"89|3+2+2+2|K0|◯変☆☆|HS3|HP後|T0":[53,0.0,32.1,"head",86.8],"67|3+3|K1|◎✕|HS3|HP先|T0":[675,36.9,17.8,"pair",43.7],"67|3+2+2|K0|✕◯☆|HS3|HP後|T0":[149,5.4,28.2,"head",70.9],"67|3+2+2|K0|△◯☆|HS2|HP後|T0":[46,10.9,26.1,"head",68.3],"67|3+2+2|K0|△✕☆|HS3|HP後|T0":[124,21.8,26.6,"head",42.3],"67|3+3|K1|◯△|HS3|HP後|T0":[245,26.1,24.1,"pair",56.4],"67|3+2+2|K0|◎◯変|HS2|HP先|T2":[63,20.6,27.0,"head",42.0],"67|3+2+2|K0|◎◯☆|HS2|HP先|T0":[233,7.3,28.3,"head",67.1],"67|3+2|K2|◯変|HS3|HP後|T3":[31,12.9,51.6,"pair",55.6],"67|2+2+2|K1|◎△✕|HS2|HP先|T3":[76,47.4,31.6,"third",57.5],"67|3+2+2|K0|◎◯△|HS3|HP先|T1":[35,14.3,11.4,"pair",36.7],"67|3+3|K0|◎✕|HS3|HP先|T0":[57,31.6,15.8,"rare",48.7],"67|3+2+2|K0|◎◯✕|HS3|HP先|T1":[67,11.9,19.4,"head",52.5],"67|2+2+2|K1|✕◯☆|HS2|HP後|T0":[32,0.0,31.2,"head",65.6],"67|3+2|K2|◎◯|HS3|HP先|T0":[41,0.0,17.1,"head",82.9],"67|3+2|K2|◎変|HS3|HP先|T1":[67,31.3,34.3,"pair",34.8],"67|2+2+2|K1|◯✕☆|HS2|HP後|T0":[68,4.4,29.4,"head",73.8],"89|3+2+2+2|K0|◎✕☆☆|HS3|HP先|T0":[53,15.1,24.5,"head",62.2],"67|3+2+2|K0|◯変変|HS2|HP後|T2":[88,36.4,26.1,"head",39.3],"67|3+2+2|K0|✕◎変|HS2|HP先|T2":[40,17.5,22.5,"pair",54.5],"67|3+3|K0|◎変|HS3|HP先|T0":[61,45.9,16.4,"rare",51.5],"67|3+3|K0|◎△|HS3|HP先|T0":[37,27.0,10.8,"rare",48.1],"89|3+2+2+2|K0|◎変☆☆|HS3|HP先|T0":[51,27.5,39.2,"head",32.4],"89|3+3+3|K0|◎変変|HS3|HP先|T1":[37,2.7,51.4,"head",38.9],"67|3+2|K1|◎✕|HS3|HP先|T0":[56,48.2,19.6,"pair",48.3],"67|3+3|K0|◯変|HS3|HP後|T0":[41,46.3,17.1,"pair",54.5],"67|3+2+2|K0|変◯変|HS3|HP後|T2":[40,22.5,32.5,"head",48.4],"89|3+3+3|K0|◯✕☆|HS3|HP後|T0":[37,13.5,29.7,"third",31.2],"67|3+2+2|K0|◯変変|HS3|HP後|T2":[53,20.8,24.5,"head",52.4],"67|4+3|K0|◎✕|HS4|HP先|超堅":[220,26.8,11.8,"head",39.1],"67|4+3|K0|◯変|HS4|HP後|T0":[65,33.8,33.8,"pair",41.9],"67|3+3|K1|◎変|HS3|HP先|T1":[70,14.3,31.4,"pair",55.0],"67|2+2+2|K1|◎✕☆|HS2|HP先|T0":[181,21.5,28.7,"pair",48.6],"67|3+2+2|K0|◯変△|HS3|HP後|T2":[74,32.4,35.1,"pair",38.0],"67|4+3|K0|◎△|HS4|HP先|超堅":[77,35.1,15.6,"third",36.0],"89|3+2+2+2|K0|◎✕☆☆|HS2|HP先|T0":[30,0.0,43.3,"head",70.0],"67|3+2|K2|△◯|HS3|HP後|T0":[33,0.0,27.3,"head",69.7],"67|2+2+2|K1|◎◯☆|HS2|HP先|T3":[40,20.0,37.5,"pair",56.2],"67|2+2+2|K1|◎変☆|HS2|HP先|T3":[185,31.4,31.9,"pair",51.2],"67|2+2+2|K1|◎変△|HS2|HP先|T3":[111,38.7,31.5,"pair",48.5],"67|3+2+2|K0|◎変✕|HS3|HP先|T1":[134,23.9,31.3,"pair",46.1],"67|3+2|K2|◎変|HS3|HP先|T0":[151,47.0,25.8,"pair",58.8],"67|4+3|K0|◎◯|HS4|HP先|超堅":[33,0.0,18.2,"rare",48.5],"67|2+2+2|K1|◎◯△|HS2|HP先|T3":[47,21.3,34.0,"pair",56.8],"67|4+3|K0|◯✕|HS4|HP後|超堅":[64,43.8,23.4,"pair",33.3],"67|3+2+2|K0|◯△☆|HS2|HP後|T0":[74,21.6,40.5,"pair",53.4],"67|2+2|K3+|◎変|HS2|HP先|T3":[31,25.8,35.5,"third",39.1],"67|3+2+2|K0|変◯△|HS3|HP後|T2":[31,9.7,29.0,"pair",42.9],"67|2+2+2|K1|◎△☆|HS2|HP先|T3":[89,42.7,36.0,"pair",49.0],"67|3+2+2|K0|△◯変|HS3|HP後|T2":[32,15.6,15.6,"head",51.9],"67|2+2|K3+|◎☆|HS2|HP先|T3":[42,33.3,31.0,"pair",64.3],"67|3+2+2|K0|変◯☆|HS3|HP後|T0":[50,2.0,28.0,"head",71.4],"67|3+2|K2|◯✕|HS3|HP後|T0":[161,39.8,27.3,"pair",51.5],"67|3+2|K1|◎変|HS3|HP先|T0":[34,55.9,26.5,"head",46.7],"67|3+2|K2|◎✕|HS3|HP先|T1":[51,23.5,11.8,"pair",43.6],"67|3+3|K1|△✕|HS3|HP後|T0":[114,14.9,25.4,"head",60.8],"67|3+2+2|K0|◯変✕|HS2|HP後|T2":[74,24.3,27.0,"head",51.8],"67|4+2|K1|◯☆|HS4|HP後|T0":[61,45.9,27.9,"pair",63.6],"67|3+3|K1|変△|HS3|HP後|T0":[33,6.1,18.2,"head",54.8],"67|2+2+2|K1|◯△✕|HS2|HP後|T3":[39,30.8,33.3,"pair",66.7],"67|3+2+2|K0|△変✕|HS2|HP後|T2":[41,14.6,24.4,"head",51.4],"67|4+3|K0|△変|HS4|HP後|T0":[30,40.0,30.0,"third",38.9],"67|2+2+2|K1|◎✕☆|HS2|HP先|T3":[81,29.6,37.0,"pair",45.6],"67|3+2|K2|◎△|HS3|HP先|T1":[72,29.2,26.4,"pair",41.2],"67|3+3|K1|△変|HS3|HP後|T0":[102,14.7,34.3,"head",40.2],"67|2+2+2|K1|◯変☆|HS2|HP後|T3":[58,24.1,34.5,"pair",52.3],"89|3+3+3|K0|◯変変|HS3|HP後|T2":[39,20.5,46.2,"head",38.7],"89|3+2+2+2|K0|◯✕☆☆|HS3|HP後|T0":[65,13.8,26.2,"head",62.5],"89|3+2+2+2|K0|◎変変☆|HS2|HP先|T2":[50,8.0,56.0,"head",45.7],"67|3+2+2|K0|✕変☆|HS3|HP後|T0":[31,19.4,35.5,"pair",32.0],"67|4+2|K1|◎変|HS4|HP先|超堅":[122,30.3,14.8,"head",58.8],"67|3+2|K2|◎☆|HS3|HP先|T0":[223,43.5,21.5,"pair",60.3],"89|3+3+3|K0|◯変☆|HS3|HP後|T0":[59,20.3,37.3,"pair",40.4],"67|3+2+2|K0|◎◯変|HS3|HP先|T1":[48,8.3,20.8,"head",43.2],"67|3+2|K2|◎変|HS2|HP先|T3":[62,35.5,27.4,"pair",57.5],"67|3+3|K1|✕◯|HS3|HP後|T0":[82,8.5,14.6,"head",74.7],"67|2+2+2|K1|◯△☆|HS2|HP後|T3":[43,27.9,23.3,"pair",58.1],"67|2+2+2|K1|◯変✕|HS2|HP後|T3":[48,22.9,45.8,"pair",62.2],"67|3+3|K1|✕変|HS3|HP後|T0":[43,16.3,34.9,"head",61.1],"67|3+2+2|K0|◯変✕|HS3|HP後|T2":[67,19.4,31.3,"pair",44.4],"67|3+2|K1|◯✕|HS3|HP後|T0":[37,48.6,21.6,"pair",68.4],"89|3+2+2+2|K0|◯△☆☆|HS3|HP後|T0":[44,0.0,45.5,"head",75.0],"67|4+2|K1|◎△|HS4|HP先|超堅":[52,25.0,15.4,"third",41.0],"67|4+3|K0|◯✕|HS4|HP後|T0":[39,28.2,30.8,"rare",42.9],"67|3+2+2|K0|✕◯△|HS3|HP後|T2":[37,2.7,35.1,"head",44.4],"89|3+3+3|K0|◎変☆|HS3|HP先|T0":[46,30.4,34.8,"head",37.5],"67|3+3|K1|◯☆|HS3|HP後|T0":[64,37.5,31.2,"pair",42.5],"67|3+2|K2|△✕|HS3|HP後|T0":[34,23.5,35.3,"pair",42.3],"67|3+2+2|K0|◯変△|HS2|HP後|T2":[40,22.5,27.5,"pair",58.1],"67|3+2+2|K0|△変変|HS2|HP後|T2":[32,12.5,43.8,"head",39.3],"67|3+2+2|K0|△◎✕|HS2|HP先|T2":[32,12.5,25.0,"rare",46.4],"67|4+2|K1|◯変|HS4|HP後|超堅":[38,50.0,15.8,"pair",42.1],"67|2+2+2|K1|◯変変|HS2|HP後|T3":[33,30.3,39.4,"pair",43.5],"89|3+3+3|K0|◎✕☆|HS3|HP先|T0":[45,22.2,22.2,"pair",34.3],"67|3+2|K2|◎☆|HS3|HP先|T1":[55,21.8,23.6,"head",41.9],"67|3+2+2|K0|△◎変|HS2|HP先|T2":[43,7.0,37.2,"head",60.0],"67|3+2+2|K0|◎変☆|HS2|HP先|T0":[39,12.8,25.6,"head",52.9],"67|4+3|K0|◯△|HS4|HP後|T0":[33,27.3,33.3,"pair",54.2],"89|3+3+2|K1|◯変☆|HS3|HP後|T0":[42,42.9,23.8,"head",54.2],"67|3+2|K2|◎✕|HS2|HP先|T0":[33,12.1,33.3,"pair",48.3]};
+    const DNA_CAUSE_LABEL = { rare: 'レア', head: '頭外し', pair: 'ペア無し', third: '3着外し' };
+    function dnaHeadClass(mark) {
+      if (mark === '◎' || mark === '◯' || mark === '△' || mark === '✕') return mark;
+      if (['⑳', '●', '▲', '✖', '★', '☽', '☾'].includes(mark)) return '変';
+      if (mark === '☆') return '☆';
+      return '弱';
+    }
+    function dnaShapeOf(res) {
+      const zeroSnap = { mark: 0, lineRole: 0, markRelation: 0, lineOrder: 0 };
+      const pointByCar = new Map(calculateCarPointScores(res, { adaptiveSnapshot: zeroSnap }).map(x => [Number(x.car), x.totalPoints]));
+      const groups = (res.lineSummaryList || []).map(lObj => {
+        const cars = lObj.members.map(m => Number(m.car));
+        const marks = lObj.members.map(m => m.convertedMark);
+        const power = cars.reduce((s, c) => s + (pointByCar.get(c) || 0), 0);
+        return { cars, head: marks[0], size: cars.length, power: +power.toFixed(3) };
+      });
+      for (const g of groups) g.rank = 1 + groups.filter(o => o.power > g.power + 1e-9).length;
+      const multi = groups.filter(g => g.size >= 2);
+      const tankiCount = groups.filter(g => g.size === 1).length;
+      const sizePattern = multi.map(g => g.size).sort((a, b) => b - a).join('+') || '-';
+      const headClass = [...multi].sort((a, b) => a.rank - b.rank || b.power - a.power).map(g => dnaHeadClass(g.head)).join('');
+      let honCar = null;
+      (res.entries || []).forEach(e => { if (e.mark === '◎') honCar = Number(e.car); });
+      const carGroup = new Map();
+      groups.forEach((g, gi) => g.cars.forEach(c => carGroup.set(c, gi)));
+      let hon = null;
+      if (honCar != null && carGroup.has(honCar)) {
+        const g = groups[carGroup.get(honCar)];
+        hon = { lineSize: g.size, posIdx: g.cars.indexOf(honCar) };
+      }
+      let tier = null;
+      try { tier = chaosTierOf(res).tier; } catch (e) { tier = null; }
+      const tierLabel = ({ '-1': '超堅', '0': 'T0', '1': 'T1', '2': 'T2', '3': 'T3' })[String(tier)] || 'TX';
+      const band = (res.entries || []).length <= 7 ? '67' : '89';
+      const key = [band, sizePattern, 'K' + (tankiCount >= 3 ? '3+' : String(tankiCount)), headClass,
+        'HS' + (hon ? hon.lineSize : '?'), 'HP' + (!hon || hon.posIdx === 0 ? '先' : '後'), tierLabel].join('|');
+      const honText = !hon ? '◎—' : (hon.posIdx === 0 ? '◎先頭' : '◎番手以降・' + hon.lineSize + '車ライン');
+      const reading = band + '｜' + sizePattern + '｜単騎' + tankiCount + '｜先頭 ' + (headClass ? headClass.split('').join('・') : '—') + '｜' + honText + '｜' + tierLabel;
+      return { key, reading };
+    }
+
     function renderCurrentRace() {
       try {
       const race = allRaces[currentRaceIdx];
@@ -2442,6 +2490,14 @@
       document.getElementById('dnaMatchList').innerHTML = clones.length > 0
         ? clones.slice(0, 30).map(x => `<div class="flex items-center justify-between gap-2 border-b border-slate-800 py-1"><span class="text-emerald-300 font-mono-code truncate">🧬 ${x.race.id}</span><button type="button" data-dna-delete="${x.idx}" class="shrink-0 px-2 py-0.5 rounded bg-rose-500/15 border border-rose-400/30 text-rose-200 text-xs">削除</button></div>`).join('')
         : `<div class="text-slate-400">・現在のデータセット内に完全一致する双子DNAはありません（固有種レース）</div>`;
+      try {
+        const dnaShape = dnaShapeOf(res);
+        document.getElementById('dnaShapeText').textContent = dnaShape.reading;
+        const dnaStat = DNA_SHAPE_STATS[dnaShape.key];
+        document.getElementById('dnaShapeStats').textContent = dnaStat
+          ? `同型 ${dnaStat[0]}件｜本線3連単的中 ${Number(dnaStat[1]).toFixed(1)}%｜万車率 ${Number(dnaStat[2]).toFixed(1)}%｜主な外し方 ${dnaStat[3] ? (DNA_CAUSE_LABEL[dnaStat[3]] || dnaStat[3]) + '（外しの' + Number(dnaStat[4]).toFixed(1) + '%）' : '—'}`
+          : '同型の前例が薄い';
+      } catch (error) { console.error('[KAIMEKUN] 形のDNA描画エラー', error); }
 
       document.getElementById('coupAlertBadge').textContent = `下剋上:${res.coupScore} / ちぎれ:${res.abandonScore}`;
       document.getElementById('lineDramaContainer').innerHTML = res.dramaDetails.map(d => {
@@ -4699,7 +4755,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.129';
+    const APP_RELEASE_LABEL = '更新版 v3.130';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
