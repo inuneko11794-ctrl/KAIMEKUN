@@ -2240,7 +2240,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v15-D1P',
+      version: 'CSV-BASELINE-20261125-v16-STAR3RD',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -3943,6 +3943,37 @@
           }
         }
       } catch (e) {}
+      // 本線3連単の全ペアの3着に☆・★の車を足す（25,477R検証: 2車単的中なのに3連単が外れた4,718件のうち「3着の壁＋組み合わせ未生成」3,220件の
+      // 漏れ3着は☆が最多（18.2%・全体3着比O/E 2.63）、★も10.2%・O/E 2.23と弱印側に集中し、本印の3着はほぼ拾えていた。
+      // ☆単独追加で的中42.2→45.0%・追加分回収60.9%、★単独は+514件・67.0%。☆★同時追加: 23.71点・42.2%・73.2%・万車963件 →
+      // 31.12点・47.0%・71.0%・万車1,256件、追加分の限界回収63.7%（帯67 64.2%／帯89 61.6%）。
+      // 定義: D1pまで確定した最終買い目集合の各ペア（1着-2着）について、そのペアの既存3着に無い☆車・★車を3着として追加する。合計カット等の対象外（別枠）。
+      // ガールズは検証母集団（CSV 25,477R）に存在せず未測定のため、D1pと同じく追加しない
+      try {
+        if (!res.isGirlsRace && selected.length) {
+          const markByCarS = {};
+          (res.entries || []).forEach(e => { markByCarS[Number(e.car)] = e.mark; });
+          const starCarsS = (res.entries || []).map(e => Number(e.car)).filter(c => markByCarS[c] === '☆' || markByCarS[c] === '★').sort((a, b) => a - b);
+          if (starCarsS.length) {
+            const pairThirdsS = new Map();
+            selected.forEach(t => {
+              const a = Number(t[0]), b = Number(t[1]), k = a + '-' + b;
+              if (!pairThirdsS.has(k)) pairThirdsS.set(k, { a, b, thirds: new Set() });
+              pairThirdsS.get(k).thirds.add(Number(t[2]));
+            });
+            const curKeysS = new Set(selected.map(t => t.map(Number).join('-')));
+            const additionsS = [];
+            pairThirdsS.forEach(({ a, b, thirds }) => {
+              starCarsS.forEach(x => {
+                if (x === a || x === b || thirds.has(x)) return;
+                const t = [a, b, x], k = t.join('-');
+                if (!curKeysS.has(k)) { curKeysS.add(k); additionsS.push(t); }
+              });
+            });
+            additionsS.forEach(t => selected.push(t));
+          }
+        }
+      } catch (e) {}
       // 単勝は最終の本線2車単の頭集合を本体に作る（25,477R検証: 頭集合の勝ち車カバー80.5%・平均4.47台 ＞ 現行の3台固定73.5%。
       // ランキング上位2台の追加は+9.9pt・+0.32台と効率が良く、上位3台目以降は効率が半減するため2台まで。3台未満はランキング順に補充する）
       try {
@@ -4807,7 +4838,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.131';
+    const APP_RELEASE_LABEL = '更新版 v3.132';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
