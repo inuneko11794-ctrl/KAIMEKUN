@@ -335,6 +335,16 @@
         <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">帯別 過去最高配当</div>
         <div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-2">帯</th><th>券種</th><th>的中の最高</th></tr></thead><tbody id="maxPayoutRows"></tbody></table></div>
         <div id="maxPayoutSummary" class="text-xs text-slate-400 mt-2">保存済みレース全体から集計します。</div></div>
+        <div class="pt-3"><div class="text-sm font-bold text-amber-200 mb-2">1着-2着の出目 // FINISH PAIR MAP</div>
+        <div class="text-xs text-slate-400 mb-2">明るいほど回数が多い。万車だけに絞れます。</div>
+        <div class="flex gap-2 mb-2">
+          <button id="demeTabAll" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-100 text-slate-900 border border-amber-200" style="min-height:40px">全体</button>
+          <button id="demeTabMansha" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-200 border border-slate-600" style="min-height:40px">万車だけ</button>
+        </div>
+        <div id="demeHeatmap" class="overflow-x-auto"></div>
+        <div id="demeNote" class="text-xs text-amber-200 mt-2"></div>
+        <div id="demeSummary" class="text-xs text-slate-400 mt-1">保存済みレース全体から集計します。</div>
+        <div class="mt-3"><div class="text-xs font-bold text-slate-200 mb-1">1着車番別（全体）</div><div id="demeFirstTable"></div></div></div>
       </div>
     </section>
 
@@ -4895,6 +4905,7 @@
         const mpSummary=document.getElementById('maxPayoutSummary');
         if(mpSummary)mpSummary.textContent='保存済みレース全体（期間指定の対象外・ガールズ除く）。的中判定は本線の保存買い目による。レース名の後ろは開催日と確定着順。';
       }
+      renderDemePanel();
     }
     document.getElementById('refreshBetMatrixBtn').addEventListener('click', () => {
       const race = allRaces[currentRaceIdx]; if (!race) return;
@@ -4910,6 +4921,82 @@
       document.getElementById('betStatsTo').value = '';
       renderBetStats();
     });
+
+    // 1着-2着の出目ヒートマップ：保存済みレース全体（結果・払戻が揃ったもの・ガールズ除く）の集計表示のみ。買い目・学習・計算には一切触らない。
+    var demeTabMode = 'all';
+    function renderDemePanel() {
+      const mapEl = document.getElementById('demeHeatmap');
+      if (!mapEl) return;
+      const eligible = [];
+      allRaces.forEach(r => {
+        if (isGirlsSavedRace(r)) return;
+        const fin = parseFinish(r);
+        if (fin.length < 3) return;
+        const pay = Number(r.payout);
+        if (!Number.isFinite(pay) || pay <= 0) return;
+        eligible.push({ fin, pay });
+      });
+      const manshaList = eligible.filter(x => x.pay >= 10000);
+      const list = demeTabMode === 'mansha' ? manshaList : eligible;
+      const counts = Array.from({ length: 10 }, () => Array(10).fill(0));
+      list.forEach(x => {
+        const a = x.fin[0], b = x.fin[1];
+        if (a >= 1 && a <= 9 && b >= 1 && b <= 9 && a !== b) counts[a][b]++;
+      });
+      let maxCount = 0, best = null;
+      for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) {
+        if (counts[a][b] > maxCount) { maxCount = counts[a][b]; best = { a, b, n: counts[a][b] }; }
+      }
+      const tabAll = document.getElementById('demeTabAll'), tabM = document.getElementById('demeTabMansha');
+      if (tabAll && tabM) {
+        const onCls = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-100 text-slate-900 border border-amber-200';
+        const offCls = 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-200 border border-slate-600';
+        tabAll.className = demeTabMode === 'all' ? onCls : offCls;
+        tabM.className = demeTabMode === 'mansha' ? onCls : offCls;
+      }
+      if (!list.length) {
+        mapEl.innerHTML = '<div class="text-xs text-slate-500 py-3">対象レースがありません。</div>';
+      } else {
+        let html = '<table class="w-full text-center font-mono-code" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;min-width:300px"><tr><th class="text-[10px] text-slate-400 font-normal">1＼2</th>';
+        for (let b = 1; b <= 9; b++) html += '<th class="text-[11px] text-slate-300 font-bold">' + b + '</th>';
+        html += '</tr>';
+        for (let a = 1; a <= 9; a++) {
+          html += '<tr><th class="text-[11px] text-slate-300 font-bold">' + a + '</th>';
+          for (let b = 1; b <= 9; b++) {
+            if (a === b) { html += '<td style="background:#05070a;border-radius:6px;height:34px"></td>'; continue; }
+            const n = counts[a][b];
+            if (!n) { html += '<td style="background:#0a0e14;border-radius:6px;height:34px"></td>'; continue; }
+            const light = Math.round(10 + (maxCount ? n / maxCount : 0) * 48);
+            html += '<td style="background:hsl(6,85%,' + light + '%);border-radius:6px;height:34px;color:#fff;font-size:12px;font-weight:700">' + n + '</td>';
+          }
+          html += '</tr>';
+        }
+        html += '</table>';
+        mapEl.innerHTML = html;
+      }
+      const noteEl = document.getElementById('demeNote');
+      if (noteEl) noteEl.textContent = best ? ((demeTabMode === 'mansha' ? '万車だけでは ' : '全体では ') + best.a + '-' + best.b + ' が ' + best.n + '回でいちばん厚い。') : '';
+      const sumEl = document.getElementById('demeSummary');
+      if (sumEl) sumEl.textContent = '保存済みレース全体（結果・払戻が揃ったもの／ガールズ除く）から集計。対象 ' + eligible.length + 'R（うち万車 ' + manshaList.length + 'R）。';
+      const firstEl = document.getElementById('demeFirstTable');
+      if (firstEl) {
+        const byCar = Array.from({ length: 10 }, () => []);
+        eligible.forEach(x => { if (x.fin[0] >= 1 && x.fin[0] <= 9) byCar[x.fin[0]].push(x.pay); });
+        const maxC = Math.max(0, ...byCar.map(a => a.length));
+        const medianOf = arr => { if (!arr.length) return null; const s = [...arr].sort((p, q) => p - q); const mid = Math.floor(s.length / 2); return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2); };
+        let rows = '';
+        for (let c = 1; c <= 9; c++) {
+          const arr = byCar[c], med = medianOf(arr);
+          const barW = maxC ? Math.round(arr.length / maxC * 90) : 0;
+          rows += '<tr class="border-b border-slate-800"><td class="py-1.5 font-bold">' + c + '番</td><td><div class="flex items-center gap-2"><div class="h-2 rounded bg-rose-500/80 shrink-0" style="width:' + barW + 'px"></div><span>' + arr.length + '回</span></div></td><td>' + (med == null ? '—' : med.toLocaleString() + '円') + '</td></tr>';
+        }
+        firstEl.innerHTML = '<table class="w-full text-xs text-left"><thead class="text-amber-200 border-b border-slate-700"><tr><th class="py-1.5">車番</th><th>1着回数</th><th>3連単中央値</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      }
+    }
+    const demeTabAllBtn = document.getElementById('demeTabAll');
+    if (demeTabAllBtn) demeTabAllBtn.addEventListener('click', () => { demeTabMode = 'all'; renderDemePanel(); });
+    const demeTabManshaBtn = document.getElementById('demeTabMansha');
+    if (demeTabManshaBtn) demeTabManshaBtn.addEventListener('click', () => { demeTabMode = 'mansha'; renderDemePanel(); });
 
 
     // RAKUSHO JUDGE: independent manual evaluator; does not alter existing AI scores or tickets.
@@ -5027,7 +5114,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.138';
+    const APP_RELEASE_LABEL = '更新版 v3.139';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
