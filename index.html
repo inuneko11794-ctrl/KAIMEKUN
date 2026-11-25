@@ -2292,7 +2292,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v20-SUMGATE',
+      version: 'CSV-BASELINE-20261125-v21-T2FLOW',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4178,6 +4178,33 @@
           }
         }
       } catch (e) {}
+      // v3.141: 帯67のT2は本線3連単に「本線2車単のペア×3着全流し」を合体する（25,477R検証・帯67 T2 2,450R:
+      // 現行 24.63点・的中36.9%・回収73.4%・万車98件（万車719件の13.6%）→ 合体 48.23点・的中58.3%・回収73.8%・万車223件（31.0%）、
+      // 増分の限界回収74.2%（前期78.3%／2026 67.7%）。T2の現行はペアは当てるのに3着・組み合わせで落とす型で、流しは2車単の的中を
+      // そのまま3連単に変換する。帯67全体では流しは現行と互角でも、タイプ別ではT2だけ万車捕捉がほぼ倍増する（置換でも195件）ため合体で入れる。
+      // 流しの追加分には、両期間とも悪い2層だけ剪定をかける: 3着が●の券（層回収44.2%、前期51.1%／2026 33.5%）と
+      // ペアが◎→☆の券（層回収39.4%、前期54.4%／2026 16.8%）。剪定なしの合体は限界69.9%で、この2層を外すと74.2%になる。
+      // 合体は最終集合への和集合で、既存券には触らない。合計カット等の再適用はしない。帯89・T2以外は対象外。ガールズは従来どおり対象外
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length <= 7 && tierOfRace === 2 && selected.length) {
+          const markByCarW = {};
+          (res.entries || []).forEach(e => { markByCarW[Number(e.car)] = e.mark; });
+          const allCarsW = (res.entries || []).map(e => Number(e.car)).sort((a, b) => a - b);
+          const curKeysW = new Set(selected.map(t => t.map(Number).join('-')));
+          const additionsW = [];
+          (exacta || []).forEach(pair => {
+            const a = Number(pair[0]), b = Number(pair[1]);
+            if (markByCarW[a] === '◎' && markByCarW[b] === '☆') return;
+            allCarsW.forEach(x => {
+              if (x === a || x === b) return;
+              if (markByCarW[x] === '●') return;
+              const t = [a, b, x], k = t.join('-');
+              if (!curKeysW.has(k)) { curKeysW.add(k); additionsW.push(t); }
+            });
+          });
+          additionsW.forEach(t => selected.push(t));
+        }
+      } catch (e) {}
       // 単勝は最終の本線2車単の頭集合を本体に作る（25,477R検証: 頭集合の勝ち車カバー80.5%・平均4.47台 ＞ 現行の3台固定73.5%。
       // ランキング上位2台の追加は+9.9pt・+0.32台と効率が良く、上位3台目以降は効率が半減するため2台まで。3台未満はランキング順に補充する）
       try {
@@ -5119,7 +5146,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.140';
+    const APP_RELEASE_LABEL = '更新版 v3.141';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
