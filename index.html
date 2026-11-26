@@ -946,6 +946,15 @@
           <p class="text-xs text-slate-500">層はラインの骨格、信号は印の刻み。明るい信号ほど、深く刻まれている。</p>
         </div>
 
+        <div class="mt-4 rounded-xl border border-rose-400/30 bg-slate-950/80 p-3 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="text-xs font-bold text-rose-200">🩺 バイタルチェック // VITAL SIGNS</div>
+            <span id="vitalMeta" class="text-xs font-mono-code text-slate-400">測定待機中</span>
+          </div>
+          <div id="vitalBody"><div class="text-xs text-slate-500 p-1">出走表を読み込むとバイタルを表示</div></div>
+          <p class="text-xs text-slate-500">熱は波乱の気配、血圧は力の集まり、脈は形の騒ぎ、酸素は本命の呼吸。</p>
+        </div>
+
         <div class="mt-4 rounded-xl border border-amber-400/30 bg-slate-950/70 p-3 space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="text-xs font-bold text-amber-200">車番差分比率 // LINE GAP RATIO</div>
@@ -2561,6 +2570,63 @@
       s += '</svg>';
       return s;
     }
+    // バイタルチェック（表示専用）：既存の量を西洋医学のバイタルサインに換算して並べる。買い目・学習には一切触れない。
+    function computeVitals(res) {
+      const groups = (res && res.lineSummaryList) || [];
+      let disp = null;
+      try { disp = toDisplayProb(predictUpset(extractFeatures(res, getDnaFreqMapCached()))); } catch (e) { disp = null; }
+      const temp = disp == null ? null : 36.0 + (disp - 20) / 70 * 5.2;
+      const pointByCar = new Map(calculateCarPointScores(res).map(r => [Number(r.car), r.totalPoints]));
+      const powers = groups.filter(g => !g.isTanki).map(g => (g.members || []).reduce((s, m) => s + (pointByCar.get(Number(m.car)) || 0), 0)).sort((a, b) => b - a);
+      const bpSys = Math.round(84 + (powers[0] || 0) * 5);
+      const bpDia = Math.round(52 + (powers[1] || 0) * 4);
+      const tankiCount = groups.filter(g => g.isTanki).length;
+      const pulse = 58 + groups.length * 7 + tankiCount * 4;
+      let spo2 = 94;
+      const hon = (res.entries || []).find(e => e.mark === '◎');
+      if (hon) {
+        const gIdx = groups.findIndex(g => (g.members || []).some(m => Number(m.car) === Number(hon.car)));
+        if (gIdx >= 0) {
+          const g = groups[gIdx];
+          const gPower = (g.members || []).reduce((s, m) => s + (pointByCar.get(Number(m.car)) || 0), 0);
+          const isTop = powers.length && Math.abs(gPower - powers[0]) < 0.001;
+          const isHead = Number((g.members || [])[0]?.car) === Number(hon.car);
+          spo2 = g.isTanki ? 93 : isTop ? (isHead ? 99 : 97) : (isHead ? 96 : 95);
+        }
+      }
+      const notes = [];
+      if (temp != null) notes.push(temp >= 39.5 ? '高熱。うなされている。' : temp >= 38.5 ? '発熱。体が騒いでいる。' : temp >= 37.5 ? '微熱あり。様子を見る。' : '平熱。静かな顔。');
+      if (bpSys >= 140 || bpDia >= 90) notes.push('血圧高め。一点に力が集まっている。');
+      if (pulse >= 100) notes.push('頻脈。形が騒がしい。');
+      if (spo2 < 96) notes.push('酸素が薄い。本命の呼吸が浅い。');
+      if (!notes.length) notes.push('所見なし。安定している。');
+      return { disp, temp, bpSys, bpDia, pulse, spo2, notes };
+    }
+    function renderVitalSigns(res) {
+      const body = document.getElementById('vitalBody');
+      if (!body) return;
+      const meta = document.getElementById('vitalMeta');
+      if (res && res.isGirlsRace) {
+        body.innerHTML = '<div class="text-xs text-slate-500 p-1">バイタル測定の対象外</div>';
+        if (meta) meta.textContent = '対象外';
+        return;
+      }
+      const v = computeVitals(res);
+      const cell = (label, value, judge, col) => '<div class="rounded-lg bg-slate-900/70 border border-slate-800 p-2 text-center"><div class="text-[10px] text-slate-400">' + label + '</div><div class="text-base font-bold font-mono-code" style="color:' + col + '">' + value + '</div><div class="text-[10px] text-slate-400">' + judge + '</div></div>';
+      const tempJudge = v.temp == null ? '測定不能' : v.temp >= 39.5 ? '高熱' : v.temp >= 38.5 ? '発熱' : v.temp >= 37.5 ? '微熱' : '平熱';
+      const tempCol = v.temp == null ? '#94a3b8' : v.temp >= 38.5 ? '#f87171' : v.temp >= 37.5 ? '#fbbf24' : '#7dd3fc';
+      const bpJudge = (v.bpSys >= 140 || v.bpDia >= 90) ? '高め' : v.bpSys < 90 ? '低め' : '正常域';
+      const pulseJudge = v.pulse >= 100 ? '頻脈' : v.pulse >= 80 ? 'やや速い' : '安定';
+      const spo2Judge = v.spo2 >= 96 ? '正常' : '低下';
+      body.innerHTML = '<div class="grid grid-cols-4 gap-2">'
+        + cell('体温', v.temp == null ? '—' : v.temp.toFixed(1) + '℃', tempJudge, tempCol)
+        + cell('血圧', v.bpSys + '/' + v.bpDia, bpJudge, (v.bpSys >= 140 || v.bpDia >= 90) ? '#fbbf24' : '#7dd3fc')
+        + cell('脈拍', String(v.pulse), pulseJudge, v.pulse >= 100 ? '#f87171' : v.pulse >= 80 ? '#fbbf24' : '#7dd3fc')
+        + cell('SpO2', v.spo2 + '%', spo2Judge, v.spo2 >= 96 ? '#7dd3fc' : '#f87171')
+        + '</div><div class="text-xs text-rose-100/90 pt-1">' + v.notes.join(' ') + '</div>';
+      if (meta) meta.textContent = '測定完了';
+    }
+
     function renderEchoScan(res) {
       const body = document.getElementById('echoScanBody');
       if (!body) return;
@@ -2655,6 +2721,7 @@
           : '同型の前例が薄い';
       } catch (error) { console.error('[KAIMEKUN] 形のDNA描画エラー', error); }
       try { renderEchoScan(res); } catch (error) { console.error('[KAIMEKUN] ECHO描画エラー', error); }
+      try { renderVitalSigns(res); } catch (error) { console.error('[KAIMEKUN] バイタル描画エラー', error); }
 
       document.getElementById('coupAlertBadge').textContent = `下剋上:${res.coupScore} / ちぎれ:${res.abandonScore}`;
       document.getElementById('lineDramaContainer').innerHTML = res.dramaDetails.map(d => {
@@ -5261,7 +5328,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.151';
+    const APP_RELEASE_LABEL = '更新版 v3.152';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
