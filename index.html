@@ -4901,7 +4901,7 @@
       const retroCount = eligibleNormal.filter(r => r.autoTickets.generatedAfterResult).length;
       document.getElementById('betStatsSummary').textContent = '買い目を固定して集計: ' + Math.max(...rows.map(x=>x.n),0) + 'R / 1点100円' + (retroCount ? `（うち遡及生成 ${retroCount}R）` : '');
       document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+(x.investment==null?'—':x.investment.toLocaleString()+'円')+'</td><td>'+(x.roi==null?'—':x.roi.toFixed(2)+'%')+'</td></tr>').join('');
-      const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5','Q1','Q2','Q3'];
+      const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5','Q1','Q2','Q3','H1','H2'];
       const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5',Q1:'並び宮Q1',Q2:'並び宮Q2',Q3:'並び宮Q3',H1:'河図H1',H2:'河図H2'};
       const ruleRows=ruleIds.map(id=>{
         const triggered=eligibleNormal.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id));
@@ -5261,7 +5261,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.150';
+    const APP_RELEASE_LABEL = '更新版 v3.151';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
