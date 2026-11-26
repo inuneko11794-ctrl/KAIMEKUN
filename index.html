@@ -2318,7 +2318,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261126-v25-T0PAIRBASE',
+      version: 'CSV-BASELINE-20261126-v26-HETU',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -3532,7 +3532,7 @@
 
 
     // 洛書条件は初期ポイント0。買い目に追加し、成績を条件別に独立計測する。
-    const RAKUSHO_POINT_WEIGHTS = {L1:0,L2:0,L3:0,L4:0,L5:0,L6:0,R1:0,V1:0,V2:0,V3:0,V4:0,V5:0,Q1:0,Q2:0,Q3:0};
+    const RAKUSHO_POINT_WEIGHTS = {L1:0,L2:0,L3:0,L4:0,L5:0,L6:0,R1:0,V1:0,V2:0,V3:0,V4:0,V5:0,Q1:0,Q2:0,Q3:0,H1:0,H2:0};
     function evaluateRakushoRules(res) {
       const allGroups=(res.lineSummaryList||[]);
       const lines=allGroups.filter(x=>!x.isTanki).map(x=>x.members||[]);
@@ -3564,6 +3564,18 @@
               add('Q3','並び宮Q3',nums,'trifecta','魔方陣セット（8・9置換含む）＋◎-◯-●');
           }
         });
+      }
+      // 河図H系: 河図ペア＝車番の差が5の組（1-6／2-7／3-8／4-9、一六共宗・二七同道・三八為朋・四九為友）。7車・9車対象、重み0で洛書と同じ枠で独立計測。
+      {
+        const hetu=(a,b)=>Math.abs(a-b)===5;
+        lines.forEach(line=>{
+          if(line.length>=2){
+            const a=Number(line[0].car),b=Number(line[1].car);
+            if(hetu(a,b))add('H1','河図H1',[a,b],'exacta','河図ペア（差5）＋ライン先頭-番手');
+          }
+        });
+        const heads=lines.map(l=>Number(l[0].car));
+        if(heads.length>=2&&hetu(heads[0],heads[1]))add('H2','河図H2',[heads[0],heads[1]],'exacta','河図ペア（差5）＋先頭同士');
       }
       if(starters.length!==7||new Set(starters).size!==7||![2,3].includes(lines.length))return picks;
       const mark=car=>{for(const line of lines){const m=line.find(x=>Number(x.car)===Number(car));if(m)return String(m.convertedMark||'');}return '';};
@@ -4890,7 +4902,7 @@
       document.getElementById('betStatsSummary').textContent = '買い目を固定して集計: ' + Math.max(...rows.map(x=>x.n),0) + 'R / 1点100円' + (retroCount ? `（うち遡及生成 ${retroCount}R）` : '');
       document.getElementById('betStatsRows').innerHTML = rows.map(x=>'<tr class="border-b border-slate-800"><td class="py-2">'+x.label+'</td><td>'+x.n+'</td><td>'+x.hits+'</td><td>'+x.rate.toFixed(2)+'%</td><td>'+(x.investment==null?'—':x.investment.toLocaleString()+'円')+'</td><td>'+(x.roi==null?'—':x.roi.toFixed(2)+'%')+'</td></tr>').join('');
       const ruleIds=['L1','L2','L3','L4','L5','L6','R1','V1','V2','V3','V4','V5','Q1','Q2','Q3'];
-      const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5',Q1:'並び宮Q1',Q2:'並び宮Q2',Q3:'並び宮Q3'};
+      const ruleLabels={L1:'洛書L1',L2:'洛書L2',L3:'洛書L3',L4:'洛書L4',L5:'洛書L5',L6:'洛書L6',R1:'回転R1',V1:'縦1',V2:'縦2',V3:'縦3',V4:'縦4',V5:'縦5',Q1:'並び宮Q1',Q2:'並び宮Q2',Q3:'並び宮Q3',H1:'河図H1',H2:'河図H2'};
       const ruleRows=ruleIds.map(id=>{
         const triggered=eligibleNormal.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id));
         const data=triggered.filter(r=>(r.autoTickets.rakushoPicks||[]).some(p=>p.id===id)&&Number(r[id==='L5'||id==='L6'||id==='Q3'?'payout':'exactaPayout'])>0);
@@ -5249,7 +5261,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.149';
+    const APP_RELEASE_LABEL = '更新版 v3.150';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
