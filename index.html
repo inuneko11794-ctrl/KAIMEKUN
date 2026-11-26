@@ -952,7 +952,7 @@
             <span id="vitalMeta" class="text-xs font-mono-code text-slate-400">測定待機中</span>
           </div>
           <div id="vitalBody"><div class="text-xs text-slate-500 p-1">出走表を読み込むとバイタルを表示</div></div>
-          <p class="text-xs text-slate-500">熱は波乱の気配、血圧は力の集まり、脈は形の騒ぎ、酸素は本命の呼吸。</p>
+          <p class="text-xs text-slate-500">熱は波乱の気配、血圧は一番上と一番下の力、脈は形の騒ぎ、酸素は本命の呼吸。</p>
         </div>
 
         <div class="mt-4 rounded-xl border border-amber-400/30 bg-slate-950/70 p-3 space-y-2">
@@ -2579,7 +2579,7 @@
       const pointByCar = new Map(calculateCarPointScores(res).map(r => [Number(r.car), r.totalPoints]));
       const powers = groups.filter(g => !g.isTanki).map(g => (g.members || []).reduce((s, m) => s + (pointByCar.get(Number(m.car)) || 0), 0)).sort((a, b) => b - a);
       const bpSys = Math.round(84 + (powers[0] || 0) * 5);
-      const bpDia = Math.round(52 + (powers[1] || 0) * 4);
+      const bpDia = Math.round(52 + (powers[powers.length - 1] || 0) * 4);
       const tankiCount = groups.filter(g => g.isTanki).length;
       const pulse = 58 + groups.length * 7 + tankiCount * 4;
       let spo2 = 94;
@@ -5328,7 +5328,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.152';
+    const APP_RELEASE_LABEL = '更新版 v3.153';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
