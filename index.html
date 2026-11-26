@@ -2318,7 +2318,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261125-v23-BSOLIDFLOW',
+      version: 'CSV-BASELINE-20261126-v24-T0PAIR',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4300,6 +4300,32 @@
           if (kept89.length !== exacta.length) { exacta.length = 0; kept89.forEach(t => exacta.push(t)); }
         }
       } catch (e) {}
+      // v3.148: 帯67・T0の本線3連単に最終段ペアフィルタ（一二着の手術・25,477R検証）:
+      // 本線2車単にあるペアは無条件で残し、2車単に無いペアについてのみ
+      // ★頭／◎→△・◎→✕／変換印（⑳●▲✖T星）頭→◎／1・2着の車番合計3・4／2車単に6が無いレースでの6頭／6がライン3番手のレースでの6の1・2着 を落とす。
+      // T0: 29.82点・的中51.5%・回収74.5%・万車捕捉685 → 20.73点・40.2%・77.7%・498（前期76.6／2026 79.3と両期間で回収改善）。
+      // 帯67全体: 30.23点・75.3%・万車1,182 → 24.37点・77.3%・995。なお★頭と◎→✕は2車単に1点も無く例外は実質発動しない。
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length <= 7 && tierOfRace === 0) {
+          const exaPairsF = new Set(exacta.map(t => Number(t[0]) + '-' + Number(t[1])));
+          const exaHas6F = exacta.some(t => Number(t[0]) === 6 || Number(t[1]) === 6);
+          const markF = {};
+          (res.entries || []).forEach(e => { markF[Number(e.car)] = e.mark; });
+          const sixPos3F = (res.lines || []).some(g => (g || []).length >= 3 && Number(g[2]) === 6);
+          const keptF = selected.filter(t => {
+            const h = Number(t[0]), p = Number(t[1]);
+            if (exaPairsF.has(h + '-' + p)) return true;
+            if (markF[h] === '★') return false;
+            if (markF[h] === '◎' && (markF[p] === '△' || markF[p] === '✕')) return false;
+            if (['⑳', '●', '▲', '✖', 'T', '星'].includes(markF[h]) && markF[p] === '◎') return false;
+            if (h + p === 3 || h + p === 4) return false;
+            if (h === 6 && !exaHas6F) return false;
+            if (sixPos3F && (h === 6 || p === 6)) return false;
+            return true;
+          });
+          if (keptF.length !== selected.length) { selected.length = 0; keptF.forEach(t => selected.push(t)); }
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -5216,7 +5242,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.147';
+    const APP_RELEASE_LABEL = '更新版 v3.148';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
