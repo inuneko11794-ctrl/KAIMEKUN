@@ -1294,8 +1294,79 @@
         return Array.isArray(parsed) && parsed.length ? parsed : null;
       } catch (err) { console.warn('保存データ読込失敗', err); return null; }
     }
+    // ===== レース保存（IndexedDB主・localStorage予備） =====
+    // localStorageは上限約5MBで満杯になるため、レース本体はIndexedDBへ保存する。
+    // 起動時にlocalStorageからIndexedDBへ自動で引っ越しし、検証できたら旧データを消して容量を空ける。
+    const IDB_DB_NAME = 'genome_lab_db', IDB_STORE_NAME = 'kv', RACE_IDB_KEY = 'races_v1', IDB_MARKER_KEY = 'kaimekun_idb_v1';
+    let idbReady = false, idbWriting = false, idbPending = null;
+    function idbOpen() {
+      return new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) return reject(new Error('indexedDB unsupported'));
+        const rq = indexedDB.open(IDB_DB_NAME, 1);
+        rq.onupgradeneeded = () => { try { rq.result.createObjectStore(IDB_STORE_NAME); } catch (e) {} };
+        rq.onsuccess = () => resolve(rq.result);
+        rq.onerror = () => reject(rq.error);
+      });
+    }
+    async function idbGet(key) {
+      try {
+        const db = await idbOpen();
+        return await new Promise((resolve, reject) => {
+          const rq = db.transaction(IDB_STORE_NAME, 'readonly').objectStore(IDB_STORE_NAME).get(key);
+          rq.onsuccess = () => resolve(rq.result || null);
+          rq.onerror = () => reject(rq.error);
+        });
+      } catch (e) { return null; }
+    }
+    async function idbSet(key, val) {
+      try {
+        const db = await idbOpen();
+        return await new Promise((resolve, reject) => {
+          const rq = db.transaction(IDB_STORE_NAME, 'readwrite').objectStore(IDB_STORE_NAME).put(val, key);
+          rq.onsuccess = () => resolve(true);
+          rq.onerror = () => reject(rq.error);
+        });
+      } catch (e) { return false; }
+    }
+    function scheduleIdbWrite() {
+      try { idbPending = JSON.stringify(allRaces); } catch (e) { return; }
+      if (idbWriting) return;
+      idbWriting = true;
+      (async () => {
+        while (idbPending) { const s = idbPending; idbPending = null; await idbSet(RACE_IDB_KEY, s); }
+        idbWriting = false;
+      })();
+    }
+    async function hydrateRaceStorage() {
+      if (DEMO_MODE) return;
+      try {
+        const raw = await idbGet(RACE_IDB_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length) { allRaces = parsed; idbReady = true; }
+        }
+        if (!idbReady) {
+          const ls = loadSavedRaces();
+          if (ls && ls.length) {
+            const ok = await idbSet(RACE_IDB_KEY, JSON.stringify(ls));
+            if (ok) {
+              const back = await idbGet(RACE_IDB_KEY);
+              let backLen = -1;
+              try { backLen = JSON.parse(back).length; } catch (e) {}
+              if (backLen === ls.length) {
+                idbReady = true;
+                try { localStorage.setItem(IDB_MARKER_KEY, '1'); localStorage.removeItem(RACE_STORAGE_KEY); } catch (e) {}
+              }
+            }
+          }
+        }
+        if (idbReady && navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch (e) {} }
+      } catch (e) { console.warn('保存先の引っ越しに失敗（従来方式で継続）', e); }
+    }
+    window.addEventListener('pagehide', () => { if (idbReady) scheduleIdbWrite(); });
     function persistRaces() {
       if (DEMO_MODE) return true;
+      if (idbReady) { scheduleIdbWrite(); return true; }
       try { localStorage.setItem(RACE_STORAGE_KEY, JSON.stringify(allRaces)); return true; }
       catch (err) { console.error('レース保存失敗', err); showToast('⚠️ 保存容量またはブラウザ設定を確認してください'); return false; }
     }
@@ -5274,7 +5345,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.155';
+    const APP_RELEASE_LABEL = '更新版 v3.156';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -5713,7 +5784,7 @@
       paRender(0.02);
     });
 
-    window.addEventListener('load', () => { initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    window.addEventListener('load', async () => { await hydrateRaceStorage(); initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
