@@ -2318,7 +2318,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261126-v24-T0PAIR',
+      version: 'CSV-BASELINE-20261126-v25-T0PAIRBASE',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4043,6 +4043,8 @@
         }
       } catch (e) {}
       // （v3.143掃除: 旧「T1は合計10以下を外す」カットは、後段のF1置き換え（v3.134）が合計を見ずに全量差し替えるため最終買い目に一切効いていない死にコードだった。除去し、全25,477Rリプレイで差分0件を確認済み）
+      // v3.149: 最終段ペアフィルタ（v3.148）の対象を「追加で増えた分」だけにするため、頭追加（D1p）直前の土台集合を控える
+      const baseKeysF = new Set(selected.map(t => t.map(Number).join('-')));
       // ◎・◯の頭が本線3連単に1点も無いレースへ、後段フィルタを全て通した最終買い目に頭の買い目を上乗せする（D1p・25,477R検証:
       // 現行 11.14点・的中27.1%・回収80.8% → 23.71点・42.2%・73.2%（ex-max 72.8）、万車的中 469→963件、追加分の限界回収66.4%、両期間・両帯で安定）。
       // 追加は合計カット等の現行ルールの対象外（別枠）。パターン段に入れると後段フィルタで追加的中の約41%が消えるため、必ずこの位置（最終段）で足す。
@@ -4300,11 +4302,13 @@
           if (kept89.length !== exacta.length) { exacta.length = 0; kept89.forEach(t => exacta.push(t)); }
         }
       } catch (e) {}
-      // v3.148: 帯67・T0の本線3連単に最終段ペアフィルタ（一二着の手術・25,477R検証）:
+      // v3.148→v3.149: 帯67・T0の本線3連単に最終段ペアフィルタ（一二着の手術・25,477R検証）:
+      // 対象は「追加で増えた分」（D1p・☆★の追加券）だけ。土台の券は同じペアでも回収85.3%（万車86件）と別物で、
+      // v3.148で一緒に落とした50,949点は本体より強かったため、v3.149で土台を対象外に戻した（カレッタの「対象は増えた分だけ」の線引き）。
       // 本線2車単にあるペアは無条件で残し、2車単に無いペアについてのみ
       // ★頭／◎→△・◎→✕／変換印（⑳●▲✖T星）頭→◎／1・2着の車番合計3・4／2車単に6が無いレースでの6頭／6がライン3番手のレースでの6の1・2着 を落とす。
-      // T0: 29.82点・的中51.5%・回収74.5%・万車捕捉685 → 20.73点・40.2%・77.7%・498（前期76.6／2026 79.3と両期間で回収改善）。
-      // 帯67全体: 30.23点・75.3%・万車1,182 → 24.37点・77.3%・995。なお★頭と◎→✕は2車単に1点も無く例外は実質発動しない。
+      // T0: 29.82点・的中51.5%・回収74.5%・万車捕捉685 → 24.16点・43.9%・78.7%・584（前期77.1／2026 81.4と両期間で回収改善）。
+      // 帯67全体: 30.23点・75.3%・万車1,182 → 26.59点・77.9%・1,081。なお★頭と◎→✕は2車単に1点も無く例外は実質発動しない。
       try {
         if (!res.isGirlsRace && (res.entries || []).length <= 7 && tierOfRace === 0) {
           const exaPairsF = new Set(exacta.map(t => Number(t[0]) + '-' + Number(t[1])));
@@ -4314,13 +4318,16 @@
           const sixPos3F = (res.lines || []).some(g => (g || []).length >= 3 && Number(g[2]) === 6);
           const keptF = selected.filter(t => {
             const h = Number(t[0]), p = Number(t[1]);
+            if (baseKeysF.has(h + '-' + p + '-' + Number(t[2]))) return true;
             if (exaPairsF.has(h + '-' + p)) return true;
             if (markF[h] === '★') return false;
             if (markF[h] === '◎' && (markF[p] === '△' || markF[p] === '✕')) return false;
             if (['⑳', '●', '▲', '✖', 'T', '星'].includes(markF[h]) && markF[p] === '◎') return false;
             if (h + p === 3 || h + p === 4) return false;
-            if (h === 6 && !exaHas6F) return false;
-            if (sixPos3F && (h === 6 || p === 6)) return false;
+            if (markF[6] !== '◎') { // 6番車が◎なら6ルールの対象外（印が第一条件。25,477Rでは差分0だが原則として明記）
+              if (h === 6 && !exaHas6F) return false;
+              if (sixPos3F && (h === 6 || p === 6)) return false;
+            }
             return true;
           });
           if (keptF.length !== selected.length) { selected.length = 0; keptF.forEach(t => selected.push(t)); }
@@ -5242,7 +5249,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.148';
+    const APP_RELEASE_LABEL = '更新版 v3.149';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
