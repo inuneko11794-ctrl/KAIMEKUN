@@ -1302,10 +1302,14 @@
     function idbOpen() {
       return new Promise((resolve, reject) => {
         if (!('indexedDB' in window)) return reject(new Error('indexedDB unsupported'));
+        let settled = false;
+        const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+        const timer = setTimeout(() => done(reject, new Error('indexedDB open timeout')), 4000);
         const rq = indexedDB.open(IDB_DB_NAME, 1);
         rq.onupgradeneeded = () => { try { rq.result.createObjectStore(IDB_STORE_NAME); } catch (e) {} };
-        rq.onsuccess = () => resolve(rq.result);
-        rq.onerror = () => reject(rq.error);
+        rq.onsuccess = () => { clearTimeout(timer); done(resolve, rq.result); };
+        rq.onerror = () => { clearTimeout(timer); done(reject, rq.error); };
+        rq.onblocked = () => { clearTimeout(timer); done(reject, new Error('indexedDB blocked')); };
       });
     }
     async function idbGet(key) {
@@ -1333,7 +1337,12 @@
       if (idbWriting) return;
       idbWriting = true;
       (async () => {
-        while (idbPending) { const s = idbPending; idbPending = null; await idbSet(RACE_IDB_KEY, s); }
+        while (idbPending) {
+          const s = idbPending; idbPending = null;
+          const ok = await idbSet(RACE_IDB_KEY, s);
+          if (ok) { idbReady = true; }
+          else { idbReady = false; console.error('IndexedDB保存失敗'); showToast('⚠️ 保存に失敗しました。バックアップ書き出しをお願いします'); break; }
+        }
         idbWriting = false;
       })();
     }
@@ -1366,7 +1375,7 @@
     window.addEventListener('pagehide', () => { if (idbReady) scheduleIdbWrite(); });
     function persistRaces() {
       if (DEMO_MODE) return true;
-      if (idbReady) { scheduleIdbWrite(); return true; }
+      if (idbReady || ('indexedDB' in window)) { scheduleIdbWrite(); return true; }
       try { localStorage.setItem(RACE_STORAGE_KEY, JSON.stringify(allRaces)); return true; }
       catch (err) { console.error('レース保存失敗', err); showToast('⚠️ 保存容量またはブラウザ設定を確認してください'); return false; }
     }
@@ -5345,7 +5354,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.156';
+    const APP_RELEASE_LABEL = '更新版 v3.157';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
