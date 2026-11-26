@@ -552,10 +552,6 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><div><label class="block text-xs font-mono-code text-slate-400 mb-1">開催日</label><input id="builderEventDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div><div><label class="block text-xs font-mono-code text-slate-400 mb-1">データ入力日</label><input id="builderEntryDate" type="date" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div></div>
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs font-mono-code text-slate-400">他サイトの予想:</span>
-            <span class="text-xs text-slate-500">一致はAIカードに実績表示</span>
-          </div>
           <div class="overflow-x-auto border border-slate-800 rounded-xl">
             <table class="w-full min-w-[560px] text-left border-collapse text-xs font-mono-code">
               <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
@@ -636,9 +632,6 @@
                   <label class="block text-xs font-mono-code text-slate-400 mb-1">単勝配当 (円)</label>
                   <input id="lateWinPayoutInput" type="number" placeholder="例: 420" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300 font-mono-code" />
                 </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xs font-mono-code text-slate-400">他サイトの予想:</span>
               </div>
               <button id="saveLateResultBtn" type="button" class="w-full py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 font-bold text-xs transition">
                 💾 このレースの結果を保存・更新する
@@ -5354,7 +5347,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.157';
+    const APP_RELEASE_LABEL = '更新版 v3.158';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
