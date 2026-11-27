@@ -1294,6 +1294,10 @@
     // 起動時にlocalStorageからIndexedDBへ自動で引っ越しし、検証できたら旧データを消して容量を空ける。
     const IDB_DB_NAME = 'genome_lab_db', IDB_STORE_NAME = 'kv', RACE_IDB_KEY = 'races_v1', IDB_MARKER_KEY = 'kaimekun_idb_v1';
     let idbReady = false, idbWriting = false, idbPending = null;
+    // v3.162 複数タブ上書きガード: 保存の世代番号をlocalStorageで共有し、他タブが先に保存していたら自分の古い状態で上書きしない
+    let idbGen = 0, idbGenConflict = false;
+    function readIdbGen() { try { return parseInt(localStorage.getItem('kaimekun_idb_gen') || '0', 10) || 0; } catch (e) { return 0; } }
+    function bumpIdbGen() { idbGen = readIdbGen() + 1; try { localStorage.setItem('kaimekun_idb_gen', String(idbGen)); } catch (e) {} }
     function idbOpen() {
       return new Promise((resolve, reject) => {
         if (!('indexedDB' in window)) return reject(new Error('indexedDB unsupported'));
@@ -1334,15 +1338,21 @@
       (async () => {
         while (idbPending) {
           const s = idbPending; idbPending = null;
+          if (readIdbGen() !== idbGen) { idbGenConflict = true; break; }
           const ok = await idbSet(RACE_IDB_KEY, s);
-          if (ok) { idbReady = true; }
+          if (ok) { idbReady = true; bumpIdbGen(); }
           else { idbReady = false; console.error('IndexedDB保存失敗'); showToast('⚠️ 保存に失敗しました。バックアップ書き出しをお願いします'); break; }
         }
         idbWriting = false;
+        if (idbGenConflict) {
+          idbGenConflict = false;
+          hydrateRaceStorage().then(() => { try { populateRaceSelector(); updateBatchStats(); if (allRaces.length) renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); showToast('別のタブで更新されたため、最新のデータを読み直しました'); } catch (e) {} });
+        }
       })();
     }
     async function hydrateRaceStorage() {
       if (DEMO_MODE) return;
+      idbGen = readIdbGen();
       try {
         const raw = await idbGet(RACE_IDB_KEY);
         if (raw) {
@@ -1358,7 +1368,7 @@
               let backLen = -1;
               try { backLen = JSON.parse(back).length; } catch (e) {}
               if (backLen === ls.length) {
-                idbReady = true;
+                idbReady = true; bumpIdbGen();
                 try { localStorage.setItem(IDB_MARKER_KEY, '1'); localStorage.removeItem(RACE_STORAGE_KEY); } catch (e) {}
               }
             }
@@ -5406,7 +5416,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.161';
+    const APP_RELEASE_LABEL = '更新版 v3.162';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
