@@ -2375,7 +2375,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261126-v26-HETU',
+      version: 'CSV-BASELINE-20261127-v27-T0CORE',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4429,6 +4429,9 @@
             const h = Number(t[0]), p = Number(t[1]);
             if (baseKeysF.has(h + '-' + p + '-' + Number(t[2]))) return true;
             if (exaPairsF.has(h + '-' + p)) return true;
+            // v3.160 芯の例外: 厚いT0（フィルタ前30点以上）では ◎→△・◎→✕ × 3着◯ を落とさない。
+            // 厚い×安い決着の外し924件の解剖（帯67）で、勝ち目の中心がこの形だったための例外。狭く戻した測定では約1.9点/R・回収69.2%。
+            if (selected.length >= 30 && markF[h] === '◎' && (markF[p] === '△' || markF[p] === '✕') && markF[Number(t[2])] === '◯') return true;
             if (markF[h] === '★') return false;
             if (markF[h] === '◎' && (markF[p] === '△' || markF[p] === '✕')) return false;
             if (['⑳', '●', '▲', '✖', 'T', '星'].includes(markF[h]) && markF[p] === '◎') return false;
@@ -5349,7 +5352,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.159';
+    const APP_RELEASE_LABEL = '更新版 v3.160';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
