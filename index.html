@@ -2375,7 +2375,7 @@
     // CSV実績から作成した非公開の基準ポイント。着順別の点数学習は行わない。
     // 車ごとの印・ライン特徴は「的中した2車/3車の組合せに含まれたか」で集計。
     const FEATURE_POINT_BASELINE = {
-      version: 'CSV-BASELINE-20261127-v27-T0CORE',
+      version: 'CSV-BASELINE-20261127-v28-STARCOMP',
       source: 'brain races 2024-08 all_印配置変換.csv',
       sourceScope: '7車立てのみ。日付単位で古い80%を学習、最新20%を検証',
       trainingRaces: 17570,
@@ -4445,6 +4445,60 @@
           if (keptF.length !== selected.length) { selected.length = 0; keptF.forEach(t => selected.push(t)); }
         }
       } catch (e) {}
+      // v3.161 ☆の完成（帯67・非ガールズ）: ☆がライン先頭に立ち、☆以外の上位2ラインのパワー差が2未満（拮抗）のレースだけ、
+      // 本線3連単の最終段で入れ替える。☆は自分のラインの弱さと無関係に、強いライン同士が拮抗すると3着内に単独で滑り込む
+      // （拮抗時25%以上 vs 大差時17%台・25,477R検証）。同レース内の「☆のみ（★なし）」の券はこの形では回収61.8%と弱いため落とし、
+      // 代わりに削減前の保有セットのうち☆を含むものへ「☆頭・★は2着のみ（3着に★は置かない）」の順列を足す。
+      // 完成層は回収87.3%・万車+46、入れ替え全体では 622,945点・的中9,972・回収77.8%・万車1,088 → 626,933点・9,952・78.5%・1,102（両期間とも収支プラス）。
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length <= 7 && selected.length) {
+          const markC = {};
+          (res.entries || []).forEach(e => { markC[Number(e.car)] = e.mark; });
+          const starCars = Object.keys(markC).filter(c => markC[c] === '☆').map(Number);
+          if (starCars.length) {
+            let starLineIdx = -1, starPos = -1;
+            (res.lines || []).forEach((g, gi) => { (g || []).forEach((c, ci) => { if (starLineIdx < 0 && markC[Number(c)] === '☆') { starLineIdx = gi; starPos = ci; } }); });
+            if (starLineIdx >= 0 && starPos === 0) {
+              const zeroSnapC = { mark: 0, lineRole: 0, markRelation: 0, lineOrder: 0 };
+              const pbc = new Map(calculateCarPointScores(res, { adaptiveSnapshot: zeroSnapC }).map(x => [Number(x.car), x.totalPoints]));
+              const powers = (res.lines || []).map(g => (g || []).reduce((s, c) => s + (pbc.get(Number(c)) || 0), 0));
+              const others = powers.filter((_, i) => i !== starLineIdx).sort((a, b) => b - a);
+              if (others.length >= 2 && (others[0] - others[1]) < 2) {
+                let hoshiCar = null;
+                (res.entries || []).forEach(e => { if (hoshiCar === null && e.mark === '★') hoshiCar = Number(e.car); });
+                const setsC = new Map();
+                selected.forEach(t => {
+                  const cars = [Number(t[0]), Number(t[1]), Number(t[2])];
+                  if (cars.some(c => starCars.includes(c))) {
+                    const sorted = [...cars].sort((a, b) => a - b);
+                    const k = sorted.join('-');
+                    if (!setsC.has(k)) setsC.set(k, sorted);
+                  }
+                });
+                const keptC = selected.filter(t => {
+                  const ms = [markC[Number(t[0])], markC[Number(t[1])], markC[Number(t[2])]];
+                  return !(ms.includes('☆') && !ms.includes('★'));
+                });
+                const haveC = new Set(keptC.map(t => Number(t[0]) + '-' + Number(t[1]) + '-' + Number(t[2])));
+                const addsC = [];
+                const permIdx = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+                setsC.forEach(cars => {
+                  const sc = cars.find(c => starCars.includes(c));
+                  if (sc === undefined) return;
+                  permIdx.forEach(ix => {
+                    const p = ix.map(i => cars[i]);
+                    if (p[0] !== sc) return;
+                    if (hoshiCar !== null && p.includes(hoshiCar) && p.indexOf(hoshiCar) !== 1) return;
+                    const k = p.join('-');
+                    if (!haveC.has(k)) { haveC.add(k); addsC.push(p); }
+                  });
+                });
+                if (keptC.length !== selected.length || addsC.length) { selected.length = 0; keptC.forEach(t => selected.push(t)); addsC.forEach(t => selected.push(t)); }
+              }
+            }
+          }
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -5352,7 +5406,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.160';
+    const APP_RELEASE_LABEL = '更新版 v3.161';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
