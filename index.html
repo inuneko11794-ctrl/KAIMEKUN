@@ -1261,7 +1261,7 @@
             entries.push({ car: parseInt(tableMatch[1], 10), name: tableMatch[2].trim(), rawMark: tableMatch[7].trim() });
           }
         });
-        if (entries.length >= 5) races.push({ id: title, recordedAt: new Date().toISOString(), eventDate, rawFormation, lines: parsedLines, resultOrder, payout, exactaPayout, entries });
+        if (entries.length >= 5) races.push({ id: normalizeGirlsTitle(title), recordedAt: new Date().toISOString(), eventDate, rawFormation, lines: parsedLines, resultOrder, payout, exactaPayout, entries });
       });
       return races;
     }
@@ -1280,6 +1280,8 @@
       if (db) db.classList.remove('hidden');
     }
     const defaultRaces = parseMarkdownRaces(DEFAULT_TAKEO_MD);
+    // ガールズの級名「ガ予1」「ガ予2」の数字は買い目の数字と見間違えやすいため、タイトルでは「ガ予」に統一する
+    function normalizeGirlsTitle(title) { return String(title || '').replace(/ガ予\d+/g, 'ガ予'); }
     function loadSavedRaces() {
       try {
         const saved = localStorage.getItem(RACE_STORAGE_KEY);
@@ -1859,7 +1861,7 @@
       const entries = Object.values(entryMap).sort((a, b) => a.car - b.car);
       if (entries.length < 5) return null;
       if (parsedLines.length === 0) parsedLines = entries.map(e => [String(e.car)]);
-      return { id: title, rawFormation: rawFormation || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder: '', payout: null, entries };
+      return { id: normalizeGirlsTitle(title), rawFormation: rawFormation || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder: '', payout: null, entries };
     }
     const NUMBER_LORE_BENCHMARKS = [
       ['TET-1','次元上昇 ▲-△','exacta',68,4,'5.9','150.0',2550],['TET-2','次元上昇 ☆-★','exacta',198,5,'2.5','124.8',4944],['TET-3','次元下降 △-✕','exacta',149,18,'12.1','128.8',1066],['TET-4','次元下降 ✕-◯','exacta',102,9,'8.8','127.3',1442],
@@ -3078,7 +3080,7 @@
       const parsedLines = parseFormationString(rawLineInput, entries);
       const entryDate = document.getElementById('builderEntryDate').value || new Date().toISOString().slice(0,10);
       const eventDate = document.getElementById('builderEventDate').value || '';
-      const newRace = { id: titleInput || `手動入力レース #${allRaces.length + 1}`, eventDate, dataEntryDate: entryDate, recordedAt: new Date(entryDate + 'T12:00:00').toISOString(), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
+      const newRace = { id: normalizeGirlsTitle(titleInput) || `手動入力レース #${allRaces.length + 1}`, eventDate, dataEntryDate: entryDate, recordedAt: new Date(entryDate + 'T12:00:00').toISOString(), rawFormation: rawLineInput || parsedLines.map(g => `[${g.join(' ')}]`).join(' '), lines: parsedLines, resultOrder, payout: payoutVal ? Number(payoutVal) : null, entries };
       allRaces.push(newRace); persistRaces(); currentRaceIdx = allRaces.length - 1;
       populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab();
       ['builderRaceTitle', 'builderLineInput', 'builderResultOrder', 'builderPayoutInput','builderEventDate'].forEach(id => document.getElementById(id).value = '');
@@ -5347,7 +5349,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.158';
+    const APP_RELEASE_LABEL = '更新版 v3.159';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
@@ -5786,7 +5788,8 @@
       paRender(0.02);
     });
 
-    window.addEventListener('load', async () => { await hydrateRaceStorage(); initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
+    window.addEventListener('load', async () => { await hydrateRaceStorage();
+        try { let changedG = false; allRaces.forEach(r => { const n = normalizeGirlsTitle(r.id); if (n !== r.id) { r.id = n; changedG = true; } }); if (changedG && !DEMO_MODE) persistRaces(); } catch (e) {} initUpdateBadge(); if (!document.getElementById('builderEntryDate').value) document.getElementById('builderEntryDate').value = new Date().toISOString().slice(0,10); allRaces.forEach(r=>{ if(!r.autoTickets && r.resultRecordedAt) ensureRaceTickets(r); }); allRaces.forEach(r=>learnAdaptiveReasonPoints(r)); persistRaces(); renderBuilderRows(); populateRaceSelector(); updateBatchStats(); renderCurrentRace(); refreshVerticalStockList(); renderBetLab(); });
     window.addEventListener('resize', () => renderCurrentRace());
   </script>
 </body>
