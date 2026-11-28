@@ -4509,6 +4509,58 @@
           }
         }
       } catch (e) {}
+      // 単騎2着の2車単（v3.163、帯67・ガールズ除く、3連単には触れない）: 対象は
+      // (A) ◎◯△が3車ラインに揃い、その直後に単騎がいる形（実質4車の塊）の、その単騎
+      // (B) 4グループ以上またはT3のバラバラな形の、単騎全車
+      // 現行2車単の頭から対象単騎へのペアを足す。単騎2着は2車単中央値が全体940円に対し約3,600円と太い（25,477R実測）。
+      try {
+        if (!res.isGirlsRace && (res.entries || []).length >= 6 && (res.entries || []).length <= 7) {
+          const groupsT = res.lineSummaryList || [];
+          const targets = new Set();
+          for (let i = 0; i + 1 < groupsT.length; i++) {
+            const mems = groupsT[i].members || [];
+            if (groupsT[i].isTanki || mems.length !== 3) continue;
+            const ms = mems.map(m => m.convertedMark);
+            if (ms.includes('◎') && ms.includes('◯') && ms.includes('△') && groupsT[i + 1].isTanki) {
+              targets.add(Number((groupsT[i + 1].members || [])[0].car));
+            }
+          }
+          if (groupsT.length >= 4 || tierOfRace === 3) {
+            groupsT.filter(g => g.isTanki).forEach(g => targets.add(Number((g.members || [])[0].car)));
+          }
+          if (targets.size) {
+            const headsT = [...new Set(exacta.map(t => Number(t[0])))];
+            const haveT = new Set(exacta.map(t => t.join('-')));
+            headsT.forEach(h => targets.forEach(s => {
+              if (h === s) return;
+              const k = h + '-' + s;
+              if (!haveT.has(k)) { haveT.add(k); exacta.push([h, s]); }
+            }));
+          }
+        }
+      } catch (e) {}
+      // ガールズの買い目（v3.164）: 全員単騎ではライン前提の本線が機能しないため、本線2車単は厳選2車単に置き換え、
+      // 本線3連単は厳選ペアから3着を流す（3着の✕は除く）。実測（2026-11・94R）: 厳選2車単96.1%、流し110.2%、✕の3着層は20.9%。
+      try {
+        if (res.isGirlsRace) {
+          const selPairsG = (selectExacta || []).map(t => [Number(t[0]), Number(t[1])]);
+          const markByCarG = {};
+          (res.entries || []).forEach(e => { markByCarG[Number(e.car)] = e.mark; });
+          const allCarsG = (res.entries || []).map(e => Number(e.car));
+          exacta.length = 0;
+          selPairsG.forEach(p => exacta.push(p));
+          selected.length = 0;
+          const haveG = new Set();
+          selPairsG.forEach(([a, b]) => {
+            allCarsG.forEach(x => {
+              if (x === a || x === b) return;
+              if (markByCarG[x] === '✕') return;
+              const t = [a, b, x], k = t.join('-');
+              if (!haveG.has(k)) { haveG.add(k); selected.push(t); }
+            });
+          });
+        }
+      } catch (e) {}
       const withReasons=arr=>arr.map(ticket=>{const key=Array.isArray(ticket)?ticket.join('-'):String(ticket);return {ticket:key,reason:reasonByKey.get(key)||reasonFor(Array.isArray(ticket)?ticket:[ticket])};});
       return {win,exacta,trifecta:selected,selectExacta,selectTrifecta,patternMode:pattern.mode,winReasons:withReasons(win),exactaReasons:withReasons(exacta),trifectaReasons:withReasons(selected),
         rakushoPicks,ranked:cars,featureBaselineVersion:FEATURE_POINT_BASELINE.version,generatedAt,generatedAfterResult,adaptivePointSnapshot:adaptiveSnapshot,
@@ -5416,7 +5468,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.162';
+    const APP_RELEASE_LABEL = '更新版 v3.164';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
