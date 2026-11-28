@@ -3882,6 +3882,26 @@
     }
     // 厳選3連単：残った1-2着ペア（◎→◯／△→▲のみ）に3着を流す（T・★・⑳の車と合計6を除く）
     function buildSelectTrifecta(res) {
+      // ガールズ（v3.165）: 厳選ペア × 3着{△, α}。α＝車番5以下・並び最後尾でない単騎（T）。
+      // 実測（2026-11・94R）: 3.12点/R・的中14・回収233.7%（最大抜き75.0%）。通常の厳選3連単は42.6%で3着が△✕しか残らないため置換
+      if (res.isGirlsRace) {
+        const infoG = selectCarInfo(res);
+        const carsG = Object.keys(infoG).map(Number);
+        const groupsG2 = res.lineSummaryList || [];
+        const alphaG2 = new Set();
+        groupsG2.forEach((g, gi) => { if (gi >= groupsG2.length - 1) return; (g.members || []).forEach(m => { const c = Number(m.car); if (infoG[c] && infoG[c].conv === 'T' && c <= 5) alphaG2.add(c); }); });
+        const outG = [];
+        const haveG2 = new Set();
+        buildSelectExacta(res).forEach(([a, p]) => {
+          carsG.forEach(x => {
+            if (x === a || x === p) return;
+            if (!(infoG[x].conv === '△' || alphaG2.has(x))) return;
+            const t = [a, p, x], k = t.join('-');
+            if (!haveG2.has(k)) { haveG2.add(k); outG.push(t); }
+          });
+        });
+        return outG;
+      }
       const { pairs, info } = selectRawPairs(res);
       const cars = Object.keys(info).map(Number);
       const out = [];
@@ -5468,7 +5488,7 @@
 
 
     const APP_RELEASE_VERSION = '3.87-20261122';
-    const APP_RELEASE_LABEL = '更新版 v3.164';
+    const APP_RELEASE_LABEL = '更新版 v3.165';
     function initUpdateBadge() {
       const badge = document.getElementById('appUpdateBadge');
       if (!badge) return;
